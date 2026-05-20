@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <title>Regional AI Repository | Authentication</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 30px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            width: 960px;
+            max-width: 100%;
+            min-height: 640px;
+        }
+
+        .container p {
+            font-size: 14px;
+            line-height: 20px;
+            letter-spacing: 0.3px;
+            margin: 20px 0;
+        }
+
+        .container span {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .container a {
+            color: #333;
+            font-size: 13px;
+            text-decoration: none;
+            margin: 15px 0 10px;
+        }
+
+        .container button {
+            background: linear-gradient(135deg, #2563EB, #1E40AF);
+            color: #fff;
+            font-size: 12px;
+            padding: 10px 45px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .container button:hover {
+            background: linear-gradient(135deg, #1E40AF, #1E3A8A);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .container button.hidden {
+            background-color: transparent;
+            border-color: #fff;
+        }
+
+        .container button.hidden:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .container form {
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 40px;
+            height: 100%;
+            gap: 8px;
+        }
+
+        .container input, .container select, .container textarea {
+            background-color: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            margin: 5px 0;
+            padding: 10px 15px;
+            font-size: 13px;
+            border-radius: 8px;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .container input:focus, .container select:focus, .container textarea:focus {
+            border-color: #2563EB;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+            background-color: #fff;
+        }
+
+        .container input.input-error, .container select.input-error, .container textarea.input-error {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+        }
+
+        .container textarea {
+            resize: vertical;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23666" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        .row-inputs {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .half {
+            width: 50%;
+        }
+
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-wrapper input {
+            padding-right: 40px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            color: #999;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .toggle-password:hover {
+            color: #2563EB;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .checkbox-label input {
+            width: auto;
+            margin: 0;
+        }
+
+        .alert-message {
+            font-size: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .alert-message.alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-message.alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .field-error {
+            font-size: 11px;
+            color: #ef4444;
+            text-align: left;
+            width: 100%;
+            padding: 0 5px;
+            display: none;
+        }
+
+        .form-container {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            transition: all 0.6s ease-in-out;
+            overflow-y: auto;
+        }
+
+        .form-container::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .form-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .form-container::-webkit-scrollbar-thumb {
+            background: #2563EB;
+            border-radius: 5px;
+        }
+
+        .sign-in {
+            left: 0;
+            width: 50%;
+            z-index: 2;
+        }
+
+        .container.active .sign-in {
+            transform: translateX(100%);
+        }
+
+        .sign-up {
+            left: 0;
+            width: 50%;
+            opacity: 0;
+            z-index: 1;
+        }
+
+        .container.active .sign-up {
+            transform: translateX(100%);
+            opacity: 1;
+            z-index: 5;
+            animation: move 0.6s;
+        }
+
+        @keyframes move {
+            0%, 49.99% {
+                opacity: 0;
+                z-index: 1;
+            }
+            50%, 100% {
+                opacity: 1;
+                z-index: 5;
+            }
+        }
+
+        .social-icons {
+            margin: 15px 0;
+        }
+
+        .social-icons a {
+            border: 1px solid #ccc;
+            border-radius: 20%;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 3px;
+            width: 40px;
+            height: 40px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .social-icons a:hover {
+            background-color: #2563EB;
+            border-color: #2563EB;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .toggle-container {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            transition: all 0.6s ease-in-out;
+            border-radius: 20px;
+            z-index: 1000;
+        }
+
+        .container.active .toggle-container {
+            transform: translateX(-100%);
+            border-radius: 20px;
+        }
+
+        .toggle {
+            background: linear-gradient(135deg, #2563EB, #1E40AF);
+            height: 100%;
+            color: #fff;
+            position: relative;
+            left: -100%;
+            width: 200%;
+            transform: translateX(0);
+            transition: all 0.6s ease-in-out;
+        }
+
+        .container.active .toggle {
+            transform: translateX(50%);
+        }
+
+        .toggle-panel {
+            position: absolute;
+            width: 50%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 0 30px;
+            text-align: center;
+            top: 0;
+            transform: translateX(0);
+            transition: all 0.6s ease-in-out;
+        }
+
+        .toggle-left {
+            transform: translateX(-200%);
+        }
+
+        .container.active .toggle-left {
+            transform: translateX(0);
+        }
+
+        .toggle-right {
+            right: 0;
+            transform: translateX(0);
+        }
+
+        .toggle-panel h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .toggle-panel p {
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .btn-loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn-loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                min-height: auto;
+                border-radius: 20px;
+            }
+            .form-container {
+                width: 100% !important;
+                position: relative;
+                left: 0 !important;
+                height: auto;
+                opacity: 1 !important;
+                z-index: 1 !important;
+            }
+            .toggle-container {
+                display: none;
+            }
+            .sign-up {
+                display: none;
+            }
+            .container.active .sign-up {
+                display: block;
+                transform: none;
+            }
+            .container.active .sign-in {
+                display: none;
+            }
+            .sign-in {
+                width: 100%;
+            }
+            .mobile-toggle-link {
+                display: block;
+                text-align: center;
+                margin-top: 15px;
+                font-size: 13px;
+                cursor: pointer;
+                color: #2563EB;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-toggle-link {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="container">
+        <!-- Sign up -->
+        <div class="form-container sign-up">
+            <form id="signup-form-el" novalidate>
+                <h1>Create Account</h1>
+                <div class="social-icons">
+                    <a href="#" class="icons"><i class='bx bxl-google'></i></a>
+                    <a href="#" class="icons"><i class='bx bxl-facebook'></i></a>
+                    <a href="#" class="icons"><i class='bx bxl-github'></i></a>
+                    <a href="#" class="icons"><i class='bx bxl-linkedin'></i></a>
+                </div>
+                <span>Register your organization</span>
+
+                <div id="signup-alert" class="alert-message" style="display:none"></div>
+
+                <input type="text" id="org-name" name="organization_name" placeholder="Organization Name" required>
+                <span class="field-error" id="org-name-error"></span>
+
+                <select id="org-type" name="organization_type" class="form-select" required>
+                    <option value="" disabled selected>Select organization type</option>
+                    <option value="NGO">NGO</option>
+                    <option value="Business">Business</option>
+                    <option value="Company">Company</option>
+                    <option value="Government">Government</option>
+                    <option value="University">University</option>
+                    <option value="Research Lab">Research Lab</option>
+                </select>
+                <span class="field-error" id="org-type-error"></span>
+
+                <input type="email" id="signup-email" name="email" placeholder="Email address" required>
+                <span class="field-error" id="signup-email-error"></span>
+
+                <input type="tel" id="phone" name="phone" placeholder="Phone number" required>
+                <span class="field-error" id="phone-error"></span>
+
+                <input type="url" id="website" name="website" placeholder="Website (optional)">
+                <span class="field-error" id="website-error"></span>
+
+                <div class="row-inputs">
+                    <select id="country" name="country" class="form-select half" required>
+                        <option value="" disabled selected>Select country</option>
+                    </select>
+                    <select id="city" name="city" class="form-select half" required disabled>
+                        <option value="" disabled selected>Select city</option>
+                    </select>
+                </div>
+                <span class="field-error" id="country-error"></span>
+                <span class="field-error" id="city-error" style="display:none"></span>
+
+                <input type="text" id="address" name="address" placeholder="Street address" required>
+                <span class="field-error" id="address-error"></span>
+
+                <input type="text" id="sector" name="sector" placeholder="Sector (AI, Healthcare, Finance...)" required>
+                <span class="field-error" id="sector-error"></span>
+
+                <textarea id="description" name="description" rows="3" placeholder="Brief description of your organization..." required></textarea>
+                <span class="field-error" id="description-error"></span>
+
+                <div class="password-wrapper">
+                    <input type="password" id="signup-password" name="password" placeholder="Password (min. 8 characters)" required minlength="8">
+                    <button type="button" class="toggle-password" aria-label="Toggle password">
+                        <i class='bx bx-hide'></i>
+                    </button>
+                </div>
+                <span class="field-error" id="signup-password-error"></span>
+
+                <button type="submit" id="signup-btn">Sign Up</button>
+
+                <span class="mobile-toggle-link" id="mobile-to-signin">Already have an account? Sign In</span>
+            </form>
+        </div>
+
+        <!-- Sign in -->
+        <div class="form-container sign-in">
+            <form id="signin-form-el" novalidate>
+                <h1>Sign In</h1>
+                <div class="social-icons">
+                    <a href="#" class="icons"><i class='bx bxl-google'></i></a>
+                    <a href="#" class="icons"><i class='bx bxl-facebook'></i></a>
+                    <a href="#" class="icons"><i class='bx bxl-github'></i></a>
+                    <a href="#" class="icons"><i class='bx bxl-linkedin'></i></a>
+                </div>
+                <span>Sign in to your organization account</span>
+
+                <div id="signin-alert" class="alert-message" style="display:none"></div>
+
+                <input type="email" id="signin-email" name="email" placeholder="Email address" required>
+                <span class="field-error" id="signin-email-error"></span>
+
+                <div class="password-wrapper">
+                    <input type="password" id="signin-password" name="password" placeholder="Password" required>
+                    <button type="button" class="toggle-password" aria-label="Toggle password">
+                        <i class='bx bx-hide'></i>
+                    </button>
+                </div>
+                <span class="field-error" id="signin-password-error"></span>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="remember-me"> Remember me
+                    </label>
+                    <a href="forgot-password.html">Forgot Password?</a>
+                </div>
+
+                <button type="submit" id="signin-btn">Sign In</button>
+
+                <span class="mobile-toggle-link" id="mobile-to-signup">Don't have an account? Sign Up</span>
+            </form>
+        </div>
+
+        <!-- Toggle Panel -->
+        <div class="toggle-container">
+            <div class="toggle">
+                <div class="toggle-panel toggle-left">
+                    <h1>Welcome To<br>Regional AI Repository</h1>
+                    <p>Sign in to access your organization dashboard</p>
+                    <button class="hidden" id="login">Sign In</button>
+                </div>
+                <div class="toggle-panel toggle-right">
+                    <h1>Join the Network</h1>
+                    <p>Register your organization and start collaborating on AI initiatives</p>
+                    <button class="hidden" id="register">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ARAB_COUNTRIES_CITIES = {
+            "Algeria": ["Adrar", "Chlef", "Laghouat", "Oum El Bouaghi", "Batna", "Béjaïa", "Biskra", "Béchar", "Blida", "Bouira", "Tamanrasset", "Tébessa", "Tlemcen", "Tiaret", "Tizi Ouzou", "Alger", "Djelfa", "Jijel", "Sétif", "Saïda", "Skikda", "Sidi Bel Abbès", "Annaba", "Guelma", "Constantine", "Médéa", "Mostaganem", "M'Sila", "Mascara", "Ouargla", "Oran", "El Bayadh", "Illizi", "Bordj Bou Arréridj", "Boumerdès", "El Tarf", "Tindouf", "Tissemsilt", "El Oued", "Khenchela", "Souk Ahras", "Tipaza", "Mila", "Aïn Defla", "Naâma", "Aïn Témouchent", "Ghardaïa", "Relizane", "Timimoun", "Bordj Badji Mokhtar", "Ouled Djellal", "Béni Abbès", "In Salah", "In Guezzam", "Touggourt", "Djanet", "El M'Ghair", "El Meniaa"],
+            "Bahrain": ["Capitale", "Muharraq", "Nord", "Sud"],
+            "Comoros": ["Grande Comore", "Anjouan", "Mohéli"],
+            "Djibouti": ["Ali Sabieh", "Arta", "Dikhil", "Djibouti", "Obock", "Tadjourah"],
+            "Egypt": ["Le Caire", "Gizeh", "Alexandrie", "Dakahlia", "Mer Rouge", "Beheira", "Fayoum", "Gharbia", "Ismaïlia", "Menoufia", "Minya", "Qaliubiya", "Nouvelle Vallée", "Suez", "Assiout", "Beni Suef", "Port-Saïd", "Damiette", "Sharqia", "Kafr el-Sheikh", "Matrouh", "Louxor", "Qena", "Assouan", "Sohag", "Sud-Sinaï", "Nord-Sinaï"],
+            "Iraq": ["Bagdad", "Bassora", "Ninive", "Erbil", "Anbar", "Babil", "Diyala", "Dhi Qar", "Dohuk", "Karbala", "Kirkouk", "Maysan", "Muthanna", "Najaf", "Qadisiyyah", "Salah ad-Din", "Sulaymaniyah", "Wasit"],
+            "Jordan": ["Amman", "Irbid", "Zarqa", "Balqa", "Mafraq", "Karak", "Tafilah", "Ma'an", "Aqaba", "Jerash", "Ajloun", "Madaba"],
+            "Kuwait": ["Al Asimah", "Hawalli", "Farwaniya", "Mubarak Al-Kabeer", "Ahmadi", "Jahra"],
+            "Lebanon": ["Beyrouth", "Mont-Liban", "Nord", "Akkar", "Bekaa", "Baalbek-Hermel", "Sud", "Nabatieh"],
+            "Libya": ["Tripoli", "Benghazi", "Misrata", "Marj", "Jabal al Akhdar", "Derna", "Tobrouk", "Al Wahat", "Kufra", "Sirt", "Jufra", "Murzuq", "Sabha", "Wadi al Shatii", "Ghat", "Nalut", "Jabal al Gharbi", "Zawiya", "Zuwara", "Tajura", "Bani Walid", "Gharyan"],
+            "Mauritania": ["Adrar", "Assaba", "Brakna", "Dakhlet Nouadhibou", "Gorgol", "Guidimaka", "Hodh Ech Chargui", "Hodh El Gharbi", "Inchiri", "Nouakchott-Nord", "Nouakchott-Ouest", "Nouakchott-Sud", "Tagant", "Tiris Zemmour", "Trarza"],
+            "Morocco": ["Tanger-Tétouan-Al Hoceïma", "Oriental", "Fès-Meknès", "Rabat-Salé-Kénitra", "Béni Mellal-Khénifra", "Casablanca-Settat", "Marrakech-Safi", "Drâa-Tafilalet", "Souss-Massa", "Guelmim-Oued Noun", "Laâyoune-Sakia El Hamra", "Dakhla-Oued Ed-Dahab"],
+            "Oman": ["Muscat", "Dhofar", "Musandam", "Al Buraimi", "Al Dakhiliya", "Al Dhahirah", "Al Sharqiya Nord", "Al Sharqiya Sud", "Al Batinah Nord", "Al Batinah Sud", "Al Wusta"],
+            "Palestine": ["Jérusalem", "Ramallah", "Hébron", "Naplouse", "Jénine", "Tulkarem", "Qalqilya", "Salfit", "Jéricho", "Bethléem", "Tubas", "Gaza Nord", "Gaza", "Deir al-Balah", "Khan Younès", "Rafah"],
+            "Qatar": ["Doha", "Al Rayyan", "Al Wakrah", "Umm Salal", "Al Khor", "Al Shamal", "Al Daayen", "Al Shahaniya"],
+            "Saudi Arabia": ["Riyad", "La Mecque", "Médine", "Qassim", "Province de l'Est", "Asir", "Tabuk", "Hail", "Nord", "Jazan", "Najran", "Al Bahah", "Al Jawf"],
+            "Somalia": ["Awdal", "Bakool", "Banaadir", "Bari", "Bay", "Galguduud", "Gedo", "Hiraan", "Lower Juba", "Middle Juba", "Lower Shabelle", "Middle Shabelle", "Mudug", "Nugal", "Sanaag", "Sool", "Togdheer", "Woqooyi Galbeed"],
+            "Sudan": ["Khartoum", "Darfour Nord", "Darfour Sud", "Darfour Ouest", "Darfour Centre", "Darfour Est", "Kassala", "Gedaref", "Nil Bleu", "Nil Blanc", "Nord", "River Nile", "Sennar", "Kordofan Nord", "Kordofan Sud", "Kordofan Ouest", "Mer Rouge", "Al Jazirah"],
+            "Syria": ["Damas", "Alep", "Homs", "Hama", "Lattaquié", "Tartous", "Idleb", "Deir ez-Zor", "Raqqa", "Hassaké", "Daraa", "Soueïda", "Quneitra", "Rif Dimashq"],
+            "Tunisia": ["Tunis", "Ariana", "Ben Arous", "Manouba", "Nabeul", "Zaghouan", "Bizerte", "Béja", "Jendouba", "Le Kef", "Siliana", "Sousse", "Monastir", "Mahdia", "Sfax", "Kairouan", "Kasserine", "Sidi Bouzid", "Gabès", "Médenine", "Tataouine", "Gafsa", "Tozeur", "Kébili"],
+            "United Arab Emirates": ["Abou Dabi", "Dubaï", "Sharjah", "Ajman", "Umm Al-Quwain", "Ras Al Khaimah", "Fujairah"],
+            "Yemen": ["Sanaa", "Aden", "Taiz", "Ibb", "Hadramout", "Al Hudaydah", "Al Mahrah", "Al Jawf", "Al Bayda", "Dhamar", "Saada", "Hajjah", "Lahj", "Marib", "Raymah", "Shabwah", "Abyan", "Amran", "Al Dhale'e", "Socotra", "Al Mahwit", "Sana'a Ville"]
+        };
+
+        const countrySelect = document.getElementById('country');
+        const citySelect = document.getElementById('city');
+
+        if (countrySelect) {
+            Object.keys(ARAB_COUNTRIES_CITIES).forEach(country => {
+                const option = document.createElement('option');
+                option.value = country;
+                option.textContent = country;
+                countrySelect.appendChild(option);
+            });
+
+            countrySelect.addEventListener('change', function() {
+                citySelect.innerHTML = '<option value="" disabled selected>Select city</option>';
+                const selectedCountry = this.value;
+                if (selectedCountry && ARAB_COUNTRIES_CITIES[selectedCountry]) {
+                    citySelect.disabled = false;
+                    ARAB_COUNTRIES_CITIES[selectedCountry].forEach(city => {
+                        const option = document.createElement('option');
+                        option.value = city;
+                        option.textContent = city;
+                        citySelect.appendChild(option);
+                    });
+                } else {
+                    citySelect.disabled = true;
+                }
+                clearFieldError('country');
+            });
+        }
+
+        citySelect.addEventListener('change', () => {
+            clearFieldError('city');
+        });
+
+        const API_BASE = "http://127.0.0.1:8000";
+
+        function showAlert(elementId, message, type) {
+            const alert = document.getElementById(elementId);
+            if (alert) {
+                alert.className = 'alert-message alert-' + type;
+                alert.textContent = message;
+                alert.style.display = 'block';
+                if (type === 'success') {
+                    setTimeout(() => { alert.style.display = 'none'; }, 5000);
+                }
+            }
+        }
+
+        function setFieldError(fieldId, message) {
+            const errorEl = document.getElementById(fieldId + '-error');
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+            }
+            const input = document.getElementById(fieldId);
+            if (input) input.classList.add('input-error');
+        }
+
+        function clearFieldError(fieldId) {
+            const errorEl = document.getElementById(fieldId + '-error');
+            if (errorEl) {
+                errorEl.textContent = '';
+                errorEl.style.display = 'none';
+            }
+            const input = document.getElementById(fieldId);
+            if (input) input.classList.remove('input-error');
+        }
+
+        function clearAllErrors(formEl) {
+            formEl.querySelectorAll('.field-error').forEach(el => {
+                el.textContent = '';
+                el.style.display = 'none';
+            });
+            formEl.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+        }
+
+        function setLoading(buttonId, loading) {
+            const btn = document.getElementById(buttonId);
+            if (!btn) return;
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('btn-loading');
+                btn.innerHTML = '<span class="btn-loader"></span>';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('btn-loading');
+                btn.textContent = buttonId === 'signup-btn' ? 'Sign Up' : 'Sign In';
+            }
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function isValidUrl(url) {
+            if (!url) return true;
+            try { new URL(url); return true; } catch { return false; }
+        }
+
+        async function apiCall(url, payload, alertPrefix) {
+            const fullUrl = API_BASE + url;
+            let response;
+            try {
+                response = await fetch(fullUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                    mode: "cors",
+                    credentials: "omit",
+                    body: JSON.stringify(payload),
+                });
+            } catch (err) {
+                if (err.message && err.message.includes("Failed to fetch")) {
+                    showAlert(alertPrefix + '-alert', 'Cannot reach backend server. Make sure it is running on port 8000.', 'error');
+                } else {
+                    showAlert(alertPrefix + '-alert', 'Network error: ' + err.message, 'error');
+                }
+                return null;
+            }
+
+            let data;
+            try {
+                const text = await response.text();
+                data = JSON.parse(text);
+            } catch {
+                showAlert(alertPrefix + '-alert', 'Unexpected server response.', 'error');
+                return null;
+            }
+
+            if (response.ok) {
+                return { response, data, ok: true };
+            } else {
+                let message = 'An error occurred';
+                if (response.status === 422 && Array.isArray(data.detail)) {
+                    message = data.detail.map(e => e.msg || `${e.loc?.join('.')}: ${e.msg}`).join('\n');
+                } else if (typeof data.detail === 'string') {
+                    message = data.detail;
+                } else if (typeof data.detail === 'object') {
+                    message = JSON.stringify(data.detail);
+                }
+                showAlert(alertPrefix + '-alert', message, 'error');
+                return { response, data, ok: false };
+            }
+        }
+
+        // Toggle between sign in and sign up
+        const container = document.getElementById('container');
+        const registerBtn = document.getElementById('register');
+        const loginBtn = document.getElementById('login');
+        const mobileToSignup = document.getElementById('mobile-to-signup');
+        const mobileToSignin = document.getElementById('mobile-to-signin');
+
+        if (registerBtn) registerBtn.addEventListener('click', () => container.classList.add("active"));
+        if (loginBtn) loginBtn.addEventListener('click', () => container.classList.remove("active"));
+        if (mobileToSignup) mobileToSignup.addEventListener('click', () => container.classList.add("active"));
+        if (mobileToSignin) mobileToSignin.addEventListener('click', () => container.classList.remove("active"));
+
+        // Password visibility toggle
+        document.querySelectorAll('.toggle-password').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const input = this.parentElement.querySelector('input');
+                const icon = this.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('bx-hide');
+                    icon.classList.add('bx-show');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('bx-show');
+                    icon.classList.add('bx-hide');
+                }
+            });
+        });
+
+        // Clear errors on input
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('input', () => clearFieldError(el.id));
+            el.addEventListener('change', () => clearFieldError(el.id));
+        });
+
+        // Sign Up handler
+        document.getElementById('signup-form-el').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAllErrors(e.target);
+
+            const orgName = document.getElementById('org-name').value.trim();
+            const orgType = document.getElementById('org-type').value;
+            const email = document.getElementById('signup-email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const website = document.getElementById('website').value.trim();
+            const country = document.getElementById('country').value;
+            const city = document.getElementById('city').value;
+            const address = document.getElementById('address').value.trim();
+            const sector = document.getElementById('sector').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const password = document.getElementById('signup-password').value;
+
+            let hasError = false;
+
+            if (!orgName) { setFieldError('org-name', 'Required'); hasError = true; }
+            if (!orgType) { setFieldError('org-type', 'Required'); hasError = true; }
+            if (!email) { setFieldError('signup-email', 'Required'); hasError = true; }
+            else if (!isValidEmail(email)) { setFieldError('signup-email', 'Invalid email'); hasError = true; }
+            if (!phone) { setFieldError('phone', 'Required'); hasError = true; }
+            if (website && !isValidUrl(website)) { setFieldError('website', 'Invalid URL'); hasError = true; }
+            if (!country) { setFieldError('country', 'Required'); hasError = true; }
+            if (!city) { setFieldError('city', 'Required'); hasError = true; }
+            if (!address) { setFieldError('address', 'Required'); hasError = true; }
+            if (!sector) { setFieldError('sector', 'Required'); hasError = true; }
+            if (!description) { setFieldError('description', 'Required'); hasError = true; }
+            if (!password) { setFieldError('signup-password', 'Required'); hasError = true; }
+            else if (password.length < 8) { setFieldError('signup-password', 'Min 8 characters'); hasError = true; }
+            else if (!/[A-Z]/.test(password)) { setFieldError('signup-password', 'Need uppercase'); hasError = true; }
+            else if (!/[a-z]/.test(password)) { setFieldError('signup-password', 'Need lowercase'); hasError = true; }
+            else if (!/[0-9]/.test(password)) { setFieldError('signup-password', 'Need a digit'); hasError = true; }
+
+            if (hasError) return;
+
+            setLoading('signup-btn', true);
+
+            const payload = {
+                organization_name: orgName,
+                organization_type: orgType,
+                email: email,
+                phone: phone,
+                website: website || null,
+                country: country,
+                city: city,
+                address: address,
+                sector: sector,
+                description: description,
+                role: 'organization',
+                password: password
+            };
+
+            const result = await apiCall('/api/users/register', payload, 'signup');
+
+            if (result && result.ok) {
+                showAlert('signup-alert', 'Account created! Please check your email to activate your account before signing in.', 'success');
+                e.target.reset();
+                citySelect.innerHTML = '<option value="" disabled selected>Select country first</option>';
+                citySelect.disabled = true;
+                setTimeout(() => {
+                    container.classList.remove('active');
+                }, 4000);
+            }
+
+            setLoading('signup-btn', false);
+        });
+
+        // Sign In handler
+        document.getElementById('signin-form-el').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAllErrors(e.target);
+
+            const email = document.getElementById('signin-email').value.trim();
+            const password = document.getElementById('signin-password').value;
+            const remember = document.getElementById('remember-me').checked;
+
+            let hasError = false;
+            if (!email) { setFieldError('signin-email', 'Required'); hasError = true; }
+            else if (!isValidEmail(email)) { setFieldError('signin-email', 'Invalid email'); hasError = true; }
+            if (!password) { setFieldError('signin-password', 'Required'); hasError = true; }
+
+            if (hasError) return;
+
+            setLoading('signin-btn', true);
+
+            const result = await apiCall('/api/users/login', { email, password }, 'signin');
+
+            if (result && result.ok) {
+                const storage = remember ? localStorage : sessionStorage;
+                storage.setItem('access_token', result.data.access_token);
+                storage.setItem('token_type', result.data.token_type);
+                storage.setItem('user', JSON.stringify(result.data.user));
+                showAlert('signin-alert', 'Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:3001/';
+                }, 1000);
+            }
+
+            setLoading('signin-btn', false);
+        });
+    </script>
+</body>
+
+</html>

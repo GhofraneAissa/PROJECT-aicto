@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regional AI Repository · Activate Account</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-forms-panel">
+      <div class="auth-forms-inner">
+        <div class="brand">
+          <div class="brand-logo">
+            <svg viewBox="0 0 40 40" fill="none"><rect width="40" height="40" rx="10" fill="#059669"/><path d="M12 28L20 12L28 28" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="brand-name">Regional AI Repository</span>
+        </div>
+
+        <div id="activation-form" class="auth-form active">
+          <div class="form-header">
+            <h1>Account Activation</h1>
+            <p id="activation-status">Activating your account...</p>
+          </div>
+          <div id="activation-alert" class="alert" style="display:none"></div>
+
+          <div class="form-body" id="activation-body">
+            <div style="text-align:center;padding:2rem 0">
+              <div class="btn-loader" style="display:block;margin:0 auto;width:40px;height:40px;border-width:3px"></div>
+            </div>
+          </div>
+
+          <div class="form-divider"><span>or</span></div>
+          <p class="form-footer" id="activation-footer"><a href="auth.html">Back to Sign In</a></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-branding-panel">
+      <div class="branding-content">
+        <div class="branding-icon">
+          <svg viewBox="0 0 120 120" fill="none">
+            <rect width="120" height="120" rx="24" fill="rgba(255,255,255,0.12)"/>
+            <path d="M60 30L75 50H45L60 30Z" fill="rgba(255,255,255,0.9)"/>
+            <circle cx="60" cy="65" r="15" fill="rgba(255,255,255,0.9)"/>
+            <path d="M45 90L60 75L75 90" stroke="rgba(255,255,255,0.7)" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+        <h2>Regional AI Repository</h2>
+        <p>Stocktaking of Arab Regional AI Initiatives</p>
+        <div class="features-list">
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Discover AI initiatives across the Arab region
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Connect with organizations and stakeholders
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Collaborate on AI projects and research
+          </div>
+        </div>
+      </div>
+      <div class="branding-footer">
+        <p>&copy; 2026 Regional AI Repository Platform</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
+
+    function showAlert(elementId, message, type) {
+      const alert = document.getElementById(elementId);
+      if (alert) {
+        alert.className = 'alert alert-' + type;
+        alert.textContent = message;
+        alert.style.display = 'block';
+      }
+    }
+
+    async function activateAccount() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+
+      if (!token) {
+        document.getElementById('activation-status').textContent = 'Invalid activation link';
+        showAlert('activation-alert', 'No activation token found. Please check your activation link.', 'error');
+        document.getElementById('activation-body').innerHTML = '<p style="text-align:center;color:#6b7280">The activation link is invalid or missing a token.</p>';
+        return;
+      }
+
+      try {
+        const response = await fetch(API_BASE + '/api/users/activate/' + encodeURIComponent(token), {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          mode: 'cors',
+          credentials: 'omit',
+        });
+
+        const text = await response.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { detail: text }; }
+
+        if (response.ok) {
+          document.getElementById('activation-status').textContent = 'Account Activated!';
+          showAlert('activation-alert', data.message || 'Account activated successfully. You can now sign in.', 'success');
+          document.getElementById('activation-body').innerHTML = `
+            <p style="text-align:center;color:#6b7280;margin-bottom:1.5rem">Your account has been activated. You can now sign in to access your organization dashboard.</p>
+            <a href="auth.html" class="btn btn-primary btn-full">Sign In Now</a>
+          `;
+        } else {
+          document.getElementById('activation-status').textContent = 'Activation Failed';
+          const msg = typeof data.detail === 'string' ? data.detail : 'Activation failed. The link may be invalid or expired.';
+          showAlert('activation-alert', msg, 'error');
+          document.getElementById('activation-body').innerHTML = `
+            <p style="text-align:center;color:#6b7280;margin-bottom:1.5rem">Please try signing up again or contact support.</p>
+            <a href="auth.html" class="btn btn-primary btn-full">Go to Sign In</a>
+          `;
+        }
+      } catch (err) {
+        document.getElementById('activation-status').textContent = 'Connection Error';
+        showAlert('activation-alert', 'Cannot reach backend server. Make sure it is running on port 8000.', 'error');
+        document.getElementById('activation-body').innerHTML = `
+          <p style="text-align:center;color:#6b7280">Please try again later.</p>
+        `;
+      }
+    }
+
+    activateAccount();
+  </script>
+</body>
+</html>
