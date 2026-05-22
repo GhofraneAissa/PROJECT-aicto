@@ -94,7 +94,7 @@ from app.services.pdf_report_service import generate_pdf_report
 from app.services.email_service import send_report_email
 
 REPORT_RECIPIENT = os.getenv("REPORT_EMAIL", "aissaghofrane1@gmail.com")
-REPORT_INTERVAL_SECONDS = 60  # Every minute
+REPORT_CHECK_INTERVAL = 30  # Check every 30 seconds
 
 # Import tous les modèles AVANT create_all
 from app.models.user import User
@@ -165,29 +165,42 @@ app.include_router(contact.router, prefix="/api", tags=["Contact"])
 app.include_router(report.router, prefix="/api", tags=["Report"])
 
 
-# ── Background scheduler: send report every minute ──
+# ── Background scheduler: send report every Monday & Thursday at 9:00 AM ──
+SEND_DAYS = [0, 3]  # Monday=0, Thursday=3
+SEND_HOUR = 9
+SEND_MINUTE = 0
+
+
 def run_scheduled_report():
-    """Background thread that generates the PDF report and sends it every REPORT_INTERVAL_SECONDS."""
+    """Background thread that sends the annual report every Monday and Thursday at 9:00 AM."""
+    last_sent_date = None
     while True:
         try:
             now = datetime.utcnow()
-            current_year = now.year
-            logger.info(f"[SCHEDULER] Generating PDF report for year {current_year}...")
-            pdf_bytes = generate_pdf_report(current_year)
-            logger.info(f"[SCHEDULER] PDF generated: {len(pdf_bytes)} bytes")
-            sent = send_report_email(REPORT_RECIPIENT, pdf_bytes, current_year)
-            if sent:
-                logger.info(f"[SCHEDULER] Report {current_year} sent to {REPORT_RECIPIENT}")
-            else:
-                logger.warning(f"[SCHEDULER] Failed to send report {current_year}")
+            # Check if today is a send day and time matches (within 1-minute window)
+            if now.weekday() in SEND_DAYS and now.hour == SEND_HOUR and now.minute == SEND_MINUTE:
+                sent_today_key = now.date()
+                if last_sent_date != sent_today_key:
+                    current_year = now.year
+                    logger.info(f"[SCHEDULER] Sending report for {current_year} on {now.strftime('%A %d/%m/%Y')}...")
+                    pdf_bytes = generate_pdf_report(current_year)
+                    logger.info(f"[SCHEDULER] PDF generated: {len(pdf_bytes)} bytes")
+                    sent = send_report_email(REPORT_RECIPIENT, pdf_bytes, current_year)
+                    if sent:
+                        logger.info(f"[SCHEDULER] Report {current_year} sent to {REPORT_RECIPIENT}")
+                        last_sent_date = sent_today_key
+                    else:
+                        logger.warning(f"[SCHEDULER] Failed to send report {current_year}")
         except Exception as e:
             logger.error(f"[SCHEDULER] Error in scheduled report: {e}")
-        time.sleep(REPORT_INTERVAL_SECONDS)
+        time.sleep(REPORT_CHECK_INTERVAL)
 
 
 @app.on_event("startup")
 def startup_event():
-    logger.info("[SCHEDULER] Starting background report scheduler (every 60 seconds)...")
+    logger.info("[SCHEDULER] Starting background report scheduler (Monday & Thursday at 9:00 AM)...")
+    days_str = ", ".join(["Monday", "Thursday"])
+    logger.info(f"[SCHEDULER] Next send days: {days_str} at {SEND_HOUR:02d}:{SEND_MINUTE:02d} UTC")
     thread = threading.Thread(target=run_scheduled_report, daemon=True)
     thread.start()
 
