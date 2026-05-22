@@ -85,8 +85,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
-from app.routers import stakeholders, projects, resources, analytics, countries, users, sdgs, search, admin, chat, contact
+from app.routers import stakeholders, projects, resources, analytics, countries, users, sdgs, search, admin, chat, contact, report
 import os
+import threading
+import time
+from datetime import datetime
+from app.services.pdf_report_service import generate_pdf_report
+from app.services.email_service import send_report_email
+
+REPORT_RECIPIENT = os.getenv("REPORT_EMAIL", "aissaghofrane1@gmail.com")
+REPORT_INTERVAL_SECONDS = 60  # Every minute
 
 # Import tous les modèles AVANT create_all
 from app.models.user import User
@@ -154,6 +162,36 @@ app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(contact.router, prefix="/api", tags=["Contact"])
+app.include_router(report.router, prefix="/api", tags=["Report"])
+
+
+# ── Background scheduler: send report every minute ──
+def run_scheduled_report():
+    """Background thread that generates the PDF report and sends it every REPORT_INTERVAL_SECONDS."""
+    while True:
+        try:
+            now = datetime.utcnow()
+            current_year = now.year
+            logger.info(f"[SCHEDULER] Generating PDF report for year {current_year}...")
+            pdf_bytes = generate_pdf_report(current_year)
+            logger.info(f"[SCHEDULER] PDF generated: {len(pdf_bytes)} bytes")
+            sent = send_report_email(REPORT_RECIPIENT, pdf_bytes, current_year)
+            if sent:
+                logger.info(f"[SCHEDULER] Report {current_year} sent to {REPORT_RECIPIENT}")
+            else:
+                logger.warning(f"[SCHEDULER] Failed to send report {current_year}")
+        except Exception as e:
+            logger.error(f"[SCHEDULER] Error in scheduled report: {e}")
+        time.sleep(REPORT_INTERVAL_SECONDS)
+
+
+@app.on_event("startup")
+def startup_event():
+    logger.info("[SCHEDULER] Starting background report scheduler (every 60 seconds)...")
+    thread = threading.Thread(target=run_scheduled_report, daemon=True)
+    thread.start()
+
+
 @app.get("/")
 def root():
     return {"message": "SARAI API is running"}

@@ -3,6 +3,9 @@ import smtplib
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
+from email import encoders
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -280,4 +283,75 @@ def send_contact_email(name: str, email: str, subject: str, message: str) -> boo
         return True
     except Exception as e:
         logger.error(f"[EMAIL] ❌ Failed to send contact email: {type(e).__name__}: {e}")
+        return False
+
+
+def send_report_email(recipient_email: str, pdf_bytes: bytes, year: int) -> bool:
+    """
+    Send an annual report email with a PDF attachment containing the full detailed report.
+    """
+    if not all([SMTP_EMAIL, SMTP_PASSWORD]):
+        logger.error("[EMAIL] SMTP credentials not configured!")
+        logger.info(f"[EMAIL] Report would be sent to {recipient_email}")
+        return False
+
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = f"Rapport Annuel {year} - SARAI Platform"
+    msg["From"] = f"SARAI Platform <{SMTP_EMAIL}>"
+    msg["To"] = recipient_email
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="margin:0;padding:20px;font-family:'Segoe UI',Arial,sans-serif;background:#f3f4f6;">
+    <div style="max-width:600px;margin:0 auto;">
+        <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);color:white;padding:30px;border-radius:12px 12px 0 0;text-align:center;">
+            <h1 style="margin:0;font-size:22px;">Rapport Annuel {year}</h1>
+            <p style="opacity:0.85;font-size:14px;margin:6px 0 0;">SARAI Platform</p>
+        </div>
+        <div style="background:white;padding:30px;border-radius:0 0 12px 12px;">
+            <p>Bonjour,</p>
+            <p>Veuillez trouver ci-joint le rapport annuel {year} de la plateforme <strong>SARAI</strong> (Stocktaking of Arab Regional AI Initiatives).</p>
+            <p>Ce rapport contient une analyse detaillee de l'ensemble des projets recenses, incluant :</p>
+            <ul>
+                <li>Resume executif et indicateurs cles</li>
+                <li>Repartition par pays, secteur et technologie</li>
+                <li>Alignement sur les Objectifs de Developpement Durable (ODD)</li>
+                <li>Fiche detaillee de chaque projet</li>
+                <li>Liste complete des parties prenantes</li>
+                <li>Statistiques utilisateurs et ressources</li>
+            </ul>
+            <p>Le rapport est disponible en piece jointe au format PDF.</p>
+            <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;">
+            <p style="font-size:12px;color:#6b7280;">Ce message est genere automatiquement par la plateforme SARAI.</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+    text_part = f"Rapport Annuel {year} - SARAI Platform\nLe rapport detaille est joint en PDF."
+
+    msg.attach(MIMEText(text_part, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    pdf_attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
+    pdf_attachment.add_header(
+        "Content-Disposition",
+        "attachment",
+        filename=f"SARAI_Rapport_Annuel_{year}.pdf"
+    )
+    msg.attach(pdf_attachment)
+
+    try:
+        logger.info(f"[EMAIL] Sending annual report {year} (PDF: {len(pdf_bytes)} bytes) to {recipient_email}")
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, recipient_email, msg.as_string())
+        logger.info(f"[EMAIL] Annual report {year} sent successfully to {recipient_email}")
+        return True
+    except Exception as e:
+        logger.error(f"[EMAIL] Failed to send report email: {type(e).__name__}: {e}")
         return False
