@@ -149,7 +149,7 @@ def get_project(id: int, db: Session = Depends(get_db)):
 def get_project_details(id: int, db: Session = Depends(get_db)):
     project = db.query(Project).options(
         joinedload(Project.stakeholder_associations).joinedload(ProjectStakeholderAssociation.stakeholder)
-    ).filter(Project.id == id, ~Project.status.in_(["pending", "rejected"])).first()
+    ).filter(Project.id == id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
