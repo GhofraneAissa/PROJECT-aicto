@@ -70,7 +70,7 @@ function Navbar() {
     { path: '/', label: t('nav.home') },
     { path: '/stakeholders', label: t('nav.stakeholders') },
     { path: '/projects', label: t('nav.projects') },
-    { path: '/map', label: t('nav.map') },
+    ...(user?.role === 'admin' ? [{ path: '/map', label: t('nav.map') }] : []),
     { path: '/resources', label: t('nav.resources') },
     { path: '/analytics', label: t('nav.analytics') },
     { path: '/sdgs', label: t('nav.sdgs') }

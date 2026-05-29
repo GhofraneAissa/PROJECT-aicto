@@ -1,376 +1,557 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { FaFileAlt, FaBook, FaDatabase, FaDownload, FaEye, FaSearch, FaFileContract, FaFileCode, FaChartLine } from 'react-icons/fa'
+import { useState, useEffect } from 'react'
+import { FaFileAlt, FaDatabase, FaDownload, FaFileContract, FaFileCode, FaChartLine, FaTimes, FaPlus, FaFilter, FaBook, FaGlobe, FaSearch } from 'react-icons/fa'
+import { toast } from 'react-toastify'
 import SearchBar from '../components/SearchBar'
-
-const resources = [
-  { id: 1, title: 'Arab Common AI Strategy 2023', type: 'Policy Document', category: 'Strategy', language: 'Arabic/English', size: '2.4 MB', downloads: 1250 },
-  { id: 2, title: 'AI Ethics Guidelines Framework', type: 'White Paper', category: 'Ethics', language: 'English', size: '1.8 MB', downloads: 890 },
-  { id: 3, title: 'Arabic NLP Dataset v2.0', type: 'Dataset', category: 'Data', language: 'Arabic', size: '450 MB', downloads: 2340 },
-  { id: 4, title: 'Regional AI Maturity Assessment Report', type: 'Report', category: 'Research', language: 'English', size: '5.2 MB', downloads: 567 },
-  { id: 5, title: 'Startup Ecosystem Mapping Study', type: 'Report', category: 'Research', language: 'English', size: '3.1 MB', downloads: 423 },
-  { id: 6, title: 'AI Governance Best Practices', type: 'White Paper', category: 'Governance', language: 'English', size: '1.2 MB', downloads: 678 },
-  { id: 7, title: 'Computer Vision Annotated Dataset', type: 'Dataset', category: 'Data', language: 'Mixed', size: '890 MB', downloads: 1567 },
-  { id: 8, title: 'National AI Strategies Compilation', type: 'Policy Document', category: 'Strategy', language: 'Arabic', size: '8.5 MB', downloads: 912 }
-]
 
 const types = ['All', 'Policy Document', 'White Paper', 'Report', 'Dataset']
 const categories = ['All', 'Strategy', 'Ethics', 'Governance', 'Research', 'Data']
 
+const getIcon = (type) => {
+  switch (type) {
+    case 'Policy Document': return <FaFileContract />
+    case 'White Paper': return <FaFileCode />
+    case 'Dataset': return <FaDatabase />
+    case 'Report': return <FaChartLine />
+    default: return <FaFileAlt />
+  }
+}
+
+const getTypeClass = (type) => {
+  const map = {
+    'Policy Document': 'pd',
+    'White Paper': 'wp',
+    'Dataset': 'ds',
+    'Report': 'rp'
+  }
+  return map[type] || 'default'
+}
+
 function ResourceLibrary() {
-  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [selectedType, setSelectedType] = useState('All')
   const [selectedCategory, setSelectedCategory] = useState('All')
+  const [resources, setResources] = useState([])
+  const [user, setUser] = useState(null)
+  const [showModal, setShowModal] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState({ title: '', type: 'Policy Document', category: 'Strategy', language: '', description: '' })
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [fileSizeDisplay, setFileSizeDisplay] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'Policy Document': return <FaFileContract />
-      case 'White Paper': return <FaFileCode />
-      case 'Dataset': return <FaDatabase />
-      case 'Report': return <FaChartLine />
-      default: return <FaFileAlt />
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
+    if (storedUser) {
+      try { setUser(JSON.parse(storedUser)) } catch { setUser(null) }
     }
-  }
+  }, [])
 
-  const getTypeColor = (type) => {
-    const colors = {
-      'Policy Document': '#2563eb',
-      'White Paper': '#7c3aed',
-      'Dataset': '#059669',
-      'Report': '#f59e0b'
-    }
-    return colors[type] || '#6b7280'
-  }
+  useEffect(() => {
+    fetch('http://localhost:8000/api/resources/')
+      .then(res => res.json())
+      .then(data => setResources(data))
+      .catch(() => {})
+  }, [])
 
   const filtered = resources.filter(r => {
-    const matchSearch = r.title.toLowerCase().includes(search.toLowerCase()) ||
-                        r.category.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = (r.title || '').toLowerCase().includes(search.toLowerCase()) ||
+                        (r.category || '').toLowerCase().includes(search.toLowerCase())
     const matchType = selectedType === 'All' || r.type === selectedType
     const matchCategory = selectedCategory === 'All' || r.category === selectedCategory
     return matchSearch && matchType && matchCategory
   })
 
+  const handleFormChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setSelectedFile(file)
+    const bytes = file.size
+    if (bytes < 1024) setFileSizeDisplay(`${bytes} B`)
+    else if (bytes < 1024 * 1024) setFileSizeDisplay(`${(bytes / 1024).toFixed(1)} KB`)
+    else setFileSizeDisplay(`${(bytes / (1024 * 1024)).toFixed(1)} MB`)
+  }
+
+  const handleDownload = async (resource) => {
+    if (!resource.file_url) return
+    try {
+      const filename = resource.file_url.split('/').pop()
+      const res = await fetch(`http://localhost:8000/api/resources/download/${filename}`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Download failed')
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!selectedFile) { toast.error('Please select a file to upload'); return }
+    setSubmitting(true)
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    const formData = new FormData()
+    formData.append('title', form.title)
+    formData.append('type', form.type)
+    formData.append('category', form.category)
+    if (form.language) formData.append('language', form.language)
+    if (form.description) formData.append('description', form.description)
+    formData.append('file', selectedFile)
+    try {
+      const res = await fetch('http://localhost:8000/api/resources/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      })
+      if (!res.ok) throw new Error('Failed to create resource')
+      const newResource = await res.json()
+      setResources(prev => [newResource, ...prev])
+      toast.success('Resource added successfully!')
+      setShowModal(false)
+      setForm({ title: '', type: 'Policy Document', category: 'Strategy', language: '', description: '' })
+      setSelectedFile(null)
+      setFileSizeDisplay('')
+    } catch {
+      toast.error('Failed to add resource. Please try again.')
+    }
+    setSubmitting(false)
+  }
+
+  const clearFilters = () => { setSelectedType('All'); setSelectedCategory('All'); setSearch('') }
+
   return (
-    <div className="resource-library">
-      <section className="page-hero">
-        <div className="page-hero-bg"></div>
-        <div className="container">
-          <div className="page-hero-content">
-            <h1>{t('resources.pageTitle')}</h1>
-            <p>{t('resources.pageDesc')}</p>
+    <div className="modern-resources">
+      <section className="resources-hero">
+        <div className="animated-blobs">
+          <div className="blob blob-1"></div>
+          <div className="blob blob-2"></div>
+        </div>
+        <div className="container hero-container">
+          <div className="hero-content animate-up">
+            <div className="hero-badge">
+              <FaBook />
+              <span>Resource Library</span>
+            </div>
+            <h1>Resource <span className="text-gradient">Library</span></h1>
+            <p>Discover and share AI-related documents, reports, datasets and white papers from across the Arab region.</p>
           </div>
         </div>
       </section>
 
-      <section className="resources-content section">
+      <section className="resources-body">
         <div className="container">
-          <div className="filters-card">
-            <div className="filters-header">
-              <FaSearch className="search-icon" />
-              <h3>{t('resources.searchFilter')}</h3>
+          <div className="resources-action-bar animate-up delay-1">
+            <SearchBar
+              value={search}
+              onChange={setSearch}
+              placeholder="Search resources by title or category..."
+            />
+            <div className="action-buttons">
+              <button className={`filter-btn ${filtersOpen ? 'active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
+                <FaFilter /> Filters
+                {(selectedType !== 'All' || selectedCategory !== 'All') && <span className="badge-dot"></span>}
+              </button>
+              {user && (
+                <button className="submit-btn" onClick={() => setShowModal(true)}>
+                  <FaPlus /> Add Resource
+                </button>
+              )}
             </div>
-            <div className="filters-body">
-              <div className="filter-group main-search">
-                <SearchBar value={search} onChange={setSearch} placeholder={t('resources.searchPlaceholder')} />
-              </div>
-              <div className="filter-row">
-                <div className="filter-group">
-                  <label>{t('resources.type')}</label>
+          </div>
+
+          {filtersOpen && (
+            <div className="modern-filters-panel animate-up">
+              <div className="filters-grid">
+                <div className="filter-item">
+                  <label>Type</label>
                   <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
                     {types.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                <div className="filter-group">
-                  <label>{t('resources.category')}</label>
+                <div className="filter-item">
+                  <label>Category</label>
                   <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className="results-header">
-            <span className="results-count">{filtered.length} {t('resources.resourcesFound')}</span>
-          </div>
-
-          <div className="resources-list">
-            {filtered.map(r => (
-              <div key={r.id} className="resource-card">
-                <div className="resource-icon" style={{ background: `${getTypeColor(r.type)}15`, color: getTypeColor(r.type) }}>
-                  {getIcon(r.type)}
-                </div>
-                <div className="resource-content">
-                  <div className="resource-header">
-                    <h3>{r.title}</h3>
-                    <div className="resource-badges">
-                      <span className="resource-type" style={{ background: `${getTypeColor(r.type)}15`, color: getTypeColor(r.type) }}>
-                        {r.type}
-                      </span>
-                      <span className="resource-category">{r.category}</span>
-                    </div>
-                  </div>
-                  <div className="resource-meta">
-                    <span><strong>{t('resources.language')}:</strong> {r.language}</span>
-                    <span><strong>{t('resources.size')}:</strong> {r.size}</span>
-                    <span><FaDownload /> {r.downloads.toLocaleString()} {t('resources.downloads')}</span>
-                  </div>
-                </div>
-                <div className="resource-actions">
-                  <button className="action-btn view-btn" title={t('resources.preview')}>
-                    <FaEye />
-                  </button>
-                  <button className="btn btn-primary">
-                    <FaDownload /> {t('resources.download')}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="no-results">
-              <div className="no-results-icon">📚</div>
-              <h3>{t('resources.noResults')}</h3>
-              <p>{t('resources.noResultsHint')}</p>
+              <button className="clear-filters-link" onClick={clearFilters}>Reset all filters</button>
             </div>
           )}
 
-          <div className="cta-section">
-            <div className="cta-card">
-              <div className="cta-content">
-                <h3>{t('resources.ctaTitle')}</h3>
-                <p>{t('resources.ctaDesc')}</p>
-              </div>
-              <button className="btn btn-secondary btn-lg">
-                {t('resources.submitResource')}
-              </button>
-            </div>
+          <div className="results-header animate-up delay-1">
+            <span className="results-count">{filtered.length} resources found</span>
           </div>
+
+          <div className="resources-list animate-up delay-2">
+            {filtered.length > 0 ? (
+              filtered.map((r, i) => (
+                <div key={r.id} className="resource-card" style={{ animationDelay: `${i * 0.03}s` }}>
+                  <div className={`resource-icon-box ${getTypeClass(r.type)}`}>
+                    {getIcon(r.type)}
+                  </div>
+                  <div className="resource-info">
+                    <div className="resource-top">
+                      <h3>{r.title}</h3>
+                      <div className="resource-badges">
+                        <span className="type-badge">{r.type}</span>
+                        <span className="cat-badge">{r.category}</span>
+                      </div>
+                    </div>
+                    <div className="resource-meta">
+                      <span><strong>Language:</strong> {r.language || '-'}</span>
+                      <span><strong>Size:</strong> {r.file_size || '-'}</span>
+                      <span className="dl-count"><FaDownload /> {r.downloads || 0}</span>
+                    </div>
+                    {r.description && <p className="resource-desc">{r.description}</p>}
+                  </div>
+                  {r.file_url && (
+                    <div className="resource-action">
+                      <button className="download-btn" onClick={() => handleDownload(r)}>
+                        <FaDownload /> Download
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="no-results-card">
+                <div className="no-results-icon">📚</div>
+                <h3>No resources found</h3>
+                <p>Your search returned no matches. Try a different query or add a new resource.</p>
+                <button className="reset-btn" onClick={clearFilters}>Reset Filters</button>
+              </div>
+            )}
+          </div>
+
+          {!user && (
+            <div className="cta-card animate-up">
+              <div className="cta-content">
+                <h3>Contribute to the Library</h3>
+                <p>Sign in to share your own AI resources with the community.</p>
+              </div>
+              <a href="/auth.html" className="cta-auth-btn">Sign in to Submit</a>
+            </div>
+          )}
         </div>
       </section>
 
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add New Resource</h3>
+              <button className="close-btn" onClick={() => setShowModal(false)}><FaTimes /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="modal-form">
+              <div className="form-grid-mini">
+                <div className="field">
+                  <label>Title *</label>
+                  <input name="title" value={form.title} onChange={handleFormChange} required placeholder="Resource title" />
+                </div>
+                <div className="field">
+                  <label>Language</label>
+                  <input name="language" value={form.language} onChange={handleFormChange} placeholder="e.g. English, Arabic" />
+                </div>
+                <div className="field">
+                  <label>Type *</label>
+                  <select name="type" value={form.type} onChange={handleFormChange}>
+                    {types.filter(t => t !== 'All').map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Category *</label>
+                  <select name="category" value={form.category} onChange={handleFormChange}>
+                    {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="field full">
+                <label>File *</label>
+                <div className="file-upload-wrapper">
+                  <input type="file" id="resource-file" onChange={handleFileChange} className="file-input-hidden" required />
+                  <label htmlFor="resource-file" className="file-upload-label">
+                    <FaPlus className="upload-icon" />
+                    <span>{selectedFile ? selectedFile.name : 'Click to select a file'}</span>
+                  </label>
+                  {fileSizeDisplay && <span className="file-size-badge">{fileSizeDisplay}</span>}
+                </div>
+              </div>
+              <div className="field full">
+                <label>Description</label>
+                <textarea name="description" value={form.description} onChange={handleFormChange} rows="3" placeholder="Brief description of the resource" />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="submit-action-btn" disabled={submitting}>
+                  {submitting ? <>Submitting...</> : 'Add Resource'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <style>{`
-        .page-hero {
-          position: relative;
-          padding: 80px 0;
-          background: var(--gray-900);
-          overflow: hidden;
-        }
-        .page-hero-bg {
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(ellipse 60% 80% at 50% 100%, rgba(245, 158, 11, 0.2), transparent);
-        }
-        .page-hero-content {
-          position: relative;
-          z-index: 1;
-          text-align: center;
-        }
-        .page-hero h1 {
-          font-size: 3rem;
-          font-weight: 800;
-          color: white;
-          margin-bottom: 16px;
-        }
-        .page-hero p {
-          font-size: 1.2rem;
-          color: var(--gray-400);
-          max-width: 600px;
-          margin: 0 auto;
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        .modern-resources {
+          --p-primary: #2563eb;
+          --p-secondary: #0f172a;
+          --p-text: #1e293b;
+          --p-text-light: #64748b;
+          font-family: 'Outfit', sans-serif;
+          color: var(--p-text);
+          background: #fff;
+          min-height: 100vh;
         }
 
-        .resources-content {
-          margin-top: -40px;
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+        .resources-hero {
+          position: relative;
+          padding: 120px 0 80px;
+          background: #fff;
+          overflow: hidden;
+          text-align: center;
         }
-        .filters-card {
-          background: var(--white);
+
+        .animated-blobs {
+          position: absolute; width: 100%; height: 100%;
+          top: 0; left: 0;
+          filter: blur(70px);
+          opacity: 0.3;
+        }
+        .blob {
+          position: absolute;
+          border-radius: 50%;
+          background: var(--p-primary);
+          animation: float 15s infinite alternate;
+        }
+        .blob-1 { width: 300px; height: 300px; top: -50px; left: 5%; background: #60a5fa; }
+        .blob-2 { width: 250px; height: 250px; bottom: -50px; right: 5%; background: #93c5fd; animation-delay: -5s; }
+        @keyframes float {
+          0% { transform: translate(0, 0) scale(1); }
+          100% { transform: translate(40px, 20px) scale(1.1); }
+        }
+
+        .hero-container { position: relative; z-index: 2; }
+
+        .hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 16px;
+          background: rgba(37, 99, 235, 0.08);
+          border-radius: 100px;
+          color: var(--p-primary);
+          font-weight: 700;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 24px;
+        }
+
+        .resources-hero h1 {
+          font-size: clamp(2.5rem, 5vw, 3.5rem);
+          font-weight: 800;
+          line-height: 1.1;
+          margin-bottom: 24px;
+          letter-spacing: -0.02em;
+        }
+
+        .text-gradient {
+          background: linear-gradient(135deg, #2563eb, #60a5fa);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .resources-hero p {
+          font-size: 1.2rem;
+          color: var(--p-text-light);
+          max-width: 700px;
+          margin: 0 auto;
+          line-height: 1.6;
+        }
+
+        .resources-body { padding-bottom: 100px; }
+
+        .resources-action-bar {
+          background: #fff;
+          border: 1px solid #f1f5f9;
           border-radius: 24px;
-          box-shadow: var(--shadow-lg);
-          padding: 32px;
-          margin-bottom: 40px;
-        }
-        .filters-header {
+          padding: 8px;
           display: flex;
           align-items: center;
           gap: 12px;
-          margin-bottom: 24px;
-          padding-bottom: 20px;
-          border-bottom: 1px solid var(--gray-100);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+          margin-bottom: 40px;
+          margin-top: -30px;
+          position: relative;
+          z-index: 10;
         }
-        .filters-header .search-icon {
-          color: var(--primary-color);
-          font-size: 1.2rem;
+
+        .action-buttons {
+          display: flex;
+          gap: 8px;
+          padding-right: 8px;
         }
-        .filters-header h3 {
-          font-size: 1.1rem;
+
+        .filter-btn, .submit-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 20px;
+          border-radius: 16px;
           font-weight: 700;
-          color: var(--gray-800);
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: 0.3s;
+          border: none;
+          font-family: inherit;
         }
-        .filter-group {
-          margin-bottom: 20px;
+
+        .filter-btn {
+          background: #f8fafc;
+          color: var(--p-secondary);
+          border: 1px solid #f1f5f9;
+          position: relative;
         }
-        .filter-group.main-search {
-          margin-bottom: 24px;
+        .filter-btn.active { background: #eff6ff; border-color: #bfdbfe; color: var(--p-primary); }
+        .badge-dot { width: 8px; height: 8px; background: var(--p-primary); border-radius: 50%; }
+
+        .submit-btn { background: var(--p-secondary); color: #fff; }
+        .submit-btn:hover { background: #1e293b; transform: translateY(-2px); }
+
+        .modern-filters-panel {
+          background: #f8fafc;
+          border-radius: 24px;
+          padding: 24px;
+          margin-bottom: 32px;
+          border: 1px solid #f1f5f9;
         }
-        .filter-row {
+
+        .filters-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          grid-template-columns: repeat(2, 1fr);
           gap: 20px;
         }
-        .filter-group label {
-          display: block;
-          font-weight: 600;
-          color: var(--gray-700);
-          margin-bottom: 8px;
-          font-size: 0.9rem;
+
+        .filter-item label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--p-text-light); margin-bottom: 8px; letter-spacing: 0.5px; }
+        .filter-item select {
+          width: 100%; padding: 12px 16px; border-radius: 12px; border: 1.5px solid #e2e8f0; background: #fff;
+          font-weight: 600; outline: none; cursor: pointer; font-family: inherit;
         }
-        .filter-group select {
-          width: 100%;
-          padding: 14px 18px;
-          border: 2px solid var(--gray-200);
-          border-radius: 12px;
-          font-size: 1rem;
-          background: var(--white);
-          cursor: pointer;
-          transition: var(--transition);
+
+        .clear-filters-link {
+          margin-top: 16px; background: none; border: none; color: var(--p-primary); font-weight: 700; font-size: 0.85rem; cursor: pointer; padding: 0;
         }
-        .filter-group select:focus {
-          outline: none;
-          border-color: var(--primary-color);
-        }
-        .results-header {
-          margin-bottom: 24px;
-        }
-        .results-count {
-          font-size: 1rem;
-          color: var(--gray-600);
-          font-weight: 500;
-        }
+
+        .results-header { margin-bottom: 24px; }
+        .results-count { font-size: 1rem; color: var(--p-text-light); font-weight: 500; }
+
         .resources-list {
           display: flex;
           flex-direction: column;
-          gap: 20px;
-          margin-bottom: 48px;
+          gap: 16px;
         }
+
         .resource-card {
-          background: var(--white);
-          border-radius: 20px;
-          padding: 28px;
-          box-shadow: var(--shadow);
-          border: 1px solid var(--gray-100);
-          display: flex;
-          align-items: center;
-          gap: 24px;
-          transition: var(--transition);
-        }
-        .resource-card:hover {
-          transform: translateX(8px);
-          box-shadow: var(--shadow-md);
-          border-color: transparent;
-        }
-        .resource-icon {
-          width: 64px;
-          height: 64px;
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.6rem;
-          flex-shrink: 0;
-        }
-        .resource-content {
-          flex: 1;
-          min-width: 0;
-        }
-        .resource-header {
           display: flex;
           align-items: flex-start;
-          justify-content: space-between;
           gap: 20px;
-          margin-bottom: 12px;
-          flex-wrap: wrap;
-        }
-        .resource-header h3 {
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: var(--gray-900);
-          margin: 0;
-        }
-        .resource-badges {
-          display: flex;
-          gap: 10px;
-          flex-wrap: wrap;
-        }
-        .resource-type {
-          padding: 6px 14px;
+          background: #fff;
           border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: 600;
+          border: 1px solid #f1f5f9;
+          padding: 24px;
+          transition: 0.3s;
+          animation: fadeUp 0.5s ease both;
         }
-        .resource-category {
-          padding: 6px 14px;
-          background: var(--gray-100);
-          color: var(--gray-600);
-          border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: 600;
-        }
-        .resource-meta {
-          display: flex;
-          gap: 24px;
-          font-size: 0.9rem;
-          color: var(--gray-500);
-        }
-        .resource-meta span {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .resource-actions {
-          display: flex;
-          gap: 12px;
-          align-items: center;
+        .resource-card:hover { border-color: #e2e8f0; box-shadow: 0 8px 24px rgba(0,0,0,0.03); }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .resource-icon-box {
           flex-shrink: 0;
+          width: 52px; height: 52px; border-radius: 14px;
+          display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
         }
-        .action-btn {
-          width: 48px;
-          height: 48px;
-          border: 2px solid var(--gray-200);
-          background: var(--white);
-          border-radius: 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.1rem;
-          color: var(--gray-500);
-          transition: var(--transition);
-        }
-        .action-btn:hover {
-          border-color: var(--primary-color);
-          color: var(--primary-color);
-        }
-        .no-results {
-          text-align: center;
-          padding: 80px 20px;
-          color: var(--gray-500);
-        }
-        .no-results-icon {
-          font-size: 4rem;
-          margin-bottom: 20px;
-        }
-        .no-results h3 {
-          font-size: 1.5rem;
-          color: var(--gray-700);
+        .resource-icon-box.pd { background: #eff6ff; color: #3b82f6; }
+        .resource-icon-box.wp { background: #f5f3ff; color: #8b5cf6; }
+        .resource-icon-box.ds { background: #ecfdf5; color: #10b981; }
+        .resource-icon-box.rp { background: #fff7ed; color: #f97316; }
+        .resource-icon-box.default { background: #f8fafc; color: #475569; }
+
+        .resource-info { flex: 1; min-width: 0; }
+
+        .resource-top {
+          display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
           margin-bottom: 8px;
         }
-        .cta-section {
-          margin-top: 20px;
+        .resource-top h3 {
+          font-size: 1.1rem; font-weight: 800; margin: 0; line-height: 1.3; color: var(--p-secondary);
         }
+        .resource-badges { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+        .type-badge, .cat-badge {
+          padding: 4px 12px; border-radius: 100px; font-size: 0.7rem; font-weight: 700;
+        }
+        .type-badge { background: #eff6ff; color: var(--p-primary); }
+        .cat-badge { background: #f1f5f9; color: var(--p-text-light); }
+
+        .resource-meta {
+          display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+          font-size: 0.85rem; color: var(--p-text-light); margin-bottom: 4px;
+        }
+        .resource-meta strong { color: var(--p-secondary); }
+        .dl-count { display: flex; align-items: center; gap: 4px; }
+
+        .resource-desc {
+          font-size: 0.85rem; color: var(--p-text-light); line-height: 1.5;
+          margin: 6px 0 0;
+        }
+
+        .resource-action { flex-shrink: 0; align-self: center; }
+
+        .download-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 24px;
+          background: #f8fafc;
+          color: var(--p-primary);
+          border-radius: 14px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: 0.3s;
+          border: 1.5px solid #e2e8f0;
+          font-family: inherit;
+          white-space: nowrap;
+        }
+        .download-btn:hover {
+          background: var(--p-primary);
+          color: #fff;
+          border-color: var(--p-primary);
+          transform: translateY(-2px);
+        }
+
+        .no-results-card {
+          text-align: center; background: #fff; padding: 60px;
+          border-radius: 32px; border: 1px solid #f1f5f9;
+        }
+        .no-results-icon { font-size: 3rem; margin-bottom: 16px; }
+        .reset-btn { margin-top: 24px; background: var(--p-primary); color: #fff; border: none; padding: 12px 24px; border-radius: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
         .cta-card {
-          background: var(--gradient-primary);
+          margin-top: 48px;
+          background: linear-gradient(135deg, #0f172a, #1e293b);
           border-radius: 24px;
           padding: 48px;
           display: flex;
@@ -378,56 +559,88 @@ function ResourceLibrary() {
           align-items: center;
           gap: 32px;
         }
-        .cta-content h3 {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: white;
-          margin-bottom: 8px;
+        .cta-content h3 { font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
+        .cta-content p { color: rgba(255,255,255,0.7); font-size: 1rem; max-width: 500px; }
+        .cta-auth-btn {
+          background: #fff; color: var(--p-secondary); padding: 14px 28px;
+          border-radius: 14px; font-weight: 700; text-decoration: none;
+          transition: 0.3s; white-space: nowrap;
         }
-        .cta-content p {
-          color: rgba(255, 255, 255, 0.9);
-          font-size: 1rem;
-          max-width: 500px;
+        .cta-auth-btn:hover { background: #f1f5f9; transform: translateY(-2px); }
+
+        .modal-overlay {
+          position: fixed; inset: 0;
+          background: rgba(15, 23, 42, 0.5);
+          backdrop-filter: blur(4px);
+          display: flex; align-items: center; justify-content: center;
+          z-index: 2000; padding: 20px;
         }
-        .cta-card .btn-secondary {
-          background: white;
-          color: var(--primary-color);
+        .modal-content {
+          background: #fff; width: 100%; max-width: 600px;
+          border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+          overflow: hidden; animation: fadeUp 0.3s ease;
         }
-        .cta-card .btn-secondary:hover {
-          background: var(--gray-100);
+        .modal-header {
+          padding: 24px; display: flex; justify-content: space-between;
+          align-items: center; border-bottom: 1px solid #f1f5f9;
+        }
+        .modal-header h3 { font-size: 1.25rem; font-weight: 800; margin: 0; }
+        .close-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--p-text-light); padding: 4px; }
+        .modal-form { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+        .form-grid-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field.full { grid-column: span 2; }
+        .field label { font-weight: 700; font-size: 0.85rem; color: var(--p-secondary); }
+        .field input, .field select, .field textarea {
+          padding: 12px 16px; border-radius: 12px; border: 2px solid #f1f5f9; background: #f8fafc;
+          font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--p-primary); background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.05); }
+
+        .file-upload-wrapper {
+          background: #f8fafc; border: 2px dashed #e2e8f0;
+          border-radius: 14px; padding: 20px; text-align: center;
+          transition: 0.3s; display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+        .file-upload-wrapper:hover { border-color: var(--p-primary); background: #eff6ff; }
+        .file-input-hidden { display: none; }
+        .file-upload-label {
+          display: flex; flex-direction: column; align-items: center; gap: 8px;
+          cursor: pointer; color: var(--p-text-light); font-weight: 600;
+        }
+        .upload-icon { font-size: 1.5rem; color: var(--p-primary); }
+        .file-size-badge {
+          padding: 4px 12px; background: #e2e8f0; border-radius: 8px;
+          font-size: 0.8rem; font-weight: 700; color: var(--p-secondary);
         }
 
+        .modal-footer {
+          display: flex; justify-content: flex-end; gap: 12px; padding-top: 8px;
+        }
+        .cancel-btn {
+          background: #f8fafc; border: none; padding: 12px 24px;
+          border-radius: 12px; font-weight: 700; cursor: pointer; color: var(--p-text-light); font-family: inherit;
+        }
+        .submit-action-btn {
+          background: var(--p-primary); color: #fff; border: none;
+          padding: 12px 24px; border-radius: 12px; font-weight: 700;
+          cursor: pointer; transition: 0.3s; font-family: inherit;
+        }
+        .submit-action-btn:hover { background: #1d4ed8; }
+        .submit-action-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
         @media (max-width: 1024px) {
-          .resource-card {
-            flex-wrap: wrap;
-          }
-          .resource-actions {
-            width: 100%;
-            justify-content: flex-end;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid var(--gray-100);
-          }
+          .resources-action-bar { flex-direction: column; padding: 16px; }
+          .filters-grid { grid-template-columns: 1fr; }
         }
         @media (max-width: 768px) {
-          .page-hero h1 {
-            font-size: 2.25rem;
-          }
-          .filters-card {
-            padding: 24px;
-          }
-          .resource-card {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          .cta-card {
-            flex-direction: column;
-            text-align: center;
-            padding: 32px 24px;
-          }
-          .cta-content p {
-            max-width: 100%;
-          }
+          .resource-card { flex-direction: column; align-items: stretch; }
+          .resource-action { align-self: stretch; }
+          .resource-action .download-btn { width: 100%; justify-content: center; }
+          .resource-top { flex-direction: column; }
+          .cta-card { flex-direction: column; text-align: center; padding: 32px 24px; }
+          .form-grid-mini { grid-template-columns: 1fr; }
+          .field.full { grid-column: span 1; }
         }
       `}</style>
     </div>

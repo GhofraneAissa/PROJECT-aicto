@@ -138,6 +138,48 @@ def get_status_distribution(db: Session = Depends(get_db)):
     return [{"status": r[0] or "unknown", "count": r[1]} for r in results]
 
 
+@router.get("/status-breakdown")
+def get_status_breakdown(db: Session = Depends(get_db)):
+    """
+    Returns two status groupings:
+      - approvalPipeline: approved, rejected, in progress
+      - activityStatus: active vs completed (based on end_date < today)
+        Covers ALL projects: if end_date is in the past -> completed, else active.
+        Rejected/pending/draft are counted as active (existant) but not completed.
+    """
+    today = datetime.utcnow().date()
+
+    all_projects = db.query(Project).all()
+
+    approval_pipeline = {"approved": 0, "rejected": 0, "in progress": 0}
+    active_count = 0
+    completed_count = 0
+
+    for p in all_projects:
+        s = p.status.lower().strip() if p.status else "unknown"
+
+        if s in approval_pipeline:
+            approval_pipeline[s] += 1
+
+        # Activity logic: end_date in the past = completed, otherwise = active (includes rejected/pending/draft)
+        if p.end_date and p.end_date < today:
+            completed_count += 1
+        else:
+            active_count += 1
+
+    return {
+        "approvalPipeline": [
+            {"status": "approved", "count": approval_pipeline["approved"], "label": "Approuvé", "color": "#10b981"},
+            {"status": "rejected", "count": approval_pipeline["rejected"], "label": "Rejeté", "color": "#ef4444"},
+            {"status": "in progress", "count": approval_pipeline["in progress"], "label": "En Cours", "color": "#f59e0b"},
+        ],
+        "activityStatus": [
+            {"status": "active", "count": active_count, "label": "Actif", "color": "#2563eb"},
+            {"status": "completed", "count": completed_count, "label": "Terminé", "color": "#10b981"},
+        ],
+    }
+
+
 @router.get("/projects-by-sector")
 def get_projects_by_sector(db: Session = Depends(get_db)):
     results = db.query(Project.sector, func.count(Project.id)).filter(
@@ -180,11 +222,11 @@ def get_projects_timeline(db: Session = Depends(get_db)):
 @router.get("/submissions-by-month")
 def get_submissions_by_month(db: Session = Depends(get_db)):
     results = db.query(
-        extract("year", Project.submitted_at).label("year"),
-        extract("month", Project.submitted_at).label("month"),
+        extract("year", Project.created_at).label("year"),
+        extract("month", Project.created_at).label("month"),
         func.count(Project.id)
     ).filter(
-        Project.submitted_at.isnot(None)
+        Project.created_at.isnot(None)
     ).group_by("year", "month").order_by("year", "month").all()
     return [{"year": int(r[0]), "month": int(r[1]), "count": r[2]} for r in results]
 

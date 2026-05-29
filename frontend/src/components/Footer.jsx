@@ -1,8 +1,17 @@
+import { useState, useEffect } from 'react'
 import { FaBrain, FaEnvelope, FaMapMarkerAlt, FaTwitter, FaLinkedin, FaGithub } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 
 function Footer() {
   const { t } = useTranslation()
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
+    if (storedUser) {
+      try { setUser(JSON.parse(storedUser)) } catch { setUser(null) }
+    }
+  }, [])
 
   return (
     <footer className="footer">
@@ -34,7 +43,7 @@ function Footer() {
               <ul>
                 <li><a href="/stakeholders">{t('footer.stakeholderDir')}</a></li>
                 <li><a href="/projects">{t('footer.projectStocktaking')}</a></li>
-                <li><a href="/map">{t('footer.knowledgeMap')}</a></li>
+                {user?.role === 'admin' && <li><a href="/map">{t('footer.knowledgeMap')}</a></li>}
                 <li><a href="/resources">{t('footer.resourceLibrary')}</a></li>
                 <li><a href="/analytics">{t('footer.analyticsDashboard')}</a></li>
               </ul>

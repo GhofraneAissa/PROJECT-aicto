@@ -22,7 +22,7 @@ const COLORS = {
   warning: '#f59e0b', danger: '#ef4444', info: '#06b6d4',
   slate: ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1'],
   chart: ['#2563eb', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#6366f1'],
-  status: { approved: '#10b981', pending: '#f59e0b', rejected: '#ef4444', draft: '#94a3b8', unknown: '#94a3b8' }
+  status: { approved: '#10b981', pending: '#f59e0b', rejected: '#ef4444', draft: '#94a3b8', unknown: '#94a3b8', active: '#2563eb', 'in progress': '#f59e0b', completed: '#10b981' }
 }
 
 const STATUS_LABELS = {
@@ -120,6 +120,7 @@ function Analytics() {
         recentUsers: safeFetch(`${API_BASE}/api/analytics/recent-users`, []),
         activeUsers: safeFetch(`${API_BASE}/api/analytics/active-users`, { active_30_days: 0, total_users: 0 }),
         activationRate: safeFetch(`${API_BASE}/api/analytics/activation-rate`, { activation_rate: 0 }),
+        statusBreakdown: safeFetch(`${API_BASE}/api/analytics/status-breakdown`, { approvalPipeline: [], activityStatus: [] }),
       }
       const resolved = {}
       for (const [key, promise] of Object.entries(allEndpoints)) {
@@ -150,7 +151,7 @@ function Analytics() {
 
   // ──── Dashboard 1 — Vue d'ensemble des projets Admin ────
   const Dashboard1 = () => {
-    const { statusDistribution, projectsByCountry, projectsBySector, submissionsByMonth, moderationQueue, approvedRejected, aiTech } = data
+    const { statusDistribution, projectsByCountry, projectsBySector, submissionsByMonth, moderationQueue, approvedRejected, aiTech, statusBreakdown } = data
 
     const d1Kpis = overview ? [
       { label: 'Total Projets', value: overview.total_projects, icon: FaProjectDiagram, color: COLORS.primary },
@@ -160,12 +161,6 @@ function Analytics() {
       { label: 'Délai moyen modération', value: `${overview.average_moderation_hours}h`, icon: FaClock, color: COLORS.info },
       { label: "Taux d'approbation", value: `${overview.approval_rate}%`, icon: FaPercentage, color: COLORS.secondary },
     ] : []
-
-    const statusData = (statusDistribution || []).map(s => ({
-      ...s,
-      label: STATUS_LABELS[s.status] || s.status,
-      fill: COLORS.status[s.status] || COLORS.slate[3]
-    }))
 
     const submissionsChart = (submissionsByMonth || []).map(s => ({
       label: `${s.year}-${String(s.month).padStart(2, '0')}`,
@@ -196,34 +191,62 @@ function Analytics() {
         </div>
 
         <div className="dashboard-grid">
-          <div className="grid-card">
+          <div className="grid-card" style={{ gridColumn: 'span 3' }}>
             <div className="card-header">
               <div className="header-text">
                 <h3>Répartition par statut</h3>
-                <p>Proportion instantanée des projets</p>
+                <p>Pipeline d'approbation et état d'activité</p>
               </div>
             </div>
-            <div className="chart-wrapper flex-center">
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={65} outerRadius={100}
-                    paddingAngle={6} dataKey="count" nameKey="label" stroke="none">
-                    {statusData.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="custom-legend">
-              {statusData.map((entry, i) => (
-                <div key={i} className="legend-row">
-                  <span className="legend-dot" style={{ backgroundColor: entry.fill }}></span>
-                  <span className="legend-name">{entry.label}</span>
-                  <span className="legend-val">{entry.count}</span>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <div style={{ flex: '1 1 200px', minWidth: 160 }}>
+                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 11, color: '#1e293b', marginBottom: 2 }}>
+                  Pipeline d'approbation</div>
+                <ResponsiveContainer width="100%" height={85}>
+                  <PieChart>
+                    <Pie data={statusBreakdown.approvalPipeline} cx="50%" cy="50%" innerRadius={25} outerRadius={38}
+                      paddingAngle={6} dataKey="count" nameKey="label" stroke="none">
+                      {statusBreakdown.approvalPipeline.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="custom-legend" style={{ justifyContent: 'center' }}>
+                  {statusBreakdown.approvalPipeline.map((entry, i) => (
+                    <div key={i} className="legend-row" style={{ minWidth: 75 }}>
+                      <span className="legend-dot" style={{ backgroundColor: entry.color }}></span>
+                      <span className="legend-name">{entry.label}</span>
+                      <span className="legend-val">{entry.count}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+              <div style={{ flex: '1 1 200px', minWidth: 160 }}>
+                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 11, color: '#1e293b', marginBottom: 2 }}>
+                  Actifs / Terminés</div>
+                <ResponsiveContainer width="100%" height={85}>
+                  <PieChart>
+                    <Pie data={statusBreakdown.activityStatus} cx="50%" cy="50%" innerRadius={25} outerRadius={38}
+                      paddingAngle={6} dataKey="count" nameKey="label" stroke="none">
+                      {statusBreakdown.activityStatus.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="custom-legend" style={{ justifyContent: 'center' }}>
+                  {statusBreakdown.activityStatus.map((entry, i) => (
+                    <div key={i} className="legend-row" style={{ minWidth: 75 }}>
+                      <span className="legend-dot" style={{ backgroundColor: entry.color }}></span>
+                      <span className="legend-name">{entry.label}</span>
+                      <span className="legend-val">{entry.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -235,11 +258,11 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={projectsByCountry} margin={{ top: 20, right: 20, left: 0, bottom: 60 }}>
+              <ResponsiveContainer width="100%" height={95}>
+                <BarChart data={projectsByCountry} margin={{ top: 4, right: 8, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="country" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 11 }} interval={0} angle={-40} textAnchor="end" />
+                    tick={{ fill: COLORS.slate[2], fontSize: 9 }} interval={0} angle={-30} textAnchor="end" />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
                   <Tooltip cursor={{ fill: '#f8fafc' }} content={<CustomTooltip />} />
                   <Bar dataKey="projects" fill={COLORS.primary} radius={[6, 6, 0, 0]} barSize={28}
@@ -257,8 +280,8 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={projectsBySector} layout="vertical" margin={{ left: 20, right: 20, top: 10, bottom: 10 }}>
+              <ResponsiveContainer width="100%" height={85}>
+                <BarChart data={projectsBySector} layout="vertical" margin={{ top: 4, right: 8, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
                   <YAxis type="category" dataKey="sector" axisLine={false} tickLine={false}
@@ -279,7 +302,7 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={85}>
                 <AreaChart data={submissionsChart}>
                   <defs>
                     <linearGradient id="colorSubmissions" x1="0" y1="0" x2="0" y2="1">
@@ -289,7 +312,7 @@ function Analytics() {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="label" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 11 }} angle={-45} textAnchor="end" interval={2} />
+                    tick={{ fill: COLORS.slate[3], fontSize: 9 }} angle={-30} textAnchor="end" interval={2} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="count" stroke={COLORS.primary} strokeWidth={3}
@@ -333,8 +356,8 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={approvedRejected || []} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+              <ResponsiveContainer width="100%" height={85}>
+                <ComposedChart data={approvedRejected || []} margin={{ top: 4, right: 8, left: 0, bottom: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="month" axisLine={false} tickLine={false}
                     tick={{ fill: COLORS.slate[3], fontSize: 11 }} angle={-45} textAnchor="end" />
@@ -471,7 +494,7 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={95}>
                 <RadarChart data={radarData}>
                   <PolarGrid stroke="#e2e8f0" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: COLORS.slate[2], fontSize: 10 }} />
@@ -492,8 +515,8 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={topSdgs} layout="vertical" margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+              <ResponsiveContainer width="100%" height={95}>
+                <BarChart data={topSdgs} layout="vertical" margin={{ top: 4, right: 8, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
                   <YAxis type="category" dataKey="goal_number" axisLine={false} tickLine={false}
@@ -518,7 +541,7 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={95}>
                 <Treemap data={techSectorData} dataKey="size" aspectRatio={4 / 3}
                   stroke="#fff" fill="#2563eb" content={<CustomTreemapContent colors={COLORS.chart} />}>
                   <Tooltip content={<CustomTooltip />} />
@@ -535,11 +558,11 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={projectsByRegion} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+              <ResponsiveContainer width="100%" height={85}>
+                <BarChart data={projectsByRegion} margin={{ top: 4, right: 8, left: 0, bottom: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="region" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 11 }} angle={-30} textAnchor="end" />
+                    tick={{ fill: COLORS.slate[2], fontSize: 9 }} angle={-30} textAnchor="end" />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="count" name="Projets" radius={[6, 6, 0, 0]} barSize={28}>
@@ -569,8 +592,8 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
-                <ScatterChart margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
+              <ResponsiveContainer width="100%" height={85}>
+                <ScatterChart margin={{ top: 4, right: 8, left: 0, bottom: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis type="number" dataKey="x" name="Durée (jours)" unit=" j"
                     axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 11 }} />
@@ -592,11 +615,11 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={durationData} margin={{ top: 10, right: 20, left: 0, bottom: 60 }}>
+              <ResponsiveContainer width="100%" height={95}>
+                <BarChart data={durationData} margin={{ top: 4, right: 8, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="title" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 9 }} interval={0} angle={-50} textAnchor="end" height={80} />
+                    tick={{ fill: COLORS.slate[3], fontSize: 9 }} interval={0} angle={-50} textAnchor="end" height={60} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 11 }}
                     unit=" j" />
                   <Tooltip content={<CustomTooltip />} />
@@ -678,11 +701,11 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
-                <ComposedChart data={signupChart} margin={{ top: 10, right: 20, left: 0, bottom: 40 }}>
+              <ResponsiveContainer width="100%" height={85}>
+                <ComposedChart data={signupChart} margin={{ top: 4, right: 8, left: 0, bottom: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="label" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 11 }} angle={-45} textAnchor="end" interval={2} />
+                    tick={{ fill: COLORS.slate[3], fontSize: 9 }} angle={-30} textAnchor="end" interval={2} />
                   <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
                   <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false}
                     tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
@@ -704,9 +727,9 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper flex-center">
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={80}>
                 <PieChart>
-                  <Pie data={usersByOrgType} cx="50%" cy="50%" innerRadius={60} outerRadius={95}
+                  <Pie data={usersByOrgType} cx="50%" cy="50%" innerRadius={40} outerRadius={65}
                     paddingAngle={4} dataKey="count" nameKey="type" stroke="none">
                     {(usersByOrgType || []).map((entry, i) => (
                       <Cell key={i} fill={orgTypeColors[entry.type] || COLORS.chart[i % COLORS.chart.length]} />
@@ -737,8 +760,8 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stakeholderCategoryData} layout="vertical" margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+              <ResponsiveContainer width="100%" height={85}>
+                <BarChart data={stakeholderCategoryData} layout="vertical" margin={{ top: 4, right: 8, left: 10, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
                   <YAxis type="category" dataKey="category" axisLine={false} tickLine={false}
@@ -762,8 +785,8 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={usersByCountry} margin={{ top: 10, right: 20, left: 0, bottom: 60 }}>
+              <ResponsiveContainer width="100%" height={85}>
+                <BarChart data={usersByCountry} margin={{ top: 4, right: 8, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="country" axisLine={false} tickLine={false}
                     tick={{ fill: COLORS.slate[2], fontSize: 10 }} interval={0} angle={-40} textAnchor="end" />
@@ -784,7 +807,7 @@ function Analytics() {
               </div>
             </div>
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={80}>
                 <BarChart data={projectsPerUser?.distribution || []} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="range" axisLine={false} tickLine={false}
@@ -889,56 +912,55 @@ function Analytics() {
 
         .premium-analytics {
           background: #f8fafc;
-          min-height: 100vh;
+          height: 100vh; overflow: hidden;
           font-family: 'Outfit', sans-serif;
           color: #1e293b;
-          padding-bottom: 80px;
         }
 
-        .container { max-width: 1360px; margin: 0 auto; padding: 0 32px; }
+        .container { max-width: 1360px; margin: 0 auto; padding: 0 12px; }
 
-        .dashboard-header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 40px 0 0; margin-bottom: 40px; }
-        .header-flex { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; }
-        .breadcrumb { font-size: 0.8rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-        .dashboard-header h1 { font-size: 2.5rem; font-weight: 800; margin: 0 0 8px; color: #0f172a; letter-spacing: -1px; }
-        .dashboard-header p { color: #64748b; font-size: 1.1rem; max-width: 600px; line-height: 1.5; }
+        .dashboard-header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 6px 0 0; margin-bottom: 4px; }
+        .header-flex { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px; }
+        .breadcrumb { font-size: 0.5rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1px; }
+        .dashboard-header h1 { font-size: 1rem; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: -0.5px; }
+        .dashboard-header p { color: #64748b; font-size: 0.6rem; max-width: 600px; line-height: 1.3; margin: 0; }
         .text-gradient { background: linear-gradient(135deg, #2563eb, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        .btn-refresh { background: #0f172a; color: white; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.3s; font-family: 'Outfit', sans-serif; }
-        .btn-refresh:hover { background: #1e293b; transform: translateY(-2px); }
+        .btn-refresh { background: #0f172a; color: white; border: none; padding: 4px 10px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.3s; font-family: 'Outfit', sans-serif; font-size: 0.6rem; }
+        .btn-refresh:hover { background: #1e293b; transform: translateY(-1px); }
 
         /* Tabs */
-        .dashboard-tabs { display: flex; gap: 12px; padding-bottom: 0; }
-        .tab-btn { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border: none; border-radius: 16px 16px 0 0; background: transparent; cursor: pointer; transition: 0.3s; font-family: 'Outfit', sans-serif; opacity: 0.5; }
+        .dashboard-tabs { display: flex; gap: 4px; padding-bottom: 0; }
+        .tab-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border: none; border-radius: 8px 8px 0 0; background: transparent; cursor: pointer; transition: 0.3s; font-family: 'Outfit', sans-serif; opacity: 0.5; }
         .tab-btn:hover { opacity: 0.8; background: #f1f5f9; }
-        .tab-btn.active { opacity: 1; background: #f8fafc; box-shadow: 0 -2px 12px rgba(0,0,0,0.04); }
-        .tab-btn svg { font-size: 1.3rem; color: #6366f1; }
+        .tab-btn.active { opacity: 1; background: #f8fafc; box-shadow: 0 -1px 6px rgba(0,0,0,0.04); }
+        .tab-btn svg { font-size: 0.9rem; color: #6366f1; }
         .tab-text { display: flex; flex-direction: column; align-items: flex-start; }
-        .tab-label { font-size: 0.7rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px; }
-        .tab-title { font-size: 0.95rem; font-weight: 700; color: #0f172a; }
+        .tab-title { font-size: 0.6rem; font-weight: 700; color: #0f172a; }
+        .tab-label { font-size: 0.5rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.3px; }
 
         /* KPI */
-        .kpi-row { display: grid; gap: 20px; margin-bottom: 36px; }
+        .kpi-row { display: grid; gap: 6px; margin-bottom: 6px; }
         .kpi-6 { grid-template-columns: repeat(6, 1fr); }
-        .premium-kpi-card { background: #fff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 20px; position: relative; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: 0.3s; }
-        .premium-kpi-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.08); border-color: #cbd5e1; }
-        .kpi-card-inner { display: flex; align-items: center; gap: 16px; }
-        .kpi-icon-box { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+        .premium-kpi-card { background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; padding: 8px; position: relative; overflow: hidden; box-shadow: 0 2px 4px -1px rgba(0,0,0,0.02); transition: 0.3s; }
+        .premium-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: #cbd5e1; }
+        .kpi-card-inner { display: flex; align-items: center; gap: 8px; }
+        .kpi-icon-box { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
         .kpi-data { flex: 1; min-width: 0; }
-        .kpi-label { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
-        .kpi-value-row { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
-        .kpi-value { font-size: 1.5rem; font-weight: 800; color: #0f172a; }
-        .kpi-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: #f1f5f9; }
+        .kpi-label { font-size: 0.5rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.2px; white-space: nowrap; }
+        .kpi-value-row { display: flex; align-items: baseline; gap: 4px; margin-top: 0; }
+        .kpi-value { font-size: 1rem; font-weight: 800; color: #0f172a; }
+        .kpi-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #f1f5f9; }
         .progress-fill { height: 100%; border-radius: 0 2px 2px 0; }
 
         /* Grid */
-        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .grid-card { background: #fff; border-radius: 28px; border: 1px solid #e2e8f0; padding: 28px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); display: flex; flex-direction: column; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        .grid-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 8px; box-shadow: 0 2px 4px -1px rgba(0,0,0,0.02); display: flex; flex-direction: column; }
         .col-span-2 { grid-column: span 2; }
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-        .header-text h3 { font-size: 1.2rem; font-weight: 800; margin: 0 0 4px; color: #0f172a; }
-        .header-text p { font-size: 0.85rem; color: #64748b; margin: 0; }
-        .chart-wrapper { flex: 1; min-height: 250px; position: relative; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+        .header-text h3 { font-size: 0.75rem; font-weight: 800; margin: 0 0 2px; color: #0f172a; }
+        .header-text p { font-size: 0.6rem; color: #64748b; margin: 0; }
+        .chart-wrapper { flex: 1; min-height: 80px; position: relative; }
         .flex-center { display: flex; align-items: center; justify-content: center; }
 
         /* Tooltip */
@@ -991,17 +1013,50 @@ function Analytics() {
         @media (max-width: 1024px) {
           .kpi-row { grid-template-columns: repeat(2, 1fr); }
           .dashboard-grid { grid-template-columns: 1fr; }
+
+        /* Compact dashboard: Power BI 1280×720 no-scroll */
+        .premium-kpi-card { padding: 6px 8px; }
+        .kpi-icon-box { width: 22px; height: 22px; font-size: 0.7rem; border-radius: 6px; }
+        .kpi-value { font-size: 0.85rem; }
+        .kpi-label { font-size: 0.45rem; }
+        .kpi-row { gap: 4px; margin-bottom: 4px; }
+        .kpi-card-inner { gap: 6px; }
+        .dashboard-grid { gap: 4px; }
+        .grid-card { padding: 6px; border-radius: 8px; }
+        .card-header { margin-bottom: 2px; }
+        .header-text h3 { font-size: 0.6rem; margin-bottom: 1px; }
+        .header-text p { font-size: 0.5rem; }
+        .chart-wrapper { min-height: 60px; }
+        .custom-legend { margin-top: 4px; gap: 2px; }
+        .custom-legend .legend-row { font-size: 0.5rem; padding: 1px 3px; }
+        .legend-dot { width: 5px; height: 5px; border-radius: 2px; }
+        .legend-name { font-size: 0.5rem; }
+        .legend-val { font-size: 0.55rem; }
+        .region-legend { margin-top: 4px; gap: 4px; }
+        .region-legend .legend-row { font-size: 0.5rem; }
+        .tech-list-premium { gap: 4px; }
+        .tech-item-row { padding: 1px 0; gap: 4px; }
+        .tech-name-box { width: 80px; gap: 4px; }
+        .tech-rank { width: 16px; height: 16px; font-size: 0.5rem; border-radius: 4px; }
+        .tech-name { font-size: 0.55rem; }
+        .tech-bar-wrap { height: 4px; }
+        .tech-count { font-size: 0.55rem; width: 20px; }
+        .mod-table { font-size: 0.55rem; }
+        .mod-table th { padding: 2px 4px; font-size: 0.5rem; }
+        .mod-table td { padding: 2px 4px; font-size: 0.55rem; }
+        .td-date { font-size: 0.5rem; }
+        .badge-country, .badge-org-type, .badge-role { font-size: 0.5rem; padding: 1px 6px; }
           .col-span-2 { grid-column: span 1; }
-          .header-flex { flex-direction: column; align-items: flex-start; gap: 20px; }
+          .header-flex { flex-direction: column; align-items: flex-start; gap: 8px; }
           .dashboard-tabs { flex-direction: column; }
-          .tab-btn { border-radius: 12px; }
-          .tab-btn.active { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+          .tab-btn { border-radius: 8px; }
+          .tab-btn.active { box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
         }
 
         @media (max-width: 640px) {
           .kpi-row { grid-template-columns: 1fr; }
-          .container { padding: 0 20px; }
-          .dashboard-header h1 { font-size: 1.8rem; }
+          .container { padding: 0 12px; }
+          .dashboard-header h1 { font-size: 1.2rem; }
         }
       `}</style>
     </div>
