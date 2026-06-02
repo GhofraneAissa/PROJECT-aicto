@@ -8,11 +8,12 @@ import {
 } from 'recharts'
 import {
   FaProjectDiagram, FaBuilding, FaGlobeAmericas, FaRocket,
-  FaInfoCircle, FaArrowUp, FaChartLine, FaUsers, FaClipboardList,
+  FaArrowUp, FaChartLine, FaUsers, FaClipboardList,
   FaLayerGroup, FaHandshake, FaCheckCircle, FaTimesCircle,
-  FaClock, FaPercentage, FaCalendarAlt, FaSortAmountDown,
+  FaClock, FaPercentage, FaCalendarAlt,
   FaMapMarkerAlt, FaLightbulb, FaChartBar, FaChartPie,
-  FaUserGraduate, FaChartArea
+  FaUserGraduate, FaChartArea, FaBook, FaFlag, FaMicrochip,
+  FaRedo
 } from 'react-icons/fa'
 
 const API_BASE = 'http://localhost:8000'
@@ -22,7 +23,7 @@ const COLORS = {
   warning: '#f59e0b', danger: '#ef4444', info: '#06b6d4',
   slate: ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1'],
   chart: ['#2563eb', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#6366f1'],
-  status: { approved: '#10b981', pending: '#f59e0b', rejected: '#ef4444', draft: '#94a3b8', unknown: '#94a3b8', active: '#2563eb', 'in progress': '#f59e0b', completed: '#10b981' }
+  status: { approved: '#10b981', pending: '#f59e0b', rejected: '#ef4444' }
 }
 
 const STATUS_LABELS = {
@@ -30,20 +31,20 @@ const STATUS_LABELS = {
 }
 
 const DASHBOARDS = [
-  { id: 1, label: 'Dashboard 1', title: 'Vue d\'ensemble des projets', icon: FaClipboardList },
-  { id: 2, label: 'Dashboard 2', title: 'Impact & ODD Stratégique', icon: FaLayerGroup },
-  { id: 3, label: 'Dashboard 3', title: 'Communauté & Acteurs', icon: FaUsers },
+  { id: 1, label: 'Projets', title: "Vue d'ensemble des projets", icon: FaClipboardList },
+  { id: 2, label: 'Impact', title: 'Impact & ODD Stratégique', icon: FaLayerGroup },
+  { id: 3, label: 'Communauté', title: 'Communauté & Acteurs', icon: FaUsers },
 ]
 
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
-      <div className="custom-chart-tooltip">
+      <div className="analytics-tooltip">
         <p className="tooltip-label">{label}</p>
         <div className="tooltip-divider"></div>
         {payload.map((entry, index) => (
           <p key={index} className="tooltip-value" style={{ color: entry.color }}>
-            <span className="dot" style={{ backgroundColor: entry.color }}></span>
+            <span className="tooltip-dot" style={{ backgroundColor: entry.color }}></span>
             {entry.name}: <strong>{entry.value}</strong>
           </p>
         ))}
@@ -54,11 +55,12 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 function CustomTreemapContent(props) {
-  const { root, depth, x, y, width, height, index, colors, name, value } = props
+  const { depth, x, y, width, height, index, colors, name, value } = props
   if (depth > 1) return null
   return (
     <g>
-      <rect x={x} y={y} width={width} height={height} style={{ fill: colors[index % colors.length], stroke: '#fff', strokeWidth: 2 / (depth + 1e-10), strokeOpacity: 1 / (depth + 1e-10) }} />
+      <rect x={x} y={y} width={width} height={height}
+        style={{ fill: colors[index % colors.length], stroke: '#fff', strokeWidth: 2 }} />
       {width > 50 && height > 30 && (
         <>
           <text x={x + width / 2} y={y + height / 2 - 7} textAnchor="middle" fill="#fff" fontSize={12} fontWeight={700}>
@@ -86,9 +88,7 @@ function Analytics() {
     } catch { return fallback }
   }
 
-  useEffect(() => {
-    fetchAllData()
-  }, [])
+  useEffect(() => { fetchAllData() }, [])
 
   const fetchAllData = async () => {
     try {
@@ -99,7 +99,6 @@ function Analytics() {
         projectsByCountry: safeFetch(`${API_BASE}/api/analytics/projects-by-country`, []),
         projectsBySector: safeFetch(`${API_BASE}/api/analytics/projects-by-sector`, []),
         aiTech: safeFetch(`${API_BASE}/api/analytics/ai-technologies`, []),
-        timeline: safeFetch(`${API_BASE}/api/analytics/projects-timeline`, []),
         submissionsByMonth: safeFetch(`${API_BASE}/api/analytics/submissions-by-month`, []),
         moderationQueue: safeFetch(`${API_BASE}/api/analytics/moderation-queue`, []),
         approvedRejected: safeFetch(`${API_BASE}/api/analytics/approved-rejected-by-month`, []),
@@ -121,6 +120,8 @@ function Analytics() {
         activeUsers: safeFetch(`${API_BASE}/api/analytics/active-users`, { active_30_days: 0, total_users: 0 }),
         activationRate: safeFetch(`${API_BASE}/api/analytics/activation-rate`, { activation_rate: 0 }),
         statusBreakdown: safeFetch(`${API_BASE}/api/analytics/status-breakdown`, { approvalPipeline: [], activityStatus: [] }),
+        stakeholdersByCountry: safeFetch(`${API_BASE}/api/analytics/stakeholders-by-country`, []),
+        resourcesByType: safeFetch(`${API_BASE}/api/analytics/resources-by-type`, []),
       }
       const resolved = {}
       for (const [key, promise] of Object.entries(allEndpoints)) {
@@ -135,30 +136,34 @@ function Analytics() {
   }
 
   if (loading) return (
-    <div className="analytics-loading">
-      <div className="loader-orbit"><div className="orbit-dot"></div></div>
-      <p>Gathering Intelligence...</p>
+    <div className="analytics-loading-page">
+      <div className="loading-spinner"><div className="spinner-ring"></div></div>
+      <p className="loading-text">Chargement des indicateurs...</p>
       <style>{`
-        .analytics-loading { height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0f172a; color: white; gap: 24px; font-family: 'Outfit', sans-serif; }
-        .loader-orbit { width: 60px; height: 60px; border: 2px solid rgba(255,255,255,0.1); border-radius: 50%; position: relative; animation: rotate 2s linear infinite; }
-        .orbit-dot { width: 10px; height: 10px; background: #2563eb; border-radius: 50%; position: absolute; top: -5px; left: 25px; box-shadow: 0 0 15px #2563eb; }
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .analytics-loading-page {
+          height: 100vh; display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          background: #f8fafc; font-family: 'Outfit', sans-serif; gap: 20px;
+        }
+        .loading-spinner { width: 48px; height: 48px; position: relative; }
+        .spinner-ring { width: 48px; height: 48px; border: 3px solid #e2e8f0; border-top-color: #2563eb; border-radius: 50%; animation: aspin 0.8s linear infinite; }
+        @keyframes aspin { to { transform: rotate(360deg); } }
+        .loading-text { color: #64748b; font-size: 1rem; font-weight: 600; }
       `}</style>
     </div>
   )
 
   const { overview } = data
 
-  // ──── Dashboard 1 — Vue d'ensemble des projets Admin ────
   const Dashboard1 = () => {
     const { statusDistribution, projectsByCountry, projectsBySector, submissionsByMonth, moderationQueue, approvedRejected, aiTech, statusBreakdown } = data
 
     const d1Kpis = overview ? [
       { label: 'Total Projets', value: overview.total_projects, icon: FaProjectDiagram, color: COLORS.primary },
-      { label: 'En attente modération', value: overview.pending_count, icon: FaClock, color: COLORS.warning },
+      { label: 'En attente', value: overview.pending_count, icon: FaClock, color: COLORS.warning },
       { label: 'Approuvés ce mois', value: overview.approved_this_month, icon: FaCheckCircle, color: COLORS.success },
       { label: 'Rejetés ce mois', value: overview.rejected_this_month, icon: FaTimesCircle, color: COLORS.danger },
-      { label: 'Délai moyen modération', value: `${overview.average_moderation_hours}h`, icon: FaClock, color: COLORS.info },
+      { label: 'Délai modération', value: `${overview.average_moderation_hours}h`, icon: FaClock, color: COLORS.info },
       { label: "Taux d'approbation", value: `${overview.approval_rate}%`, icon: FaPercentage, color: COLORS.secondary },
     ] : []
 
@@ -169,80 +174,67 @@ function Analytics() {
 
     return (
       <>
-        <div className="kpi-row kpi-6">
+        <div className="kpi-grid">
           {d1Kpis.map((kpi, index) => (
-            <div key={index} className="premium-kpi-card">
-              <div className="kpi-card-inner">
-                <div className="kpi-icon-box" style={{ backgroundColor: `${kpi.color}15`, color: kpi.color }}>
-                  <kpi.icon />
-                </div>
-                <div className="kpi-data">
-                  <span className="kpi-label">{kpi.label}</span>
-                  <div className="kpi-value-row">
-                    <span className="kpi-value">{kpi.value ?? 0}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="kpi-progress-bar">
-                <div className="progress-fill" style={{ width: '100%', backgroundColor: kpi.color }}></div>
+            <div key={index} className="kpi-card">
+              <div className="kpi-icon" style={{ backgroundColor: `${kpi.color}15`, color: kpi.color }}><kpi.icon /></div>
+              <div className="kpi-info">
+                <span className="kpi-label">{kpi.label}</span>
+                <span className="kpi-value">{kpi.value ?? 0}</span>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="dashboard-grid">
-          <div className="grid-card" style={{ gridColumn: 'span 3' }}>
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Répartition par statut</h3>
-                <p>Pipeline d'approbation et état d'activité</p>
-              </div>
+        <div className="chart-grid">
+          <div className="chart-card span-2">
+            <div className="chart-header">
+              <h3>Répartition par statut</h3>
+              <p>Pipeline d'approbation et projets actifs/terminés</p>
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <div style={{ flex: '1 1 200px', minWidth: 160 }}>
-                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 11, color: '#1e293b', marginBottom: 2 }}>
-                  Pipeline d'approbation</div>
-                <ResponsiveContainer width="100%" height={85}>
+            <div className="chart-body flex-row">
+              <div className="mini-pie">
+                <h4>Pipeline d'approbation</h4>
+                <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
-                    <Pie data={statusBreakdown.approvalPipeline} cx="50%" cy="50%" innerRadius={25} outerRadius={38}
-                      paddingAngle={6} dataKey="count" nameKey="label" stroke="none">
+                    <Pie data={statusBreakdown.approvalPipeline} cx="50%" cy="50%" innerRadius={50} outerRadius={75}
+                      paddingAngle={4} dataKey="count" nameKey="label" stroke="none">
                       {statusBreakdown.approvalPipeline.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
+                        <Cell key={i} fill={entry.color || COLORS.chart[i]} />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="custom-legend" style={{ justifyContent: 'center' }}>
+                <div className="pie-legend">
                   {statusBreakdown.approvalPipeline.map((entry, i) => (
-                    <div key={i} className="legend-row" style={{ minWidth: 75 }}>
+                    <div key={i} className="legend-item">
                       <span className="legend-dot" style={{ backgroundColor: entry.color }}></span>
-                      <span className="legend-name">{entry.label}</span>
-                      <span className="legend-val">{entry.count}</span>
+                      <span>{entry.label}</span>
+                      <span className="legend-count">{entry.count}</span>
                     </div>
                   ))}
                 </div>
               </div>
-              <div style={{ flex: '1 1 200px', minWidth: 160 }}>
-                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: 11, color: '#1e293b', marginBottom: 2 }}>
-                  Actifs / Terminés</div>
-                <ResponsiveContainer width="100%" height={85}>
+              <div className="mini-pie">
+                <h4>Actifs / Terminés</h4>
+                <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
-                    <Pie data={statusBreakdown.activityStatus} cx="50%" cy="50%" innerRadius={25} outerRadius={38}
-                      paddingAngle={6} dataKey="count" nameKey="label" stroke="none">
+                    <Pie data={statusBreakdown.activityStatus} cx="50%" cy="50%" innerRadius={50} outerRadius={75}
+                      paddingAngle={4} dataKey="count" nameKey="label" stroke="none">
                       {statusBreakdown.activityStatus.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
+                        <Cell key={i} fill={entry.color || COLORS.chart[i]} />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="custom-legend" style={{ justifyContent: 'center' }}>
+                <div className="pie-legend">
                   {statusBreakdown.activityStatus.map((entry, i) => (
-                    <div key={i} className="legend-row" style={{ minWidth: 75 }}>
+                    <div key={i} className="legend-item">
                       <span className="legend-dot" style={{ backgroundColor: entry.color }}></span>
-                      <span className="legend-name">{entry.label}</span>
-                      <span className="legend-val">{entry.count}</span>
+                      <span>{entry.label}</span>
+                      <span className="legend-count">{entry.count}</span>
                     </div>
                   ))}
                 </div>
@@ -250,93 +242,81 @@ function Analytics() {
             </div>
           </div>
 
-          <div className="grid-card col-span-2">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Projets par pays</h3>
-                <p>Répartition géographique des initiatives</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Projets par pays</h3>
+              <p>Répartition géographique</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={95}>
-                <BarChart data={projectsByCountry} margin={{ top: 4, right: 8, left: 0, bottom: 20 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={projectsByCountry} margin={{ top: 8, right: 8, left: 0, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="country" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 9 }} interval={0} angle={-30} textAnchor="end" />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
-                  <Tooltip cursor={{ fill: '#f8fafc' }} content={<CustomTooltip />} />
-                  <Bar dataKey="projects" fill={COLORS.primary} radius={[6, 6, 0, 0]} barSize={28}
-                    name="Projets" />
+                    tick={{ fill: '#64748b', fontSize: 11 }} interval={0} angle={-35} textAnchor="end" />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                  <Bar dataKey="projects" fill={COLORS.primary} radius={[6, 6, 0, 0]} barSize={32} name="Projets" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Projets par secteur</h3>
-                <p>Volume par domaine d'activité</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Projets par secteur</h3>
+              <p>Volume par domaine</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <BarChart data={projectsBySector} layout="vertical" margin={{ top: 4, right: 8, left: 10, bottom: 10 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={projectsBySector} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <YAxis type="category" dataKey="sector" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 12 }} width={120} />
+                    tick={{ fill: '#334155', fontSize: 12 }} width={130} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill={COLORS.secondary} radius={[0, 6, 6, 0]} barSize={20}
-                    name="Projets" />
+                  <Bar dataKey="count" fill={COLORS.secondary} radius={[0, 6, 6, 0]} barSize={22} name="Projets" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid-card col-span-2">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Soumissions par mois</h3>
-                <p>Évolution temporelle des dépôts de projets</p>
-              </div>
+          <div className="chart-card span-2">
+            <div className="chart-header">
+              <h3>Soumissions par mois</h3>
+              <p>Évolution temporelle des dépôts de projets</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <AreaChart data={submissionsChart}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <AreaChart data={submissionsChart} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <defs>
-                    <linearGradient id="colorSubmissions" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3} />
+                    <linearGradient id="gradSub" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.25} />
                       <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="label" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 9 }} angle={-30} textAnchor="end" interval={2} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                    tick={{ fill: '#64748b', fontSize: 10 }} angle={-35} textAnchor="end" interval={1} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="count" stroke={COLORS.primary} strokeWidth={3}
-                    fillOpacity={1} fill="url(#colorSubmissions)" name="Soumissions" />
+                    fillOpacity={1} fill="url(#gradSub)" name="Soumissions" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Technologies clés</h3>
-                <p>Technologies les plus utilisées</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Technologies clés</h3>
+              <p>Top technologies utilisées</p>
             </div>
-            <div className="tech-list-premium">
+            <div className="chart-body tech-list">
               {(aiTech || []).slice(0, 8).map((tech, i) => (
-                <div key={i} className="tech-item-row">
-                  <div className="tech-name-box">
-                    <span className="tech-rank">{i + 1}</span>
-                    <span className="tech-name">{tech.technology}</span>
-                  </div>
-                  <div className="tech-bar-wrap">
+                <div key={i} className="tech-row">
+                  <span className="tech-rank">{i + 1}</span>
+                  <span className="tech-name">{tech.technology}</span>
+                  <div className="tech-bar">
                     <div className="tech-bar-fill" style={{
                       width: `${(tech.count / Math.max(...(aiTech || []).map(t => t.count))) * 100}%`,
                       backgroundColor: COLORS.chart[i % COLORS.chart.length]
@@ -348,38 +328,34 @@ function Analytics() {
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Approuvés vs Rejetés</h3>
-                <p>Par mois avec motif de rejet</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Approuvés vs Rejetés</h3>
+              <p>Par mois</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <ComposedChart data={approvedRejected || []} margin={{ top: 4, right: 8, left: 0, bottom: 16 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <ComposedChart data={approvedRejected || []} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="month" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 11 }} angle={-45} textAnchor="end" />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                    tick={{ fill: '#64748b', fontSize: 11 }} angle={-35} textAnchor="end" />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Bar dataKey="approved" fill={COLORS.success} name="Approuvés" radius={[4, 4, 0, 0]} barSize={16} />
-                  <Bar dataKey="rejected" fill={COLORS.danger} name="Rejetés" radius={[4, 4, 0, 0]} barSize={16} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="approved" fill={COLORS.success} name="Approuvés" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="rejected" fill={COLORS.danger} name="Rejetés" radius={[4, 4, 0, 0]} barSize={20} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid-card col-span-2">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>File de modération</h3>
-                <p>Projets en attente triés par soumission</p>
-              </div>
+          <div className="chart-card span-3">
+            <div className="chart-header">
+              <h3>File de modération</h3>
+              <p>Projets en attente de décision</p>
             </div>
-            <div className="mod-table-wrapper">
-              <table className="mod-table">
+            <div className="chart-body">
+              <table className="analytics-table">
                 <thead>
                   <tr>
                     <th>Titre</th>
@@ -393,11 +369,11 @@ function Analytics() {
                   {(moderationQueue || []).length === 0 ? (
                     <tr><td colSpan={5} className="empty-row">Aucun projet en attente</td></tr>
                   ) : (
-                    (moderationQueue || []).slice(0, 8).map(p => (
+                    (moderationQueue || []).slice(0, 6).map(p => (
                       <tr key={p.id}>
                         <td className="td-title">{p.title}</td>
-                        <td>{p.organization}</td>
-                        <td><span className="badge-country">{p.country}</span></td>
+                        <td>{p.organization || '-'}</td>
+                        <td><span className="badge-country">{p.country || '-'}</span></td>
                         <td>{p.sector}</td>
                         <td className="td-date">{p.submitted_at ? new Date(p.submitted_at).toLocaleDateString() : '-'}</td>
                       </tr>
@@ -412,7 +388,6 @@ function Analytics() {
     )
   }
 
-  // ──── Dashboard 2 — Impact & ODD Stratégique ────
   const Dashboard2 = () => {
     const { sdgCoverage, projectsByRegion, regionSdg, techBySector, durationVsSdg, activeTimeline, avgDuration, orgsActive, aiTech } = data
 
@@ -454,51 +429,40 @@ function Analytics() {
     }
 
     const d2Kpis = [
-      { label: 'ODD les plus couverts', value: topSdgs[0]?.goal_number ? `ODD ${topSdgs[0].goal_number}` : '-', icon: FaLightbulb, color: '#10b981' },
+      { label: 'ODD le plus couvert', value: topSdgs[0]?.goal_number ? `ODD ${topSdgs[0].goal_number}` : '-', icon: FaLightbulb, color: '#10b981' },
       { label: 'Projets avec ODD', value: (sdgCoverage || []).reduce((a, b) => a + b.count, 0), icon: FaProjectDiagram, color: COLORS.primary },
       { label: 'Régions actives', value: (projectsByRegion || []).length, icon: FaGlobeAmericas, color: COLORS.secondary },
-      { label: 'Durée moyenne (jours)', value: avgDuration?.avg_duration_days ?? 0, icon: FaClock, color: COLORS.warning },
+      { label: 'Durée moyenne', value: avgDuration?.avg_duration_days ? `${avgDuration.avg_duration_days} j` : '0 j', icon: FaClock, color: COLORS.warning },
       { label: 'Organisations actives', value: orgsActive?.count ?? 0, icon: FaBuilding, color: COLORS.info },
-      { label: 'Technologies utilisées', value: (aiTech || []).length, icon: FaChartBar, color: COLORS.danger },
+      { label: 'Technologies', value: (aiTech || []).length, icon: FaMicrochip, color: COLORS.danger },
     ]
 
     return (
       <>
-        <div className="kpi-row kpi-6">
+        <div className="kpi-grid">
           {d2Kpis.map((kpi, i) => (
-            <div key={i} className="premium-kpi-card">
-              <div className="kpi-card-inner">
-                <div className="kpi-icon-box" style={{ backgroundColor: `${kpi.color}15`, color: kpi.color }}>
-                  <kpi.icon />
-                </div>
-                <div className="kpi-data">
-                  <span className="kpi-label">{kpi.label}</span>
-                  <div className="kpi-value-row">
-                    <span className="kpi-value">{kpi.value ?? 0}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="kpi-progress-bar">
-                <div className="progress-fill" style={{ width: '100%', backgroundColor: kpi.color }}></div>
+            <div key={i} className="kpi-card">
+              <div className="kpi-icon" style={{ backgroundColor: `${kpi.color}15`, color: kpi.color }}><kpi.icon /></div>
+              <div className="kpi-info">
+                <span className="kpi-label">{kpi.label}</span>
+                <span className="kpi-value">{kpi.value}</span>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="dashboard-grid">
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Radar - Couverture ODD</h3>
-                <p>Les 17 Objectifs de Développement Durable</p>
-              </div>
+        <div className="chart-grid">
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Radar ODD</h3>
+              <p>Couverture des 17 Objectifs de Développement Durable</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={95}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={280}>
                 <RadarChart data={radarData}>
                   <PolarGrid stroke="#e2e8f0" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: COLORS.slate[2], fontSize: 10 }} />
-                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: COLORS.slate[3], fontSize: 10 }} />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 10 }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} />
                   <Radar name="Projets" dataKey="value" stroke={COLORS.primary}
                     fill={COLORS.primary} fillOpacity={0.2} strokeWidth={2} />
                   <Tooltip content={<CustomTooltip />} />
@@ -507,23 +471,21 @@ function Analytics() {
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Top ODD</h3>
-                <p>Classement par nombre de projets</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Top ODD</h3>
+              <p>Classement par nombre de projets</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={95}>
-                <BarChart data={topSdgs} layout="vertical" margin={{ top: 4, right: 8, left: 10, bottom: 10 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={topSdgs} layout="vertical" margin={{ top: 4, right: 16, left: 10, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <YAxis type="category" dataKey="goal_number" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 12 }}
+                    tick={{ fill: '#334155', fontSize: 12 }}
                     tickFormatter={(v) => `ODD ${v}`} width={60} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Projets" radius={[0, 6, 6, 0]} barSize={18}>
+                  <Bar dataKey="count" name="Projets" radius={[0, 6, 6, 0]} barSize={20}>
                     {topSdgs.map((entry, i) => (
                       <Cell key={i} fill={entry.color || COLORS.chart[i % COLORS.chart.length]} />
                     ))}
@@ -533,15 +495,13 @@ function Analytics() {
             </div>
           </div>
 
-          <div className="grid-card col-span-2">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Technologies × Secteurs</h3>
-                <p>Volume de projets par croisement technologique</p>
-              </div>
+          <div className="chart-card span-2">
+            <div className="chart-header">
+              <h3>Technologies × Secteurs</h3>
+              <p>Volume de projets par croisement technologique</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={95}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={280}>
                 <Treemap data={techSectorData} dataKey="size" aspectRatio={4 / 3}
                   stroke="#fff" fill="#2563eb" content={<CustomTreemapContent colors={COLORS.chart} />}>
                   <Tooltip content={<CustomTooltip />} />
@@ -550,20 +510,18 @@ function Analytics() {
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Projets par région</h3>
-                <p>Intensité ODD dominante par région</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Projets par région</h3>
+              <p>Avec ODD dominant</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <BarChart data={projectsByRegion} margin={{ top: 4, right: 8, left: 0, bottom: 16 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={projectsByRegion} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="region" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 9 }} angle={-30} textAnchor="end" />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                    tick={{ fill: '#475569', fontSize: 11 }} interval={0} angle={-30} textAnchor="end" />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="count" name="Projets" radius={[6, 6, 0, 0]} barSize={28}>
                     {(projectsByRegion || []).map((entry, i) => {
@@ -573,57 +531,52 @@ function Analytics() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-            <div className="region-legend">
-              {(regionSdg || []).filter(r => r.dominant_sdg).map((r, i) => (
-                <div key={i} className="legend-row">
-                  <span className="legend-dot" style={{ backgroundColor: r.dominant_sdg_color }}></span>
-                  <span className="legend-name">{r.region}: ODD {r.dominant_sdg}</span>
-                </div>
-              ))}
+              <div className="inline-legend">
+                {(regionSdg || []).filter(r => r.dominant_sdg).map((r, i) => (
+                  <div key={i} className="legend-item">
+                    <span className="legend-dot" style={{ backgroundColor: r.dominant_sdg_color }}></span>
+                    <span>{r.region}: ODD {r.dominant_sdg}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Durée vs Nombre d'ODD</h3>
-                <p>Corrélation entre durée du projet et ODD alignés</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Durée vs ODD</h3>
+              <p>Corrélation durée ↔ nombre d'ODD</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <ScatterChart margin={{ top: 4, right: 8, left: 0, bottom: 12 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <ScatterChart margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis type="number" dataKey="x" name="Durée (jours)" unit=" j"
-                    axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 11 }} />
+                    axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
                   <YAxis type="number" dataKey="y" name="Nb ODD"
-                    axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 11 }} />
+                    axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
                   <ZAxis type="number" dataKey="z" range={[60, 200]} />
                   <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-                  <Scatter data={scatterData} fill={COLORS.primary} fillOpacity={0.7} name="Projets" />
+                  <Scatter data={scatterData} fill={COLORS.primary} fillOpacity={0.6} name="Projets" />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid-card col-span-2">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Timeline projets actifs</h3>
-                <p>Chronologie simplifiée par secteur</p>
-              </div>
+          <div className="chart-card span-2">
+            <div className="chart-header">
+              <h3>Timeline projets actifs</h3>
+              <p>Durée par projet (30 plus récents)</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={95}>
-                <BarChart data={durationData} margin={{ top: 4, right: 8, left: 0, bottom: 20 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={durationData} margin={{ top: 8, right: 8, left: 0, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="title" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 9 }} interval={0} angle={-50} textAnchor="end" height={60} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 11 }}
-                    unit=" j" />
+                    tick={{ fill: '#64748b', fontSize: 9 }} interval={0} angle={-55} textAnchor="end" height={80} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} unit=" j" />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="duration" name="Durée (jours)" radius={[4, 4, 0, 0]} barSize={16}>
+                  <Bar dataKey="duration" name="Durée (jours)" radius={[4, 4, 0, 0]} barSize={18}>
                     {durationData.map((entry, i) => (
                       <Cell key={i} fill={sectorColors[entry.sector] || COLORS.chart[i % COLORS.chart.length]} />
                     ))}
@@ -637,7 +590,6 @@ function Analytics() {
     )
   }
 
-  // ──── Dashboard 3 — Communauté & Acteurs Réseau ────
   const Dashboard3 = () => {
     const { userSignups, usersByOrgType, usersByCountry, stakeholdersByCategory,
       stakeholdersByType, projectsPerUser, recentUsers, activeUsers, activationRate, overview } = data
@@ -654,12 +606,12 @@ function Analytics() {
     }
 
     const d3Kpis = [
-      { label: 'Nouveaux inscrits (total)', value: (userSignups || []).reduce((a, b) => a + b.count, 0), icon: FaUsers, color: COLORS.primary },
-      { label: 'Utilisateurs actifs (30j)', value: activeUsers?.active_30_days ?? 0, icon: FaUserGraduate, color: COLORS.success },
+      { label: 'Inscrits (total)', value: (userSignups || []).reduce((a, b) => a + b.count, 0), icon: FaUsers, color: COLORS.primary },
+      { label: 'Actifs (30j)', value: activeUsers?.active_30_days ?? 0, icon: FaUserGraduate, color: COLORS.success },
       { label: "Taux d'activation", value: `${activationRate?.activation_rate ?? 0}%`, icon: FaPercentage, color: COLORS.secondary },
-      { label: 'Types organisation', value: (usersByOrgType || []).length, icon: FaBuilding, color: COLORS.warning },
-      { label: 'Stakeholders by type', value: (stakeholdersByType || []).reduce((a, b) => a + b.count, 0), icon: FaHandshake, color: COLORS.info },
-      { label: 'Projets/utilisateur (moy)', value: projectsPerUser?.average ?? 0, icon: FaProjectDiagram, color: COLORS.danger },
+      { label: "Types d'organisation", value: (usersByOrgType || []).length, icon: FaBuilding, color: COLORS.warning },
+      { label: 'Stakeholders', value: (stakeholdersByType || []).reduce((a, b) => a + b.count, 0), icon: FaHandshake, color: COLORS.info },
+      { label: 'Projets/utilisateur', value: projectsPerUser?.average ?? 0, icon: FaProjectDiagram, color: COLORS.danger },
     ]
 
     const stakeholderCategoryData = (stakeholdersByCategory || []).map(s => ({
@@ -671,47 +623,36 @@ function Analytics() {
 
     return (
       <>
-        <div className="kpi-row kpi-6">
+        <div className="kpi-grid">
           {d3Kpis.map((kpi, i) => (
-            <div key={i} className="premium-kpi-card">
-              <div className="kpi-card-inner">
-                <div className="kpi-icon-box" style={{ backgroundColor: `${kpi.color}15`, color: kpi.color }}>
-                  <kpi.icon />
-                </div>
-                <div className="kpi-data">
-                  <span className="kpi-label">{kpi.label}</span>
-                  <div className="kpi-value-row">
-                    <span className="kpi-value">{kpi.value ?? 0}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="kpi-progress-bar">
-                <div className="progress-fill" style={{ width: '100%', backgroundColor: kpi.color }}></div>
+            <div key={i} className="kpi-card">
+              <div className="kpi-icon" style={{ backgroundColor: `${kpi.color}15`, color: kpi.color }}><kpi.icon /></div>
+              <div className="kpi-info">
+                <span className="kpi-label">{kpi.label}</span>
+                <span className="kpi-value">{kpi.value}</span>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="dashboard-grid">
-          <div className="grid-card col-span-2">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Croissance des inscrits</h3>
-                <p>Évolution cumulative et mensuelle</p>
-              </div>
+        <div className="chart-grid">
+          <div className="chart-card span-2">
+            <div className="chart-header">
+              <h3>Croissance des inscrits</h3>
+              <p>Évolution mensuelle et cumulative</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <ComposedChart data={signupChart} margin={{ top: 4, right: 8, left: 0, bottom: 16 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={signupChart} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="label" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 9 }} angle={-30} textAnchor="end" interval={2} />
-                  <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                    tick={{ fill: '#64748b', fontSize: 10 }} angle={-35} textAnchor="end" interval={1} />
+                  <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                    tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="count" fill={COLORS.primary} name="Nouveaux inscrits" radius={[4, 4, 0, 0]} barSize={12} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Bar yAxisId="left" dataKey="count" fill={COLORS.primary} name="Nouveaux" radius={[4, 4, 0, 0]} barSize={14} />
                   <Line yAxisId="right" type="monotone" dataKey="cumulative" stroke={COLORS.success}
                     strokeWidth={3} name="Cumulatif" dot={false} />
                 </ComposedChart>
@@ -719,17 +660,15 @@ function Analytics() {
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Type d'organisation</h3>
-                <p>Répartition des utilisateurs</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Type d'organisation</h3>
+              <p>Répartition des utilisateurs</p>
             </div>
-            <div className="chart-wrapper flex-center">
-              <ResponsiveContainer width="100%" height={80}>
+            <div className="chart-body flex-center">
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  <Pie data={usersByOrgType} cx="50%" cy="50%" innerRadius={40} outerRadius={65}
+                  <Pie data={usersByOrgType} cx="50%" cy="50%" innerRadius={55} outerRadius={85}
                     paddingAngle={4} dataKey="count" nameKey="type" stroke="none">
                     {(usersByOrgType || []).map((entry, i) => (
                       <Cell key={i} fill={orgTypeColors[entry.type] || COLORS.chart[i % COLORS.chart.length]} />
@@ -739,35 +678,32 @@ function Analytics() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="custom-legend">
+            <div className="pie-legend compact">
               {(usersByOrgType || []).map((entry, i) => (
-                <div key={i} className="legend-row">
-                  <span className="legend-dot" style={{
-                    backgroundColor: orgTypeColors[entry.type] || COLORS.chart[i % COLORS.chart.length]
-                  }}></span>
-                  <span className="legend-name">{entry.type}</span>
-                  <span className="legend-val">{entry.count}</span>
+                <div key={i} className="legend-item">
+                  <span className="legend-dot"
+                    style={{ backgroundColor: orgTypeColors[entry.type] || COLORS.chart[i % COLORS.chart.length] }}></span>
+                  <span>{entry.type}</span>
+                  <span className="legend-count">{entry.count}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Stakeholders par catégorie</h3>
-                <p>Répartition catégorielle</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Stakeholders par catégorie</h3>
+              <p>Répartition catégorielle</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <BarChart data={stakeholderCategoryData} layout="vertical" margin={{ top: 4, right: 8, left: 10, bottom: 10 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={stakeholderCategoryData} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <YAxis type="category" dataKey="category" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 11 }} width={140} />
+                    tick={{ fill: '#334155', fontSize: 11 }} width={150} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Stakeholders" radius={[0, 6, 6, 0]} barSize={18}>
+                  <Bar dataKey="count" name="Stakeholders" radius={[0, 6, 6, 0]} barSize={20}>
                     {stakeholderCategoryData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
@@ -777,59 +713,51 @@ function Analytics() {
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Répartition géographique</h3>
-                <p>Utilisateurs par pays</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Utilisateurs par pays</h3>
+              <p>Répartition géographique</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={85}>
-                <BarChart data={usersByCountry} margin={{ top: 4, right: 8, left: 0, bottom: 20 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={usersByCountry} margin={{ top: 8, right: 8, left: 0, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="country" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 10 }} interval={0} angle={-40} textAnchor="end" />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Utilisateurs" radius={[6, 6, 0, 0]} barSize={24}
-                    fill={COLORS.secondary} />
+                    tick={{ fill: '#475569', fontSize: 11 }} interval={0} angle={-35} textAnchor="end" />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                  <Bar dataKey="count" name="Utilisateurs" radius={[6, 6, 0, 0]} barSize={28} fill={COLORS.secondary} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid-card">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Projets soumis par utilisateur</h3>
-                <p>Distribution de l'engagement</p>
-              </div>
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Projets par utilisateur</h3>
+              <p>Distribution de l'engagement</p>
             </div>
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={80}>
-                <BarChart data={projectsPerUser?.distribution || []} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+            <div className="chart-body">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={projectsPerUser?.distribution || []} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="range" axisLine={false} tickLine={false}
-                    tick={{ fill: COLORS.slate[2], fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: COLORS.slate[3], fontSize: 12 }} />
+                    tick={{ fill: '#334155', fontSize: 12 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Utilisateurs" radius={[6, 6, 0, 0]} barSize={36}
-                    fill={COLORS.info} />
+                  <Bar dataKey="count" name="Utilisateurs" radius={[6, 6, 0, 0]} barSize={40} fill={COLORS.info} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid-card col-span-2">
-            <div className="card-header">
-              <div className="header-text">
-                <h3>Utilisateurs récents</h3>
-                <p>Triés par dernière connexion</p>
-              </div>
+          <div className="chart-card span-2">
+            <div className="chart-header">
+              <h3>Utilisateurs récents</h3>
+              <p>Dernières connexions</p>
             </div>
-            <div className="mod-table-wrapper">
-              <table className="mod-table">
+            <div className="chart-body">
+              <table className="analytics-table">
                 <thead>
                   <tr>
                     <th>Organisation</th>
@@ -851,7 +779,7 @@ function Analytics() {
                         <td>{u.country || '-'}</td>
                         <td><span className={`badge-role ${u.role}`}>{u.role}</span></td>
                         <td>
-                          <span className={`status-dot ${u.is_active ? 'active' : 'inactive'}`}></span>
+                          <span className={`status-indicator ${u.is_active ? 'active' : 'inactive'}`}></span>
                           {u.is_active ? 'Actif' : 'Inactif'}
                         </td>
                         <td className="td-date">{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Jamais'}</td>
@@ -868,195 +796,461 @@ function Analytics() {
   }
 
   return (
-    <div className="premium-analytics">
-      <header className="dashboard-header">
-        <div className="container">
-          <div className="header-flex">
-            <div className="title-area">
-              <div className="breadcrumb">Analytics / Tableaux de bord</div>
-              <h1>Pilotage <span className="text-gradient">Stratégique</span></h1>
-              <p>Indicateurs clés et visualisations pour le suivi des projets, ODD et communauté.</p>
+    <div className="analytics-page">
+      <section className="analytics-hero">
+        <div className="animated-blobs">
+          <div className="blob blob-1"></div>
+          <div className="blob blob-2"></div>
+        </div>
+        <div className="container hero-container">
+          <div className="hero-content animate-up">
+            <div className="hero-badge">
+              <FaChartLine />
+              <span>Analytics</span>
             </div>
-            <div className="header-actions">
-              <button className="btn-refresh" onClick={fetchAllData}><FaChartLine /> Rafraîchir</button>
-            </div>
-          </div>
-
-          <div className="dashboard-tabs">
-            {DASHBOARDS.map(db => {
-              const Icon = db.icon
-              return (
-                <button key={db.id}
-                  className={`tab-btn ${activeDashboard === db.id ? 'active' : ''}`}
-                  onClick={() => setActiveDashboard(db.id)}>
-                  <Icon />
-                  <div className="tab-text">
-                    <span className="tab-label">{db.label}</span>
-                    <span className="tab-title">{db.title}</span>
-                  </div>
-                </button>
-              )
-            })}
+            <h1>Pilotage <span className="text-gradient">Stratégique</span></h1>
+            <p>Indicateurs clés et visualisations pour le suivi des projets, ODD et communauté.</p>
           </div>
         </div>
-      </header>
+      </section>
 
-      <main className="dashboard-body container">
-        {activeDashboard === 1 && <Dashboard1 />}
-        {activeDashboard === 2 && <Dashboard2 />}
-        {activeDashboard === 3 && <Dashboard3 />}
-      </main>
+      <section className="analytics-body">
+        <div className="container">
+          <div className="analytics-controls animate-up delay-1">
+            <div className="dashboard-tabs">
+              {DASHBOARDS.map(db => {
+                const Icon = db.icon
+                return (
+                  <button key={db.id}
+                    className={`tab-btn ${activeDashboard === db.id ? 'active' : ''}`}
+                    onClick={() => setActiveDashboard(db.id)}>
+                    <Icon />
+                    <span className="tab-title">{db.title}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <button className="refresh-btn" onClick={fetchAllData}>
+              <FaRedo /> Actualiser
+            </button>
+          </div>
+
+          <div className="dashboard-content animate-up delay-1">
+            {activeDashboard === 1 && <Dashboard1 />}
+            {activeDashboard === 2 && <Dashboard2 />}
+            {activeDashboard === 3 && <Dashboard3 />}
+          </div>
+        </div>
+      </section>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
-        .premium-analytics {
-          background: #f8fafc;
-          height: 100vh; overflow: hidden;
+        .analytics-page {
+          --p-primary: #2563eb;
+          --p-secondary: #0f172a;
+          --p-text: #1e293b;
+          --p-text-light: #64748b;
           font-family: 'Outfit', sans-serif;
-          color: #1e293b;
+          color: var(--p-text);
+          background: #f8fafc;
+          min-height: 100vh;
         }
 
-        .container { max-width: 1360px; margin: 0 auto; padding: 0 12px; }
+        .container { max-width: 1360px; margin: 0 auto; padding: 0 24px; }
 
-        .dashboard-header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 6px 0 0; margin-bottom: 4px; }
-        .header-flex { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px; }
-        .breadcrumb { font-size: 0.5rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1px; }
-        .dashboard-header h1 { font-size: 1rem; font-weight: 800; margin: 0; color: #0f172a; letter-spacing: -0.5px; }
-        .dashboard-header p { color: #64748b; font-size: 0.6rem; max-width: 600px; line-height: 1.3; margin: 0; }
-        .text-gradient { background: linear-gradient(135deg, #2563eb, #7c3aed); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .analytics-hero {
+          position: relative;
+          padding: 120px 0 80px;
+          background: #fff;
+          overflow: hidden;
+          text-align: center;
+        }
 
-        .btn-refresh { background: #0f172a; color: white; border: none; padding: 4px 10px; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.3s; font-family: 'Outfit', sans-serif; font-size: 0.6rem; }
-        .btn-refresh:hover { background: #1e293b; transform: translateY(-1px); }
+        .animated-blobs {
+          position: absolute; width: 100%; height: 100%;
+          top: 0; left: 0;
+          filter: blur(70px);
+          opacity: 0.3;
+        }
+        .blob {
+          position: absolute;
+          border-radius: 50%;
+          animation: float 15s infinite alternate;
+        }
+        .blob-1 { width: 300px; height: 300px; top: -50px; left: 5%; background: #60a5fa; }
+        .blob-2 { width: 250px; height: 250px; bottom: -50px; right: 5%; background: #93c5fd; animation-delay: -5s; }
+        @keyframes float {
+          0% { transform: translate(0, 0) scale(1); }
+          100% { transform: translate(40px, 20px) scale(1.1); }
+        }
 
-        /* Tabs */
-        .dashboard-tabs { display: flex; gap: 4px; padding-bottom: 0; }
-        .tab-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border: none; border-radius: 8px 8px 0 0; background: transparent; cursor: pointer; transition: 0.3s; font-family: 'Outfit', sans-serif; opacity: 0.5; }
-        .tab-btn:hover { opacity: 0.8; background: #f1f5f9; }
-        .tab-btn.active { opacity: 1; background: #f8fafc; box-shadow: 0 -1px 6px rgba(0,0,0,0.04); }
-        .tab-btn svg { font-size: 0.9rem; color: #6366f1; }
-        .tab-text { display: flex; flex-direction: column; align-items: flex-start; }
-        .tab-title { font-size: 0.6rem; font-weight: 700; color: #0f172a; }
-        .tab-label { font-size: 0.5rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.3px; }
+        .hero-container { position: relative; z-index: 2; }
 
-        /* KPI */
-        .kpi-row { display: grid; gap: 6px; margin-bottom: 6px; }
-        .kpi-6 { grid-template-columns: repeat(6, 1fr); }
-        .premium-kpi-card { background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; padding: 8px; position: relative; overflow: hidden; box-shadow: 0 2px 4px -1px rgba(0,0,0,0.02); transition: 0.3s; }
-        .premium-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); border-color: #cbd5e1; }
-        .kpi-card-inner { display: flex; align-items: center; gap: 8px; }
-        .kpi-icon-box { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
-        .kpi-data { flex: 1; min-width: 0; }
-        .kpi-label { font-size: 0.5rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.2px; white-space: nowrap; }
-        .kpi-value-row { display: flex; align-items: baseline; gap: 4px; margin-top: 0; }
-        .kpi-value { font-size: 1rem; font-weight: 800; color: #0f172a; }
-        .kpi-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 2px; background: #f1f5f9; }
-        .progress-fill { height: 100%; border-radius: 0 2px 2px 0; }
+        .hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 16px;
+          background: rgba(37, 99, 235, 0.08);
+          border-radius: 100px;
+          color: var(--p-primary);
+          font-weight: 700;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          margin-bottom: 24px;
+        }
 
-        /* Grid */
-        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-        .grid-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 8px; box-shadow: 0 2px 4px -1px rgba(0,0,0,0.02); display: flex; flex-direction: column; }
-        .col-span-2 { grid-column: span 2; }
-        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-        .header-text h3 { font-size: 0.75rem; font-weight: 800; margin: 0 0 2px; color: #0f172a; }
-        .header-text p { font-size: 0.6rem; color: #64748b; margin: 0; }
-        .chart-wrapper { flex: 1; min-height: 80px; position: relative; }
+        .analytics-hero h1 {
+          font-size: clamp(2.5rem, 5vw, 3.5rem);
+          font-weight: 800;
+          line-height: 1.1;
+          margin-bottom: 20px;
+          letter-spacing: -0.02em;
+          color: var(--p-secondary);
+        }
+
+        .text-gradient {
+          background: linear-gradient(135deg, #2563eb, #7c3aed);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .analytics-hero p {
+          font-size: 1.15rem;
+          color: var(--p-text-light);
+          max-width: 600px;
+          margin: 0 auto;
+          line-height: 1.6;
+        }
+
+        .analytics-body {
+          padding-bottom: 80px;
+          margin-top: -30px;
+        }
+
+        .analytics-controls {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 32px;
+          flex-wrap: wrap;
+        }
+
+        .dashboard-tabs {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .tab-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 24px;
+          border: 1.5px solid #f1f5f9;
+          border-radius: 16px;
+          background: #fff;
+          cursor: pointer;
+          transition: 0.3s;
+          font-family: inherit;
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: var(--p-text-light);
+        }
+        .tab-btn svg { font-size: 1.1rem; color: var(--p-primary); }
+        .tab-btn:hover { border-color: #bfdbfe; background: #eff6ff; color: var(--p-primary); }
+        .tab-btn.active { border-color: var(--p-primary); background: #eff6ff; color: var(--p-primary); }
+
+        .refresh-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 24px;
+          background: var(--p-secondary);
+          color: #fff;
+          border: none;
+          border-radius: 14px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: 0.3s;
+          font-family: inherit;
+          font-size: 0.9rem;
+        }
+        .refresh-btn:hover { background: #1e293b; transform: translateY(-2px); }
+
+        .dashboard-content {
+          animation: fadeUp 0.5s ease both;
+        }
+
+        .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+
+        .kpi-card {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          background: #fff;
+          border: 1px solid #f1f5f9;
+          border-radius: 20px;
+          padding: 20px;
+          transition: 0.3s;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+        .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(0,0,0,0.04); border-color: #e2e8f0; }
+
+        .kpi-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.2rem;
+          flex-shrink: 0;
+        }
+
+        .kpi-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        .kpi-label {
+          font-size: 0.7rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          color: var(--p-text-light);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .kpi-value {
+          font-size: 1.4rem;
+          font-weight: 800;
+          color: var(--p-secondary);
+          line-height: 1.2;
+        }
+
+        .chart-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+        }
+
+        .chart-card {
+          background: #fff;
+          border: 1px solid #f1f5f9;
+          border-radius: 24px;
+          padding: 24px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+          display: flex;
+          flex-direction: column;
+        }
+        .span-2 { grid-column: span 2; }
+        .span-3 { grid-column: span 3; }
+
+        .chart-header {
+          margin-bottom: 16px;
+        }
+        .chart-header h3 {
+          font-size: 1rem;
+          font-weight: 800;
+          color: var(--p-secondary);
+          margin: 0 0 4px;
+        }
+        .chart-header p {
+          font-size: 0.8rem;
+          color: var(--p-text-light);
+          margin: 0;
+        }
+
+        .chart-body {
+          flex: 1;
+          min-height: 200px;
+        }
         .flex-center { display: flex; align-items: center; justify-content: center; }
+        .flex-row { display: flex; gap: 24px; }
+        .flex-row .mini-pie { flex: 1; min-width: 0; }
 
-        /* Tooltip */
-        .custom-chart-tooltip { background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(8px); border-radius: 12px; padding: 12px 16px; color: white; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
-        .tooltip-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; opacity: 0.7; }
-        .tooltip-divider { height: 1px; background: rgba(255,255,255,0.1); margin-bottom: 8px; }
-        .tooltip-value { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin: 4px 0; }
-        .tooltip-value .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .mini-pie h4 {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--p-text-light);
+          text-align: center;
+          margin: 0 0 8px;
+        }
 
-        /* Legend */
-        .custom-legend { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .legend-row { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-        .legend-name { flex: 1; color: #475569; min-width: 0; }
-        .legend-val { color: #0f172a; font-weight: 800; }
-        .region-legend { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
+        .analytics-tooltip {
+          background: rgba(15, 23, 42, 0.95);
+          backdrop-filter: blur(8px);
+          border-radius: 12px;
+          padding: 12px 16px;
+          color: white;
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+        }
+        .analytics-tooltip .tooltip-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; opacity: 0.7; }
+        .analytics-tooltip .tooltip-divider { height: 1px; background: rgba(255,255,255,0.1); margin-bottom: 8px; }
+        .analytics-tooltip .tooltip-value { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin: 4px 0; }
+        .analytics-tooltip .tooltip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-        /* Tech list */
-        .tech-list-premium { display: flex; flex-direction: column; gap: 12px; }
-        .tech-item-row { display: flex; align-items: center; gap: 12px; }
-        .tech-name-box { display: flex; align-items: center; gap: 10px; width: 120px; flex-shrink: 0; }
-        .tech-rank { font-size: 0.65rem; font-weight: 800; color: #94a3b8; background: #f1f5f9; width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .tech-name { font-size: 0.85rem; font-weight: 700; color: #334155; white-space: nowrap; }
-        .tech-bar-wrap { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
-        .tech-bar-fill { height: 100%; border-radius: 4px; transition: 1s ease-out; }
-        .tech-count { font-size: 0.85rem; font-weight: 800; color: #0f172a; width: 30px; text-align: right; }
+        .pie-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          justify-content: center;
+          margin-top: 12px;
+        }
+        .pie-legend.compact { gap: 8px; }
 
-        /* Table */
-        .mod-table-wrapper { overflow-x: auto; flex: 1; }
-        .mod-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        .mod-table th { text-align: left; padding: 12px 8px; color: #64748b; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; }
-        .mod-table td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-        .mod-table tr:hover td { background: #f8fafc; }
-        .td-title { font-weight: 700; color: #0f172a; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .td-date { color: #64748b; font-size: 0.8rem; white-space: nowrap; }
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #475569;
+        }
+        .legend-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 3px;
+          flex-shrink: 0;
+        }
+        .legend-count {
+          font-weight: 800;
+          color: var(--p-secondary);
+          margin-left: 4px;
+        }
+
+        .inline-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 12px;
+        }
+
+        .tech-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding-top: 4px;
+        }
+        .tech-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .tech-rank {
+          font-size: 0.7rem;
+          font-weight: 800;
+          color: #94a3b8;
+          background: #f1f5f9;
+          width: 24px;
+          height: 24px;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .tech-name {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: #334155;
+          width: 100px;
+          flex-shrink: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .tech-bar {
+          flex: 1;
+          height: 8px;
+          background: #f1f5f9;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        .tech-bar-fill {
+          height: 100%;
+          border-radius: 4px;
+          transition: width 1s ease-out;
+        }
+        .tech-count {
+          font-size: 0.85rem;
+          font-weight: 800;
+          color: var(--p-secondary);
+          width: 30px;
+          text-align: right;
+        }
+
+        .analytics-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.85rem;
+        }
+        .analytics-table th {
+          text-align: left;
+          padding: 12px 8px;
+          color: var(--p-text-light);
+          font-weight: 700;
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 2px solid #f1f5f9;
+        }
+        .analytics-table td {
+          padding: 10px 8px;
+          border-bottom: 1px solid #f1f5f9;
+          color: #334155;
+        }
+        .analytics-table tr:hover td { background: #f8fafc; }
+        .td-title { font-weight: 700; color: var(--p-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .td-date { color: var(--p-text-light); font-size: 0.8rem; white-space: nowrap; }
         .empty-row { text-align: center; color: #94a3b8; padding: 40px !important; font-weight: 600; }
+
         .badge-country { background: #e0e7ff; color: #4338ca; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
         .badge-org-type { background: #f1f5f9; color: #475569; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
         .badge-role { padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: capitalize; }
         .badge-role.admin { background: #fef3c7; color: #b45309; }
         .badge-role.organization { background: #dbeafe; color: #1d4ed8; }
-        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-        .status-dot.active { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
-        .status-dot.inactive { background: #94a3b8; }
+
+        .status-indicator { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-indicator.active { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.4); }
+        .status-indicator.inactive { background: #94a3b8; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-up { animation: fadeUp 0.5s ease both; }
+        .delay-1 { animation-delay: 0.1s; }
+
+        .chart-body :global(.recharts-responsive-container) { min-height: 180px; }
 
         @media (max-width: 1200px) {
-          .kpi-6 { grid-template-columns: repeat(3, 1fr); }
+          .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+          .chart-grid { grid-template-columns: 1fr 1fr; }
+          .span-3 { grid-column: span 2; }
         }
-
-        @media (max-width: 1024px) {
-          .kpi-row { grid-template-columns: repeat(2, 1fr); }
-          .dashboard-grid { grid-template-columns: 1fr; }
-
-        /* Compact dashboard: Power BI 1280×720 no-scroll */
-        .premium-kpi-card { padding: 6px 8px; }
-        .kpi-icon-box { width: 22px; height: 22px; font-size: 0.7rem; border-radius: 6px; }
-        .kpi-value { font-size: 0.85rem; }
-        .kpi-label { font-size: 0.45rem; }
-        .kpi-row { gap: 4px; margin-bottom: 4px; }
-        .kpi-card-inner { gap: 6px; }
-        .dashboard-grid { gap: 4px; }
-        .grid-card { padding: 6px; border-radius: 8px; }
-        .card-header { margin-bottom: 2px; }
-        .header-text h3 { font-size: 0.6rem; margin-bottom: 1px; }
-        .header-text p { font-size: 0.5rem; }
-        .chart-wrapper { min-height: 60px; }
-        .custom-legend { margin-top: 4px; gap: 2px; }
-        .custom-legend .legend-row { font-size: 0.5rem; padding: 1px 3px; }
-        .legend-dot { width: 5px; height: 5px; border-radius: 2px; }
-        .legend-name { font-size: 0.5rem; }
-        .legend-val { font-size: 0.55rem; }
-        .region-legend { margin-top: 4px; gap: 4px; }
-        .region-legend .legend-row { font-size: 0.5rem; }
-        .tech-list-premium { gap: 4px; }
-        .tech-item-row { padding: 1px 0; gap: 4px; }
-        .tech-name-box { width: 80px; gap: 4px; }
-        .tech-rank { width: 16px; height: 16px; font-size: 0.5rem; border-radius: 4px; }
-        .tech-name { font-size: 0.55rem; }
-        .tech-bar-wrap { height: 4px; }
-        .tech-count { font-size: 0.55rem; width: 20px; }
-        .mod-table { font-size: 0.55rem; }
-        .mod-table th { padding: 2px 4px; font-size: 0.5rem; }
-        .mod-table td { padding: 2px 4px; font-size: 0.55rem; }
-        .td-date { font-size: 0.5rem; }
-        .badge-country, .badge-org-type, .badge-role { font-size: 0.5rem; padding: 1px 6px; }
-          .col-span-2 { grid-column: span 1; }
-          .header-flex { flex-direction: column; align-items: flex-start; gap: 8px; }
-          .dashboard-tabs { flex-direction: column; }
-          .tab-btn { border-radius: 8px; }
-          .tab-btn.active { box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+        @media (max-width: 900px) {
+          .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+          .chart-grid { grid-template-columns: 1fr; }
+          .span-2, .span-3 { grid-column: span 1; }
+          .flex-row { flex-direction: column; }
         }
-
-        @media (max-width: 640px) {
-          .kpi-row { grid-template-columns: 1fr; }
-          .container { padding: 0 12px; }
-          .dashboard-header h1 { font-size: 1.2rem; }
+        @media (max-width: 600px) {
+          .kpi-grid { grid-template-columns: 1fr; }
+          .analytics-hero h1 { font-size: 1.8rem; }
+          .analytics-hero { padding: 100px 0 60px; }
+          .analytics-body { margin-top: -20px; }
+          .tab-btn { flex: 1; justify-content: center; }
+          .analytics-controls { flex-direction: column; }
         }
       `}</style>
     </div>

@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models.project import Project
 from app.models.user import User
 from app.schemas.admin import AdminPendingProject, AdminStats, AdminProjectDocument, AdminProjectCountry, AdminProjectOwner, AdminApproveRequest, AdminRejectRequest
+from app.services.email_service import send_rejection_email
 
 router = APIRouter()
 
@@ -106,4 +107,13 @@ def reject_project(project_id: int, body: AdminRejectRequest, db: Session = Depe
     project.moderated_by = admin.id
     project.moderated_at = datetime.now(timezone.utc)
     db.commit()
+
+    if project.owner and project.owner.email:
+        send_rejection_email(
+            recipient_email=project.owner.email,
+            organization_name=project.owner.organization_name or "User",
+            project_title=project.title,
+            reason=body.reason.strip()
+        )
+
     return {"message": "Project rejected"}

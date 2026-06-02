@@ -165,14 +165,14 @@ app.include_router(contact.router, prefix="/api", tags=["Contact"])
 app.include_router(report.router, prefix="/api", tags=["Report"])
 
 
-# ── Background scheduler: send report every Monday & Thursday at 9:00 AM ──
-SEND_DAYS = [0, 3]  # Monday=0, Thursday=3
-SEND_HOUR = 9
+# ── Background scheduler: send report every day at 8:00 AM ──
+SEND_DAYS = [0, 1, 2, 3, 4, 5, 6]  # Every day
+SEND_HOUR = 8
 SEND_MINUTE = 0
 
 
 def run_scheduled_report():
-    """Background thread that sends the annual report every Monday and Thursday at 9:00 AM."""
+    """Background thread that sends the annual report every day at 8:00 AM."""
     last_sent_date = None
     while True:
         try:
@@ -198,9 +198,8 @@ def run_scheduled_report():
 
 @app.on_event("startup")
 def startup_event():
-    logger.info("[SCHEDULER] Starting background report scheduler (Monday & Thursday at 9:00 AM)...")
-    days_str = ", ".join(["Monday", "Thursday"])
-    logger.info(f"[SCHEDULER] Next send days: {days_str} at {SEND_HOUR:02d}:{SEND_MINUTE:02d} UTC")
+    logger.info("[SCHEDULER] Starting background report scheduler (every day at 8:00 AM)...")
+    logger.info(f"[SCHEDULER] Will send daily report at {SEND_HOUR:02d}:{SEND_MINUTE:02d} UTC")
     thread = threading.Thread(target=run_scheduled_report, daemon=True)
     thread.start()
 
