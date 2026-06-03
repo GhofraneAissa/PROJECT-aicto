@@ -1144,7 +1144,8 @@ function Home() {
         .country-marquee-flag img {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          background: #f1f5f9;
           display: block;
         }
         .country-marquee-name {

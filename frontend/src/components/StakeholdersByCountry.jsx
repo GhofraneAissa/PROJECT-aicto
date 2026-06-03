@@ -290,7 +290,8 @@ function StakeholdersByCountry({ searchQuery = '', typeFilter = 'All' }) {
           width: 60px;
           height: 40px;
           border-radius: 8px;
-          object-fit: cover;
+          object-fit: contain;
+          background: #f1f5f9;
           flex-shrink: 0;
         }
         .sbc-flag-placeholder {

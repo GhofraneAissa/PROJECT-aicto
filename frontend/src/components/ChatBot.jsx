@@ -164,6 +164,12 @@ function ChatBot() {
 
   const removeAttach = (idx) => setAttachPreview(prev => prev.filter((_, i) => i !== idx))
 
+  const attachLabel = (a) => {
+    if (a.is_image) return <><FaImage /> {a.original_name}</>
+    if (a.has_text) return <><FaFile style={{color:'#059669'}} /> {a.original_name} <span className="chat-doc-read">(read)</span></>
+    return <><FaFile /> {a.original_name}</>
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
@@ -247,7 +253,7 @@ function ChatBot() {
             <div className="chat-attach-bar">
               {attachPreview.map((a, i) => (
                 <span key={i} className="chat-attach-chip">
-                  {a.is_image ? <FaImage /> : <FaFile />} {a.original_name}
+                  {attachLabel(a)}
                   <button onClick={() => removeAttach(i)}><FaTimes size={10} /></button>
                 </span>
               ))}
@@ -358,6 +364,7 @@ function ChatBot() {
           display:flex; align-items:center; gap:4px; font-size:0.72rem;
           background:#dbeafe; color:#1e40af; padding:3px 8px; border-radius:6px;
         }
+        .chat-doc-read { font-size:0.65rem; color:#059669; font-weight:600; margin-left:2px; }
         .chat-attach-chip button {
           background:none; border:none; cursor:pointer; color:#1e40af; padding:0; margin-left:2px;
         }

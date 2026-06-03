@@ -443,19 +443,35 @@ async def upload_chat_file(file: UploadFile = File(...)):
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"File type {ext} not allowed")
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
+    raw = await file.read()
+    if len(raw) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     unique_name = f"{uuid.uuid4().hex}{ext}"
     file_path = os.path.join(CHAT_UPLOAD_DIR, unique_name)
     with open(file_path, "wb") as f:
-        f.write(content)
+        f.write(raw)
+
+    from app.services.document_reader import extract_text
+    extracted = extract_text(file_path)
+    if extracted:
+        txt_name = f"{uuid.uuid4().hex}.extracted.txt"
+        txt_path = os.path.join(CHAT_UPLOAD_DIR, txt_name)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(extracted)
+    else:
+        txt_name = None
+
+    preview = extracted[:300] + ("..." if len(extracted) > 300 else "") if extracted else ""
+
     return {
         "original_name": file.filename,
         "stored_name": unique_name,
         "url": f"/api/chat/files/{unique_name}",
         "is_image": ext in IMAGE_EXTENSIONS,
-        "size": len(content),
+        "size": len(raw),
+        "extracted_text_name": txt_name,
+        "preview": preview,
+        "has_text": bool(extracted),
     }
 
 
@@ -484,6 +500,7 @@ def chat_send(
     query = request.message.strip()
     attachments = request.attachments
     image_data = None
+    doc_texts = []
 
     if attachments:
         for att in attachments:
@@ -491,7 +508,14 @@ def chat_send(
                 file_path = os.path.join(CHAT_UPLOAD_DIR, att["stored_name"])
                 if os.path.exists(file_path):
                     image_data = encode_image(file_path)
-                    break
+            if att.get("has_text") and att.get("extracted_text_name"):
+                txt_path = os.path.join(CHAT_UPLOAD_DIR, att["extracted_text_name"])
+                if os.path.exists(txt_path):
+                    try:
+                        with open(txt_path, "r", encoding="utf-8") as f:
+                            doc_texts.append(f"--- Document: {att.get('original_name', 'file')} ---\n{f.read()}")
+                    except Exception as e:
+                        logger.warning(f"Failed to read extracted text: {e}")
 
     save_message(db, session_id, "user", query, attachments)
 
@@ -534,7 +558,11 @@ def chat_send(
         logger.warning(f"Stats error: {e}")
     stats = "\n".join(stats_parts)
 
-    full_context = f"### Stats\n{stats}\n\n### Matching Items\n{context}"
+    doc_section = ""
+    if doc_texts:
+        doc_section = "\n\n### Uploaded Document Content\n" + "\n\n".join(doc_texts)
+
+    full_context = f"### Stats\n{stats}\n\n### Matching Items\n{context}{doc_section}"
 
     providers = build_provider_chain()
     reply = None
