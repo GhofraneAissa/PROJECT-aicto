@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class SDG(Base):
@@ -9,3 +10,5 @@ class SDG(Base):
     title = Column(Text, nullable=False)
     color = Column(String(10), nullable=False)
     image_url = Column(Text, nullable=False)
+
+    projects = relationship("Project", back_populates="sdg")

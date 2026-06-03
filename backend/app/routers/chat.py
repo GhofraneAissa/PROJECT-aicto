@@ -102,7 +102,7 @@ def build_corpus(db):
             f"Project: {p.title}. Organization: {p.organization}. "
             f"Country: {cname or ''}. Sector: {p.sector}. Technology: {p.technology}. "
             f"Description: {p.description or ''}. Status: {p.status or ''}. "
-            f"SDG: {p.sdg_alignment or ''}. Year: {p.year_of_implementation or ''}."
+            f"SDG: {p.sdg.title if p.sdg else ''}. Year: {p.year_of_implementation or ''}."
         )
         docs.append({
             "text": text, "type": "project", "id": p.id,

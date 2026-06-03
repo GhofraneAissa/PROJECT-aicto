@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import datetime, date
 from typing import Optional, List
 
@@ -9,7 +9,7 @@ class ProjectBase(BaseModel):
     user_id: int
     sector: str
     technology: str = ""
-    sdg_alignment: Optional[str] = None
+    sdg_id: Optional[int] = None
     description: Optional[str] = None
     website: Optional[str] = None
     status: str = "active"
@@ -31,7 +31,21 @@ class ProjectSubmit(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     description: Optional[str] = None
-    sdg_alignment: Optional[str] = None
+    sdg_id: Optional[int] = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v):
+        if len(v) > 500:
+            raise ValueError("Title must not exceed 500 characters")
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v):
+        if v and len(v) > 5000:
+            raise ValueError("Description must not exceed 5000 characters")
+        return v
 
 class ProjectUpdate(BaseModel):
     title: Optional[str] = None
@@ -40,7 +54,7 @@ class ProjectUpdate(BaseModel):
     user_id: Optional[int] = None
     sector: Optional[str] = None
     technology: Optional[str] = None
-    sdg_alignment: Optional[str] = None
+    sdg_id: Optional[int] = None
     description: Optional[str] = None
     website: Optional[str] = None
     status: Optional[str] = None
@@ -97,6 +111,15 @@ class ProjectPaginatedResponse(BaseModel):
     page_size: int
     total_pages: int
 
+class SDGInfo(BaseModel):
+    id: int
+    goal_number: int
+    title: str
+    color: str
+
+    class Config:
+        from_attributes = True
+
 class ProjectDetailResponse(BaseModel):
     id: int
     title: str
@@ -106,7 +129,8 @@ class ProjectDetailResponse(BaseModel):
     user_id: int
     sector: str
     technology: str
-    sdg_alignment: Optional[str] = None
+    sdg_id: Optional[int] = None
+    sdg: Optional[SDGInfo] = None
     description: Optional[str] = None
     website: Optional[str] = None
     status: str

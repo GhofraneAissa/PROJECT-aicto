@@ -161,7 +161,7 @@ function ProjectDetails() {
             <div className="info-card">
               <div className="info-card-icon"><FaFlag /></div>
               <span className="info-card-label">SDG Alignment</span>
-              <span className="info-card-value">{project.sdg_alignment || '-'}</span>
+              <span className="info-card-value">{project.sdg ? `SDG ${project.sdg.goal_number}: ${project.sdg.title}` : '-'}</span>
             </div>
           </div>
 

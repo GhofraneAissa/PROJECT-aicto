@@ -5,6 +5,7 @@ from app.models.project import Project
 from app.models.resource import Resource
 from app.models.stakeholder import Stakeholder
 from app.models.country import Country
+from app.models.sdg import SDG
 from urllib.parse import quote_plus
 
 password = "0000"
@@ -26,11 +27,36 @@ def init_database():
         Session = sessionmaker(bind=engine)
         session = Session()
         
+        if session.query(SDG).count() == 0:
+            sdg_data = [
+                SDG(goal_number=1, title="No Poverty", color="#e5243b", image_url=""),
+                SDG(goal_number=2, title="Zero Hunger", color="#dda63a", image_url=""),
+                SDG(goal_number=3, title="Good Health and Well-being", color="#4c9f38", image_url=""),
+                SDG(goal_number=4, title="Quality Education", color="#c5192d", image_url=""),
+                SDG(goal_number=5, title="Gender Equality", color="#ff3a21", image_url=""),
+                SDG(goal_number=6, title="Clean Water and Sanitation", color="#26bde2", image_url=""),
+                SDG(goal_number=7, title="Affordable and Clean Energy", color="#fcc30b", image_url=""),
+                SDG(goal_number=8, title="Decent Work and Economic Growth", color="#a21942", image_url=""),
+                SDG(goal_number=9, title="Industry, Innovation and Infrastructure", color="#fd6925", image_url=""),
+                SDG(goal_number=10, title="Reduced Inequalities", color="#dd1367", image_url=""),
+                SDG(goal_number=11, title="Sustainable Cities and Communities", color="#fd9d24", image_url=""),
+                SDG(goal_number=12, title="Responsible Consumption and Production", color="#bf8b2e", image_url=""),
+                SDG(goal_number=13, title="Climate Action", color="#3f7e44", image_url=""),
+                SDG(goal_number=14, title="Life Below Water", color="#0a97d9", image_url=""),
+                SDG(goal_number=15, title="Life on Land", color="#56c02b", image_url=""),
+                SDG(goal_number=16, title="Peace, Justice and Strong Institutions", color="#00689d", image_url=""),
+                SDG(goal_number=17, title="Partnerships for the Goals", color="#19486a", image_url=""),
+            ]
+            session.add_all(sdg_data)
+            session.commit()
+            print("SDG data inserted!")
+
         if session.query(Project).count() == 0:
+            sdg_map = {s.goal_number: s.id for s in session.query(SDG).all()}
             projects = [
-                Project(title="Egyptian NLP Initiative", organization="AIN", country="Egypt", sector="EduTech", technology="NLP", sdg_alignment="SDG4", description="AI-powered Arabic language learning", website="https://ain.eg", status="active"),
-                Project(title="Morocco Smart Health", organization="MoH", country="Morocco", sector="Health", technology="Computer Vision", sdg_alignment="SDG3", description="Medical imaging AI system", website="https://moh.ma", status="active"),
-                Project(title="Jordan AgriTech AI", organization="JFDA", country="Jordan", sector="AgriTech", technology="Machine Learning", sdg_alignment="SDG2", description="Crop prediction system", website="https://jfda.jo", status="active"),
+                Project(title="Egyptian NLP Initiative", organization="AIN", country="Egypt", sector="EduTech", technology="NLP", sdg_id=sdg_map.get(4), description="AI-powered Arabic language learning", website="https://ain.eg", status="active"),
+                Project(title="Morocco Smart Health", organization="MoH", country="Morocco", sector="Health", technology="Computer Vision", sdg_id=sdg_map.get(3), description="Medical imaging AI system", website="https://moh.ma", status="active"),
+                Project(title="Jordan AgriTech AI", organization="JFDA", country="Jordan", sector="AgriTech", technology="Machine Learning", sdg_id=sdg_map.get(2), description="Crop prediction system", website="https://jfda.jo", status="active"),
             ]
             
             resources = [

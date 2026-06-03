@@ -42,23 +42,21 @@ function SDGs() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/sdgs/`)
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch SDGs')
-        return res.json()
-      })
-      .then(data => {
-        setSdgs(data)
+    Promise.all([
+      fetch(`${API_BASE}/api/sdgs/`).then(r => { if (!r.ok) throw new Error('Failed to fetch SDGs'); return r.json() }),
+      fetch(`${API_BASE}/api/analytics/sdg-coverage`).then(r => { if (!r.ok) throw new Error('Failed to fetch SDG stats'); return r.json() })
+    ])
+      .then(([sdgData, coverageData]) => {
+        setSdgs(sdgData)
         setError(null)
+        const coverageMap = {}
+        coverageData.forEach(item => { coverageMap[item.goal_number] = item.count })
         const s = {}
-        data.forEach(sdg => {
-          s[sdg.id] = {
-            projects: Math.floor(Math.random() * 41) + 10,
-            partnerships: Math.floor(Math.random() * 16) + 5
-          }
+        sdgData.forEach(sdg => {
+          s[sdg.id] = { projects: coverageMap[sdg.goal_number] || 0 }
         })
         setStats(s)
-        if (data.length > 0) setSelectedId(data[0].id)
+        if (sdgData.length > 0) setSelectedId(sdgData[0].id)
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
@@ -138,7 +136,7 @@ function SDGs() {
                   >
                     <span className="sdg-card-number">{sdg.goal_number}</span>
                     <img src={sdg.image_url} alt={sdg.title} className="sdg-card-icon-img" />
-                    <span className="sdg-card-label">{sdg.goal_number === 1 ? sdg.title : SHORT_NAMES[i]}</span>
+                    <span className="sdg-card-project-count">{stats[sdg.id]?.projects || 0}</span>
                   </div>
                 )
               })}
@@ -171,13 +169,9 @@ function SDGs() {
                 <div className="sdg-detail-divider" />
 
                 <div className="sdg-detail-stats">
-                  <div className="sdg-stat-box">
-                    <span className="sdg-stat-number">{stats[selected.id]?.projects || '—'}</span>
-                    <span className="sdg-stat-label">ACTIVE PROJECTS</span>
-                  </div>
-                  <div className="sdg-stat-box">
-                    <span className="sdg-stat-number">{stats[selected.id]?.partnerships || '—'}</span>
-                    <span className="sdg-stat-label">PARTNERSHIPS</span>
+                  <div className="sdg-stat-box sdg-stat-box--full">
+                    <span className="sdg-stat-number">{stats[selected.id]?.projects || 0}</span>
+                    <span className="sdg-stat-label">Aligned Projects</span>
                   </div>
                 </div>
 
@@ -344,21 +338,26 @@ function SDGs() {
           font-weight: 700;
           color: rgba(255,255,255,0.9);
           line-height: 1;
+          z-index: 2;
+        }
+        .sdg-card-project-count {
+          position: absolute;
+          bottom: 6px;
+          right: 6px;
+          background: rgba(0,0,0,0.5);
+          color: #fff;
+          font-size: 0.65rem;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 6px;
+          z-index: 2;
         }
         .sdg-card-icon-img {
-        width: 100%;       /* ✅ prend toute la carte */
-        height: 100%;      /* ✅ prend toute la carte */
-        object-fit: cover; /* ✅ couvre sans déformer */
-        border-radius: 0;  /* ✅ pas de border-radius sur l'image */
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 0;
         display: block;
-        }
-        .sdg-card-label {
-          font-size: 0.6rem;
-          font-weight: 600;
-          color: rgba(255,255,255,0.95);
-          text-align: center;
-          line-height: 1.2;
-          max-width: 100%;
         }
         .sdg-no-results {
           text-align: center;
@@ -438,6 +437,7 @@ function SDGs() {
           grid-template-columns: 1fr 1fr;
           gap: 12px;
         }
+        .sdg-stat-box--full { grid-column: 1 / -1; }
         .sdg-stat-box {
           text-align: center;
           padding: 16px 12px;

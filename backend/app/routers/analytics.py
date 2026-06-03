@@ -293,24 +293,16 @@ def get_approved_rejected_by_month(db: Session = Depends(get_db)):
 
 @router.get("/sdg-coverage")
 def get_sdg_coverage(db: Session = Depends(get_db)):
-    sdgs = db.query(SDG).order_by(SDG.goal_number).all()
-    projects = db.query(Project).filter(
-        Project.sdg_alignment.isnot(None),
-        Project.sdg_alignment != ""
-    ).all()
-    counter = Counter()
-    for p in projects:
-        nums = parse_sdg_numbers(p.sdg_alignment)
-        counter.update(nums)
-    result = []
-    for sdg in sdgs:
-        result.append({
-            "goal_number": sdg.goal_number,
-            "title": sdg.title,
-            "color": sdg.color,
-            "count": counter.get(sdg.goal_number, 0)
-        })
-    return result
+    results = db.query(
+        SDG.goal_number,
+        SDG.title,
+        SDG.color,
+        func.count(Project.id).label("count")
+    ).outerjoin(Project, Project.sdg_id == SDG.id).filter(
+        ~func.coalesce(Project.status, '').in_(["pending", "rejected"])
+    ).group_by(SDG.id, SDG.goal_number, SDG.title, SDG.color
+    ).order_by(SDG.goal_number).all()
+    return [{"goal_number": r[0], "title": r[1], "color": r[2], "count": r[3]} for r in results]
 
 
 @router.get("/projects-by-region")
@@ -327,42 +319,43 @@ def get_projects_by_region(db: Session = Depends(get_db)):
 
 @router.get("/region-sdg-dominant")
 def get_region_sdg_dominant(db: Session = Depends(get_db)):
-    countries = db.query(Country).filter(Country.region.isnot(None)).all()
-    region_sdg_count = {}
-    for c in countries:
-        region = c.region
-        if region not in region_sdg_count:
-            region_sdg_count[region] = Counter()
-        projects = db.query(Project).filter(
-            Project.country_id == c.id,
-            Project.sdg_alignment.isnot(None),
-            Project.sdg_alignment != "",
-            ~func.lower(Project.status).in_(["pending", "rejected"])
-        ).all()
-        for p in projects:
-            nums = parse_sdg_numbers(p.sdg_alignment)
-            region_sdg_count[region].update(nums)
-    result = []
-    for region, counter in region_sdg_count.items():
-        if counter:
-            top_sdg_num = counter.most_common(1)[0][0]
-            sdg = db.query(SDG).filter(SDG.goal_number == top_sdg_num).first()
-            result.append({
-                "region": region,
-                "dominant_sdg": top_sdg_num,
-                "dominant_sdg_title": sdg.title if sdg else None,
-                "dominant_sdg_color": sdg.color if sdg else None,
-                "project_count": sum(counter.values())
-            })
-        else:
-            result.append({
-                "region": region,
-                "dominant_sdg": None,
-                "dominant_sdg_title": None,
-                "dominant_sdg_color": None,
-                "project_count": 0
-            })
-    return result
+    results = db.query(
+        Country.region,
+        SDG.goal_number,
+        SDG.title,
+        SDG.color,
+        func.count(Project.id).label("count")
+    ).join(Project, Project.country_id == Country.id
+    ).join(SDG, Project.sdg_id == SDG.id
+    ).filter(
+        Country.region.isnot(None),
+        ~func.coalesce(func.lower(Project.status), '').in_(["pending", "rejected"])
+    ).group_by(Country.region, SDG.goal_number, SDG.title, SDG.color).all()
+
+    region_map = {}
+    for r in results:
+        region = r[0]
+        if region not in region_map:
+            region_map[region] = []
+        region_map[region].append({
+            "goal_number": r[1],
+            "title": r[2],
+            "color": r[3],
+            "count": r[4]
+        })
+
+    output = []
+    for region, sdgs_list in region_map.items():
+        total = sum(s["count"] for s in sdgs_list)
+        top = max(sdgs_list, key=lambda x: x["count"]) if sdgs_list else None
+        output.append({
+            "region": region,
+            "dominant_sdg": top["goal_number"] if top else None,
+            "dominant_sdg_title": top["title"] if top else None,
+            "dominant_sdg_color": top["color"] if top else None,
+            "project_count": total
+        })
+    return output
 
 
 @router.get("/technology-by-sector")
@@ -385,20 +378,19 @@ def get_duration_vs_sdg(db: Session = Depends(get_db)):
     projects_list = db.query(Project).filter(
         Project.start_date.isnot(None),
         Project.end_date.isnot(None),
-        Project.sdg_alignment.isnot(None),
-        Project.sdg_alignment != "",
+        Project.sdg_id.isnot(None),
         ~func.lower(Project.status).in_(["pending", "rejected"])
     ).all()
     result = []
     for p in projects_list:
         duration = (p.end_date - p.start_date).days
-        nums = parse_sdg_numbers(p.sdg_alignment)
         result.append({
             "project_id": p.id,
             "title": p.title,
             "sector": p.sector,
             "duration_days": duration,
-            "sdg_count": len(nums),
+            "sdg_count": 1,
+            "sdg_goal": p.sdg.goal_number if p.sdg else None,
             "start_date": p.start_date.isoformat() if p.start_date else None,
             "end_date": p.end_date.isoformat() if p.end_date else None,
         })

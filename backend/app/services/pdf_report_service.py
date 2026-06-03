@@ -213,8 +213,8 @@ def generate_pdf_report(year=None):
                 countries_counter[country_map.get(p.country_id, "Inconnu")] += 1
         sdg_counter = Counter()
         for p in year_projects:
-            nums = parse_sdg_numbers(p.sdg_alignment)
-            sdg_counter.update(nums)
+            if p.sdg:
+                sdg_counter[p.sdg.goal_number] += 1
         users_by_type = db.query(User.organization_type, func.count(User.id)).group_by(User.organization_type).all()
         stakeholder_types_count = db.query(Stakeholder.type, func.count(Stakeholder.id)).group_by(Stakeholder.type).all()
         resources_by_type = db.query(Resource.type, func.count(Resource.id)).group_by(Resource.type).all()
@@ -770,7 +770,7 @@ def generate_pdf_report(year=None):
                 pdf.p(desc)
 
         pdf.ln(3)
-        no_sdg = [p for p in year_projects if not p.sdg_alignment or not p.sdg_alignment.strip()]
+        no_sdg = [p for p in year_projects if not p.sdg_id]
         pdf.h2("7.3 Projets sans Alignement ODD")
         pdf.p(
             f"{len(no_sdg)} projet(s) ({len(no_sdg)/total*100:.1f}%) n'ont pas d'alignement ODD renseigne. "
@@ -805,7 +805,7 @@ def generate_pdf_report(year=None):
                 pdf.add_page()
 
             country_name = p.country.country if p.country else "Non specifie"
-            sdg_nums = parse_sdg_numbers(p.sdg_alignment)
+            sdg_nums = [p.sdg.goal_number] if p.sdg else []
 
             # Project header
             pdf.set_fill_color(240, 245, 255)

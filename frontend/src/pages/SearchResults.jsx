@@ -383,7 +383,7 @@ function SearchResults() {
                           <div className="result-footer">
                             {item.stakeholders && <span className="result-stakeholders"><FaBuilding /> {item.stakeholders}</span>}
                             {item.type && <span className="result-stakeholders"><FaBook /> {item.type}</span>}
-                            {item.sdg_alignment && <span className="result-sdg">{item.sdg_alignment}</span>}
+                            {item.sdg_goal_number && <span className="result-sdg">SDG{item.sdg_goal_number}</span>}
                           </div>
                         </div>
                         <div className="result-arrow">

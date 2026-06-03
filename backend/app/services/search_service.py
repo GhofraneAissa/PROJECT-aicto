@@ -247,7 +247,7 @@ def fts_search(
         tsvector_expr = _make_vector_expr(tsvector_cols, alias)
         select_cols = f"""
             {alias}.id, {alias}.title, {alias}.description, {alias}.sector,
-            {alias}.technology, {alias}.status, {alias}.sdg_alignment,
+            {alias}.technology, {alias}.status, {alias}.sdg_id,
             {alias}.start_date, {alias}.organization,
             c.country AS country_name
         """
@@ -371,7 +371,7 @@ def _fallback_recent(db: Session, entity_type: str, limit: int = 20):
         if entity_type == "project":
             rows = db.execute(text("""
                 SELECT p.id, p.title, p.description, p.sector, p.technology,
-                       p.status, p.sdg_alignment, p.start_date, p.organization,
+                       p.status, p.sdg_id, p.start_date, p.organization,
                        c.country AS country_name
                 FROM projects p
                 LEFT JOIN countries c ON c.id = p.country_id
@@ -411,7 +411,7 @@ def _fuzzy_fallback(db: Session, query: str, entity_type: str, limit: int = 20):
         if entity_type == "project":
             rows = db.execute(text("""
                 SELECT p.id, p.title, p.description, p.sector, p.technology,
-                       p.status, p.sdg_alignment, p.start_date, p.organization,
+                       p.status, p.sdg_id, p.start_date, p.organization,
                        c.country AS country_name,
                        similarity(LOWER(p.title), LOWER(:q)) AS sim
                 FROM projects p
@@ -543,7 +543,7 @@ def _fetch_entity_item(db: Session, entity_type: str, entity_id: int):
         if entity_type == "project":
             row = db.execute(text("""
                 SELECT p.id, p.title, p.description, p.sector, p.technology,
-                       p.status, p.sdg_alignment, p.start_date, p.organization,
+                       p.status, p.sdg_id, p.start_date, p.organization,
                        c.country AS country_name
                 FROM projects p
                 LEFT JOIN countries c ON c.id = p.country_id

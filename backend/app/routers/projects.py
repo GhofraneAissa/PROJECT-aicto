@@ -24,7 +24,10 @@ def get_projects(
     sdg: str = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Project).options(joinedload(Project.stakeholder_associations).joinedload(ProjectStakeholderAssociation.stakeholder))
+    query = db.query(Project).options(
+        joinedload(Project.stakeholder_associations).joinedload(ProjectStakeholderAssociation.stakeholder),
+        joinedload(Project.sdg)
+    )
     
     query = query.filter(~Project.status.in_(["pending", "rejected"]))
     
@@ -42,8 +45,12 @@ def get_projects(
         query = query.filter(Project.country_id == country_id)
     if country:
         query = query.join(Country).filter(Country.country.ilike(country))
-    if sdg and sdg != "All":
-        query = query.filter(Project.sdg_alignment == sdg)
+    if sdg:
+        try:
+            sdg_id = int(sdg)
+            query = query.filter(Project.sdg_id == sdg_id)
+        except ValueError:
+            pass
     
     total = query.count()
     total_pages = max(1, (total + page_size - 1) // page_size)
@@ -66,7 +73,8 @@ def get_projects(
             "user_id": p.user_id,
             "sector": p.sector,
             "technology": p.technology,
-            "sdg_alignment": p.sdg_alignment,
+            "sdg_id": p.sdg_id,
+            "sdg": {"id": p.sdg.id, "goal_number": p.sdg.goal_number, "title": p.sdg.title, "color": p.sdg.color} if p.sdg else None,
             "description": p.description,
             "website": p.website,
             "status": p.status,
@@ -96,7 +104,7 @@ def submit_project(project_data: ProjectSubmit, db: Session = Depends(get_db)):
         user_id=project_data.user_id,
         sector=project_data.sector,
         technology=project_data.ai_technology,
-        sdg_alignment=project_data.sdg_alignment,
+        sdg_id=project_data.sdg_id,
         description=project_data.description,
         status=project_data.status,
         start_date=project_data.start_date,
@@ -110,7 +118,8 @@ def submit_project(project_data: ProjectSubmit, db: Session = Depends(get_db)):
 @router.get("/{id}", response_model=ProjectResponse)
 def get_project(id: int, db: Session = Depends(get_db)):
     project = db.query(Project).options(
-        joinedload(Project.stakeholder_associations).joinedload(ProjectStakeholderAssociation.stakeholder)
+        joinedload(Project.stakeholder_associations).joinedload(ProjectStakeholderAssociation.stakeholder),
+        joinedload(Project.sdg)
     ).filter(Project.id == id, ~Project.status.in_(["pending", "rejected"])).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -131,7 +140,8 @@ def get_project(id: int, db: Session = Depends(get_db)):
         "user_id": project.user_id,
         "sector": project.sector,
         "technology": project.technology,
-        "sdg_alignment": project.sdg_alignment,
+        "sdg_id": project.sdg_id,
+        "sdg": {"id": project.sdg.id, "goal_number": project.sdg.goal_number, "title": project.sdg.title, "color": project.sdg.color} if project.sdg else None,
         "description": project.description,
         "website": project.website,
         "status": project.status,
@@ -185,7 +195,8 @@ def get_project_details(id: int, db: Session = Depends(get_db)):
         user_id=project.user_id,
         sector=project.sector,
         technology=project.technology,
-        sdg_alignment=project.sdg_alignment,
+        sdg_id=project.sdg_id,
+        sdg=project.sdg,
         description=project.description,
         website=project.website,
         status=project.status,

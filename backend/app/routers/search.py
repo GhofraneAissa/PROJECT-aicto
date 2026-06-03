@@ -78,7 +78,7 @@ def ai_search(
                 "ai_technology": item.get("technology") or "",
                 "country": item.get("country_name") or "",
                 "status": item.get("status") or "",
-                "sdg_alignment": item.get("sdg_alignment") or "",
+                "sdg_alignment": "",
                 "start_date": str(item["start_date"]) if item.get("start_date") else None,
                 "entity_type": "project",
                 "organization": item.get("organization") or "",

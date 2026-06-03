@@ -7,13 +7,13 @@ class Project(Base):
     __tablename__ = "projects"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
+    title = Column(Text, nullable=False)
     organization = Column(String(255), nullable=False)
     country_id = Column(Integer, ForeignKey("countries.id", ondelete="SET NULL", onupdate="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     sector = Column(String(100), nullable=False)
     technology = Column(String(100), default="")
-    sdg_alignment = Column(String(100), nullable=True)
+    sdg_id = Column(Integer, ForeignKey("sdg.id", ondelete="SET NULL"), nullable=True)
     description = Column(Text, nullable=True)
     website = Column(String(500), nullable=True)
     status = Column(String(50), default="active")
@@ -28,6 +28,7 @@ class Project(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    sdg = relationship("SDG", back_populates="projects")
     country = relationship("Country", back_populates="projects")
     owner = relationship("User", back_populates="projects", foreign_keys=[user_id])
     moderator = relationship("User", foreign_keys=[moderated_by])

@@ -8,25 +8,6 @@ const API_BASE = 'http://localhost:8000'
 
 const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Transportation', 'Energy', 'Environment', 'Security']
 const technologies = ['NLP', 'Computer Vision', 'Robotics', 'Machine Learning', 'Deep Learning', 'Speech Recognition']
-const sdgs = [
-  'SDG 1: Pas de pauvreté',
-  'SDG 2: Faim zéro',
-  'SDG 3: Bonne santé et bien-être',
-  'SDG 4: Éducation de qualité',
-  'SDG 5: Égalité entre les sexes',
-  'SDG 6: Eau propre et assainissement',
-  'SDG 7: Énergie propre et d\'un coût abordable',
-  'SDG 8: Travail décent et croissance économique',
-  'SDG 9: Industrie, innovation et infrastructure',
-  'SDG 10: Inégalités réduites',
-  'SDG 11: Villes et communautés durables',
-  'SDG 12: Consommation et production responsables',
-  'SDG 13: Mesures relatives à la lutte contre les changements climatiques',
-  'SDG 14: Vie aquatique',
-  'SDG 15: Vie terrestre',
-  'SDG 16: Paix, justice et institutions efficaces',
-  'SDG 17: Partenariats pour la réalisation des objectifs'
-]
 const arabCountries = [
   'Algeria', 'Bahrain', 'Comoros', 'Djibouti', 'Egypt', 'Iraq',
   'Jordan', 'Kuwait', 'Lebanon', 'Libya', 'Mauritania', 'Morocco',
@@ -67,12 +48,6 @@ const getSectorInfo = (sector) => {
   return map[sector] || { class: 'default', icon: <FaMicrochip /> }
 }
 
-const getSDGNumber = (sdgStr) => {
-  if (!sdgStr) return ''
-  const match = sdgStr.match(/SDG\s*(\d+)/)
-  return match ? `SDG${match[1]}` : sdgStr.substring(0, 10)
-}
-
 function ProjectStocktaking() {
   const [projects, setProjects] = useState([])
   const [countries, setCountries] = useState([])
@@ -81,7 +56,7 @@ function ProjectStocktaking() {
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     title: '', description: '', start_date: '', end_date: '', status: 'ongoing',
-    sector: '', technology: '', sdg_alignment: '', country_id: '',
+    sector: '', technology: '', sdg_id: '', country_id: '',
     files: []
   })
   const [user, setUser] = useState(null)
@@ -90,6 +65,7 @@ function ProjectStocktaking() {
   const [selectedStakeholders, setSelectedStakeholders] = useState([])
   const [showAddStakeholder, setShowAddStakeholder] = useState(false)
   const [newStakeholder, setNewStakeholder] = useState({ name: '', type: '', country: '', website: '', contact_email: '' })
+  const [sdgList, setSdgList] = useState([])
   const [filterCountry, setFilterCountry] = useState('')
   const [filterSector, setFilterSector] = useState('')
   const [filterSdg, setFilterSdg] = useState('')
@@ -103,6 +79,7 @@ function ProjectStocktaking() {
     fetchProjects()
     fetchCountries()
     fetchStakeholders()
+    fetchSdgs()
     checkAuth()
   }, [filterCountry, filterSector, filterSdg, searchQuery, page])
 
@@ -119,6 +96,13 @@ function ProjectStocktaking() {
     if (storedUser && token) {
       try { setUser(JSON.parse(storedUser)) } catch { setUser(null) }
     }
+  }
+
+  const fetchSdgs = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/sdgs/`)
+      if (response.ok) setSdgList(await response.json())
+    } catch (err) { console.error('Failed to fetch SDGs:', err) }
   }
 
   const fetchCountries = async () => {
@@ -179,7 +163,7 @@ function ProjectStocktaking() {
         end_date: formData.end_date || null,
       }
       if (formData.description) projectData.description = formData.description
-      if (formData.sdg_alignment) projectData.sdg_alignment = formData.sdg_alignment
+      if (formData.sdg_id) projectData.sdg_id = parseInt(formData.sdg_id)
 
       const response = await fetch(`${API_BASE}/api/projects/submit`, {
         method: 'POST',
@@ -240,7 +224,7 @@ function ProjectStocktaking() {
       setSelectedStakeholders([])
       setFormData({
         title: '', description: '', start_date: '', end_date: '', status: 'ongoing',
-        sector: '', technology: '', sdg_alignment: '', country_id: '',
+        sector: '', technology: '', sdg_id: '', country_id: '',
         files: []
       })
       fetchProjects()
@@ -365,7 +349,7 @@ function ProjectStocktaking() {
                   <label>SDG Alignment</label>
                   <select value={filterSdg} onChange={e => setFilterSdg(e.target.value)}>
                     <option value="">All SDGs</option>
-                    {sdgs.map(s => <option key={s} value={s}>{s}</option>)}
+                    {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
                   </select>
                 </div>
               </div>
@@ -376,190 +360,229 @@ function ProjectStocktaking() {
           {showForm && user && (
             <div className="modern-form-card animate-up">
               <div className="form-header">
-                <h3>Share Your Initiative</h3>
+                <div className="form-step-indicator">
+                  <span className="step-dot active"></span>
+                  <span className="step-line"></span>
+                  <span className="step-dot"></span>
+                  <span className="step-line"></span>
+                  <span className="step-dot"></span>
+                </div>
+                <h3><span className="text-gradient">Share Your Initiative</span></h3>
                 <p>Provide details about your AI project to include it in the regional stocktaking portal.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="project-form">
-                <div className="form-grid">
-                  <div className="field">
-                    <label>Project Title *</label>
-                    <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder="Title of the project" />
+                <div className="form-section">
+                  <div className="section-heading">
+                    <span className="section-step">01</span>
+                    <div>
+                      <h4>Basic Information</h4>
+                      <p>Project title, timeline, and target country</p>
+                    </div>
                   </div>
-                  <div className="field">
-                    <label>Start Date</label>
-                    <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} />
+                  <div className="form-grid">
+                    <div className="field">
+                      <label>Project Title <span className="required-star">*</span></label>
+                      <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder="e.g. AI-Powered Precision Agriculture" />
+                    </div>
+                    <div className="field">
+                      <label>Start Date</label>
+                      <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} />
+                    </div>
+                    <div className="field">
+                      <label>End Date</label>
+                      <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} />
+                    </div>
+                    <div className="field">
+                      <label>Target Country</label>
+                      <select name="country_id" value={formData.country_id} onChange={handleChange}>
+                        <option value="">Select Country</option>
+                        {countries.map(c => <option key={c.id} value={c.id}>{c.country}</option>)}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>Primary Sector <span className="required-star">*</span></label>
+                      <select name="sector" value={formData.sector} onChange={handleChange} required>
+                        <option value="">Choose Sector</option>
+                        {sectors.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>Core AI Technology <span className="required-star">*</span></label>
+                      <select name="technology" value={formData.technology} onChange={handleChange} required>
+                        <option value="">Choose Technology</option>
+                        {technologies.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
                   </div>
-                  <div className="field">
-                    <label>End Date (Optional)</label>
-                    <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} />
+                </div>
+
+                <div className="form-section">
+                  <div className="section-heading">
+                    <span className="section-step">02</span>
+                    <div>
+                      <h4>Project Details</h4>
+                      <p>Description and SDG alignment</p>
+                    </div>
                   </div>
-                  <div className="field">
-                    <label>Target Country</label>
-                    <select name="country_id" value={formData.country_id} onChange={handleChange}>
-                      <option value="">Select Country</option>
-                      {countries.map(c => <option key={c.id} value={c.id}>{c.country}</option>)}
-                    </select>
+
+                  <div className="field full">
+                    <label>Description <span className="required-star">*</span></label>
+                    <textarea name="description" value={formData.description} onChange={handleChange} required rows="5" placeholder="Briefly explain the project goals, impact and current progress..."></textarea>
                   </div>
-                  <div className="field">
-                    <label>Primary Sector *</label>
-                    <select name="sector" value={formData.sector} onChange={handleChange} required>
-                      <option value="">Choose Sector</option>
-                      {sectors.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>Core AI Technology *</label>
-                    <select name="technology" value={formData.technology} onChange={handleChange} required>
-                      <option value="">Choose Technology</option>
-                      {technologies.map(t => <option key={t} value={t}>{t}</option>)}
+
+                  <div className="field full">
+                    <label>SDG Alignment</label>
+                    <select name="sdg_id" value={formData.sdg_id} onChange={handleChange}>
+                      <option value="">Select SDG</option>
+                      {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
                     </select>
                   </div>
                 </div>
 
-                <div className="field full">
-                  <label>SDG Alignment</label>
-                  <select name="sdg_alignment" value={formData.sdg_alignment} onChange={handleChange}>
-                    <option value="">Select SDG</option>
-                    {sdgs.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
+                <div className="form-section">
+                  <div className="section-heading">
+                    <span className="section-step">03</span>
+                    <div>
+                      <h4>Attachments &amp; Stakeholders</h4>
+                      <p>Supporting files and partner organizations</p>
+                    </div>
+                  </div>
 
-                <div className="field full">
-                  <label>Description *</label>
-                  <textarea name="description" value={formData.description} onChange={handleChange} required rows="4" placeholder="Briefly explain the project goals, impact and current progress..."></textarea>
-                </div>
+                  <div className="field full">
+                    <label>Attachments (PDF, Images, etc.)</label>
+                    <div className="file-upload-wrapper">
+                      <input 
+                        type="file" 
+                        multiple 
+                        onChange={handleFileChange} 
+                        className="file-input-hidden"
+                        id="project-files"
+                      />
+                      <label htmlFor="project-files" className="file-upload-label">
+                        <FaPlus className="upload-icon" />
+                        <span>{formData.files.length > 0 ? `${formData.files.length} files selected` : 'Click to select files'}</span>
+                      </label>
+                      {formData.files.length > 0 && (
+                        <div className="file-preview-list">
+                          {formData.files.map((f, idx) => (
+                            <div key={idx} className="file-preview-item">
+                              <span className="file-name">{f.name}</span>
+                              <span className="file-size">({(f.size / 1024).toFixed(1)} KB)</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                <div className="field full">
-                  <label>Attachments (PDF, Images, etc.)</label>
-                  <div className="file-upload-wrapper">
-                    <input 
-                      type="file" 
-                      multiple 
-                      onChange={handleFileChange} 
-                      className="file-input-hidden"
-                      id="project-files"
-                    />
-                    <label htmlFor="project-files" className="file-upload-label">
-                      <FaPlus className="upload-icon" />
-                      <span>{formData.files.length > 0 ? `${formData.files.length} files selected` : 'Click to select files'}</span>
-                    </label>
-                    {formData.files.length > 0 && (
-                      <div className="file-preview-list">
-                        {formData.files.map((f, idx) => (
-                          <div key={idx} className="file-preview-item">
-                            <span className="file-name">{f.name}</span>
-                            <span className="file-size">({(f.size / 1024).toFixed(1)} KB)</span>
+                  <div className="field full stakeholders-field">
+                    <label>Project Stakeholders <span className="required-star">*</span></label>
+                    <p className="field-hint">Select the organizations involved in this project and define their roles.</p>
+                    
+                    <div className="multi-choice-container">
+                      <div className="list-search-wrapper">
+                        <FaSearch className="search-icon" />
+                        <input 
+                          type="text" 
+                          placeholder="Filter organizations..." 
+                          value={stakeholderSearch}
+                          onChange={(e) => setStakeholderSearch(e.target.value)}
+                        />
+                        {selectedStakeholders.length > 0 && (
+                          <span className="selected-count-badge">{selectedStakeholders.length} selected</span>
+                        )}
+                      </div>
+
+                      <div className="stakeholders-multi-list">
+                        {allStakeholders
+                          .filter(s => s.name.toLowerCase().includes(stakeholderSearch.toLowerCase()))
+                          .map(s => {
+                            const isSelected = selectedStakeholders.some(ss => ss.stakeholder_id === s.id)
+                            return (
+                              <div key={s.id} className={`list-choice-item ${isSelected ? 'selected' : ''}`}>
+                                <div className="item-main-info" onClick={() => toggleStakeholder(s.id)}>
+                                  <div className={`custom-checkbox ${isSelected ? 'checked' : ''}`}>
+                                    {isSelected && <FaCheck />}
+                                  </div>
+                                  <div className="org-details">
+                                    <span className="org-name">{s.name}</span>
+                                    <span className="org-meta">{s.type} · {s.country}</span>
+                                  </div>
+                                </div>
+                                
+                                {isSelected && (
+                                  <div className="role-picker">
+                                    <label>Role:</label>
+                                    <select 
+                                      value={selectedStakeholders.find(ss => ss.stakeholder_id === s.id)?.role || 'partner'}
+                                      onChange={(e) => updateStakeholderRole(s.id, e.target.value)}
+                                    >
+                                      <option value="partner">Partner</option>
+                                      <option value="developer">Developer</option>
+                                      <option value="research">Research</option>
+                                      <option value="funding">Funding</option>
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        {allStakeholders.filter(s => s.name.toLowerCase().includes(stakeholderSearch.toLowerCase())).length === 0 && (
+                          <div className="no-results-msg">No organizations matching your search.</div>
+                        )}
+                      </div>
+
+                      <div className="list-footer">
+                        <button type="button" className="btn-create-new" onClick={() => setShowAddStakeholder(true)}>
+                          <FaPlus /> Can't find an organization? Create new
+                        </button>
+                      </div>
+                    </div>
+
+                    {showAddStakeholder && (
+                      <div className="new-stakeholder-modal-overlay">
+                        <div className="new-stakeholder-modal">
+                          <div className="modal-header">
+                            <h3>Create New Organization</h3>
+                            <button type="button" className="close-btn" onClick={() => setShowAddStakeholder(false)}><FaTimes /></button>
                           </div>
-                        ))}
+                          <div className="modal-body">
+                            <div className="form-grid-mini">
+                              <div className="field">
+                                <label>Name <span className="required-star">*</span></label>
+                                <input name="name" value={newStakeholder.name} onChange={handleNewStakeholderChange} placeholder="e.g. AI Research Lab" required />
+                              </div>
+                              <div className="field">
+                                <label>Type <span className="required-star">*</span></label>
+                                <select name="type" value={newStakeholder.type} onChange={handleNewStakeholderChange} required>
+                                  <option value="">Select Type</option>
+                                  <option value="business">Business</option>
+                                  <option value="university">University</option>
+                                  <option value="government">Government</option>
+                                  <option value="NGO">NGO</option>
+                                  <option value="lab">Research Lab</option>
+                                  <option value="company">Company</option>
+                                </select>
+                              </div>
+                              <div className="field">
+                                <label>Country</label>
+                                <input name="country" value={newStakeholder.country} onChange={handleNewStakeholderChange} placeholder="Country name" />
+                              </div>
+                              <div className="field">
+                                <label>Website</label>
+                                <input name="website" value={newStakeholder.website} onChange={handleNewStakeholderChange} placeholder="https://..." />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="modal-footer">
+                            <button type="button" className="cancel-btn" onClick={() => setShowAddStakeholder(false)}>Cancel</button>
+                            <button type="button" className="add-btn" onClick={addNewStakeholder}>Create & Add</button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div className="field full stakeholders-field">
-                  <label>Project Stakeholders *</label>
-                  <p className="field-hint">Select the organizations involved in this project and define their roles.</p>
-                  
-                  <div className="multi-choice-container">
-                    <div className="list-search-wrapper">
-                      <FaSearch className="search-icon" />
-                      <input 
-                        type="text" 
-                        placeholder="Filter organizations..." 
-                        value={stakeholderSearch}
-                        onChange={(e) => setStakeholderSearch(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="stakeholders-multi-list">
-                      {allStakeholders
-                        .filter(s => s.name.toLowerCase().includes(stakeholderSearch.toLowerCase()))
-                        .map(s => {
-                          const isSelected = selectedStakeholders.some(ss => ss.stakeholder_id === s.id)
-                          return (
-                            <div key={s.id} className={`list-choice-item ${isSelected ? 'selected' : ''}`}>
-                              <div className="item-main-info" onClick={() => toggleStakeholder(s.id)}>
-                                <div className={`custom-checkbox ${isSelected ? 'checked' : ''}`}>
-                                  {isSelected && <FaCheck />}
-                                </div>
-                                <div className="org-details">
-                                  <span className="org-name">{s.name}</span>
-                                  <span className="org-meta">{s.type} · {s.country}</span>
-                                </div>
-                              </div>
-                              
-                              {isSelected && (
-                                <div className="role-picker">
-                                  <label>Role:</label>
-                                  <select 
-                                    value={selectedStakeholders.find(ss => ss.stakeholder_id === s.id)?.role || 'partner'}
-                                    onChange={(e) => updateStakeholderRole(s.id, e.target.value)}
-                                  >
-                                    <option value="partner">Partner</option>
-                                    <option value="developer">Developer</option>
-                                    <option value="research">Research</option>
-                                    <option value="funding">Funding</option>
-                                  </select>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
-                      {allStakeholders.filter(s => s.name.toLowerCase().includes(stakeholderSearch.toLowerCase())).length === 0 && (
-                        <div className="no-results-msg">No organizations matching your search.</div>
-                      )}
-                    </div>
-
-                    <div className="list-footer">
-                      <button type="button" className="btn-create-new" onClick={() => setShowAddStakeholder(true)}>
-                        <FaPlus /> Can't find an organization? Create new
-                      </button>
-                    </div>
-                  </div>
-
-                  {showAddStakeholder && (
-                    <div className="new-stakeholder-modal-overlay">
-                      <div className="new-stakeholder-modal">
-                        <div className="modal-header">
-                          <h3>Create New Organization</h3>
-                          <button type="button" className="close-btn" onClick={() => setShowAddStakeholder(false)}><FaTimes /></button>
-                        </div>
-                        <div className="modal-body">
-                          <div className="form-grid-mini">
-                            <div className="field">
-                              <label>Name *</label>
-                              <input name="name" value={newStakeholder.name} onChange={handleNewStakeholderChange} placeholder="e.g. AI Research Lab" required />
-                            </div>
-                            <div className="field">
-                              <label>Type *</label>
-                              <select name="type" value={newStakeholder.type} onChange={handleNewStakeholderChange} required>
-                                <option value="">Select Type</option>
-                                <option value="business">Business</option>
-                                <option value="university">University</option>
-                                <option value="government">Government</option>
-                                <option value="NGO">NGO</option>
-                                <option value="lab">Research Lab</option>
-                                <option value="company">Company</option>
-                              </select>
-                            </div>
-                            <div className="field">
-                              <label>Country</label>
-                              <input name="country" value={newStakeholder.country} onChange={handleNewStakeholderChange} placeholder="Country name" />
-                            </div>
-                            <div className="field">
-                              <label>Website</label>
-                              <input name="website" value={newStakeholder.website} onChange={handleNewStakeholderChange} placeholder="https://..." />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="modal-footer">
-                          <button type="button" className="cancel-btn" onClick={() => setShowAddStakeholder(false)}>Cancel</button>
-                          <button type="button" className="add-btn" onClick={addNewStakeholder}>Create & Add</button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="form-footer">
@@ -627,7 +650,7 @@ function ProjectStocktaking() {
                           </div>
                         </div>
                         <div className="sdg-badge">
-                          {getSDGNumber(p.sdg_alignment) || 'N/A'}
+                          {p.sdg ? `SDG${p.sdg.goal_number}` : 'N/A'}
                         </div>
                       </div>
 
@@ -837,37 +860,114 @@ function ProjectStocktaking() {
         .modern-form-card {
           background: #fff;
           border-radius: 32px;
-          padding: 40px;
+          padding: 48px;
           margin-bottom: 40px;
           border: 1px solid #f1f5f9;
           box-shadow: 0 20px 50px rgba(0,0,0,0.05);
         }
 
-        .form-header { margin-bottom: 32px; }
-        .form-header h3 { font-size: 1.5rem; font-weight: 800; margin-bottom: 8px; }
-        .form-header p { color: var(--p-text-light); }
-
-        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-        .field { display: flex; flex-direction: column; gap: 8px; }
-        .field.full { grid-column: span 2; }
-        .field label { font-weight: 700; font-size: 0.9rem; color: var(--p-secondary); }
-        .field input, .field select, .field textarea {
-          padding: 14px 18px; border-radius: 14px; border: 2px solid #f1f5f9; background: #f8fafc;
-          font-family: inherit; font-size: 1rem; outline: none; transition: 0.2s;
+        .form-header {
+          text-align: center;
+          margin-bottom: 40px;
+          padding-bottom: 32px;
+          border-bottom: 1px solid #f1f5f9;
         }
-        .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--p-primary); background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.05); }
+        .form-header h3 { font-size: 1.75rem; font-weight: 800; margin-bottom: 8px; }
+        .form-header p { color: var(--p-text-light); font-size: 1rem; }
+
+        .form-step-indicator {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0;
+          margin-bottom: 24px;
+        }
+        .step-dot {
+          width: 12px; height: 12px;
+          border-radius: 50%;
+          background: #e2e8f0;
+          transition: 0.3s;
+        }
+        .step-dot.active { background: var(--p-primary); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
+        .step-line {
+          width: 48px; height: 2px;
+          background: #e2e8f0;
+          margin: 0 8px;
+        }
+
+        .form-section {
+          margin-bottom: 36px;
+          padding: 28px;
+          background: #fafbfc;
+          border-radius: 20px;
+          border: 1px solid #f1f5f9;
+          animation: fadeUp 0.4s ease both;
+        }
+
+        .section-heading {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-bottom: 24px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .section-step {
+          width: 40px; height: 40px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #2563eb, #7c3aed);
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.85rem;
+          font-weight: 800;
+          flex-shrink: 0;
+        }
+        .section-heading h4 { font-size: 1.15rem; font-weight: 800; margin: 0 0 2px; }
+        .section-heading p { font-size: 0.85rem; color: var(--p-text-light); margin: 0; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field.full { grid-column: span 2; }
+        .field label { font-weight: 700; font-size: 0.85rem; color: var(--p-secondary); }
+        .required-star { color: #ef4444; }
+
+        .field input, .field select, .field textarea {
+          padding: 14px 18px; border-radius: 14px; border: 2px solid #e2e8f0; background: #fff;
+          font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s;
+        }
+        .field input:focus, .field select:focus, .field textarea:focus {
+          border-color: var(--p-primary); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+        }
 
         .form-footer {
-          margin-top: 32px; padding-top: 32px; border-top: 1px solid #f1f5f9;
-          display: flex; justify-content: flex-end; gap: 16px;
+          margin-top: 8px; padding-top: 24px;
+          display: flex; justify-content: flex-end; gap: 12px;
         }
 
-        .cancel-btn { background: #f8fafc; border: none; padding: 14px 28px; border-radius: 14px; font-weight: 700; cursor: pointer; color: var(--p-text-light); }
-        .submit-action-btn {
-          background: var(--p-primary); color: #fff; border: none; padding: 14px 28px; border-radius: 14px;
-          font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.3s;
+        .cancel-btn {
+          background: #f1f5f9; border: none; padding: 14px 28px; border-radius: 14px;
+          font-weight: 700; cursor: pointer; color: #64748b; transition: 0.2s; font-family: inherit;
         }
-        .submit-action-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
+        .cancel-btn:hover { background: #e2e8f0; }
+        .submit-action-btn {
+          background: linear-gradient(135deg, #2563eb, #3b82f6);
+          color: #fff; border: none; padding: 14px 32px; border-radius: 14px;
+          font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px;
+          transition: 0.3s; font-family: inherit;
+        }
+        .submit-action-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3); }
+
+        .selected-count-badge {
+          background: #eff6ff;
+          color: var(--p-primary);
+          font-size: 0.75rem;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 100px;
+          white-space: nowrap;
+        }
 
         .modern-projects-grid {
           display: grid;
@@ -1115,6 +1215,16 @@ function ProjectStocktaking() {
           gap: 12px;
           background: #f8fafc;
         }
+        .close-btn {
+          background: none; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer; padding: 4px;
+        }
+        .close-btn:hover { color: var(--p-secondary); }
+        .add-btn {
+          background: linear-gradient(135deg, #2563eb, #3b82f6);
+          color: #fff; border: none; padding: 12px 24px; border-radius: 12px;
+          font-weight: 700; cursor: pointer; font-family: inherit; transition: 0.2s;
+        }
+        .add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
 
         .field-hint { font-size: 0.85rem; color: var(--p-text-light); margin-bottom: 16px; margin-top: -8px; }
 
@@ -1192,6 +1302,16 @@ function ProjectStocktaking() {
           .filters-grid { grid-template-columns: 1fr; }
           .form-grid { grid-template-columns: 1fr; }
           .field.full { grid-column: span 1; }
+          .modern-form-card { padding: 32px 24px; }
+          .form-section { padding: 20px; }
+          .step-line { width: 24px; }
+        }
+        @media (max-width: 600px) {
+          .modern-form-card { padding: 24px 16px; }
+          .section-heading { flex-direction: column; align-items: flex-start; gap: 10px; }
+          .form-footer { flex-direction: column-reverse; }
+          .form-footer button { width: 100%; justify-content: center; }
+          .form-step-indicator { display: none; }
         }
       `}</style>
     </div>

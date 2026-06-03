@@ -80,8 +80,8 @@ def generate_annual_report_html(year=None):
 
         sdg_counter = Counter()
         for p in projects_year:
-            nums = parse_sdg_numbers(p.sdg_alignment)
-            sdg_counter.update(nums)
+            if p.sdg:
+                sdg_counter[p.sdg.goal_number] += 1
 
         sdgs_all = db.query(SDG).all()
         sdg_map = {s.goal_number: s for s in sdgs_all}

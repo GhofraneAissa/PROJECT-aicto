@@ -202,7 +202,7 @@ def get_user_projects(user_id: int, db: Session = Depends(get_db)):
             "country": cname or "",
             "description": (p.description or "")[:200],
             "status": p.status or "",
-            "sdg_alignment": p.sdg_alignment or "",
+            "sdg_id": p.sdg_id,
             "year_of_implementation": p.year_of_implementation,
             "start_date": str(p.start_date) if p.start_date else None,
             "end_date": str(p.end_date) if p.end_date else None,
