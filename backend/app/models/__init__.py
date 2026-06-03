@@ -5,3 +5,4 @@ from app.models.stakeholder import Stakeholder
 from app.models.resource import Resource
 from app.models.country import Country
 from app.models.sdg import SDG
+from app.models.chat import ChatSession, ChatMessage
