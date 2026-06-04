@@ -7,7 +7,7 @@ import {
   FaArrowRight, FaLightbulb, FaMicrochip, FaLayerGroup
 } from 'react-icons/fa'
 
-const API_BASE = 'http://localhost:8000'
+import { API_BASE } from '../config'
 
 function highlightText(text, query) {
   if (!text || !query) return text || ''

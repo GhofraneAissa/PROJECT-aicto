@@ -14,7 +14,11 @@ from app.services.email_service import send_rejection_email, send_org_rejection_
 
 router = APIRouter()
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "super-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+if not SECRET_KEY or SECRET_KEY in ("super-secret-key-change-in-production", "change-this-to-a-secure-random-string"):
+    import logging
+    logging.warning("[SECURITY] JWT_SECRET_KEY is not set or is using a default value! Set it in .env for production.")
+    SECRET_KEY = SECRET_KEY or "insecure-dev-key-change-me"
 ALGORITHM = "HS256"
 
 def get_admin_user(authorization: str = Header(None), db: Session = Depends(get_db)):
@@ -92,95 +96,67 @@ def get_org_stats(db: Session = Depends(get_db), admin: User = Depends(get_admin
     pending = total - approved - rejected
     return AdminOrgStats(pending_approval=pending, approved=approved, rejected=rejected)
 
+def _serialize_org(o: User) -> AdminPendingOrganization:
+    return AdminPendingOrganization(
+        id=o.id,
+        organization_name=o.organization_name,
+        organization_type=o.organization_type,
+        email=o.email,
+        phone=o.phone,
+        website=o.website,
+        country=o.country,
+        city=o.city,
+        address=o.address,
+        sector=o.sector,
+        description=o.description,
+        logo=o.logo,
+        role=o.role,
+        is_active=o.is_active,
+        is_approved=o.is_approved,
+        rejection_reason=o.rejection_reason,
+        created_at=o.created_at,
+        updated_at=o.updated_at,
+        last_login=o.last_login,
+    )
+
 @router.get("/orgs/pending", response_model=List[AdminPendingOrganization])
-def get_pending_organizations(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def get_pending_organizations(page: int = 1, page_size: int = 20, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    offset = (page - 1) * page_size
     orgs = (
         db.query(User)
         .filter(User.role == "organization", User.is_approved == False, User.rejection_reason.is_(None))
         .order_by(User.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
         .all()
     )
-    return [AdminPendingOrganization(
-        id=o.id,
-        organization_name=o.organization_name,
-        organization_type=o.organization_type,
-        email=o.email,
-        phone=o.phone,
-        website=o.website,
-        country=o.country,
-        city=o.city,
-        address=o.address,
-        sector=o.sector,
-        description=o.description,
-        logo=o.logo,
-        role=o.role,
-        is_active=o.is_active,
-        is_approved=o.is_approved,
-        rejection_reason=o.rejection_reason,
-        created_at=o.created_at,
-        updated_at=o.updated_at,
-        last_login=o.last_login,
-    ) for o in orgs]
+    return [_serialize_org(o) for o in orgs]
 
 @router.get("/orgs/rejected", response_model=List[AdminPendingOrganization])
-def get_rejected_organizations(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def get_rejected_organizations(page: int = 1, page_size: int = 20, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    offset = (page - 1) * page_size
     orgs = (
         db.query(User)
         .filter(User.role == "organization", User.rejection_reason.isnot(None))
         .order_by(User.updated_at.desc())
+        .offset(offset)
+        .limit(page_size)
         .all()
     )
-    return [AdminPendingOrganization(
-        id=o.id,
-        organization_name=o.organization_name,
-        organization_type=o.organization_type,
-        email=o.email,
-        phone=o.phone,
-        website=o.website,
-        country=o.country,
-        city=o.city,
-        address=o.address,
-        sector=o.sector,
-        description=o.description,
-        logo=o.logo,
-        role=o.role,
-        is_active=o.is_active,
-        is_approved=o.is_approved,
-        rejection_reason=o.rejection_reason,
-        created_at=o.created_at,
-        updated_at=o.updated_at,
-        last_login=o.last_login,
-    ) for o in orgs]
+    return [_serialize_org(o) for o in orgs]
 
 @router.get("/orgs/approved", response_model=List[AdminPendingOrganization])
-def get_approved_organizations(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def get_approved_organizations(page: int = 1, page_size: int = 20, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    offset = (page - 1) * page_size
     orgs = (
         db.query(User)
         .filter(User.role == "organization", User.is_approved == True)
         .order_by(User.updated_at.desc())
+        .offset(offset)
+        .limit(page_size)
         .all()
     )
-    return [AdminPendingOrganization(
-        id=o.id,
-        organization_name=o.organization_name,
-        organization_type=o.organization_type,
-        email=o.email,
-        phone=o.phone,
-        website=o.website,
-        country=o.country,
-        city=o.city,
-        address=o.address,
-        sector=o.sector,
-        description=o.description,
-        logo=o.logo,
-        role=o.role,
-        is_active=o.is_active,
-        is_approved=o.is_approved,
-        rejection_reason=o.rejection_reason,
-        created_at=o.created_at,
-        updated_at=o.updated_at,
-        last_login=o.last_login,
-    ) for o in orgs]
+    return [_serialize_org(o) for o in orgs]
 
 @router.put("/orgs/{user_id}/approve")
 def approve_organization(user_id: int, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):

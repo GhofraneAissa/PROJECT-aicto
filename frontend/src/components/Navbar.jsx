@@ -112,7 +112,7 @@ function Navbar() {
               <button
                 className="avatar-btn"
                 onClick={() => setProfileOpen(!profileOpen)}
-                aria-label="User profile"
+                aria-label={t('nav.myProfile')}
               >
                 {user?.logo ? (
                   <img src={user.logo} alt={displayName} className="avatar-img" />
@@ -146,14 +146,14 @@ function Navbar() {
 
                   <Link to="/my-projects" className="dropdown-item" onClick={() => setProfileOpen(false)}>
                     <FaProjectDiagram size={16} />
-                    <span>My Projects</span>
+                    <span>{t('nav.myProjects')}</span>
                   </Link>
 
                   {user?.role === 'admin' && (
                     <>
                       <Link to="/admin" className="dropdown-item" onClick={() => setProfileOpen(false)}>
                         <FaClipboardList size={16} />
-                        <span>Moderation</span>
+                        <span>{t('nav.moderation')}</span>
                       </Link>
                       <div className="dropdown-divider"></div>
                     </>
@@ -173,7 +173,7 @@ function Navbar() {
           )}
 
           <div className="lang-switcher" ref={langDropdownRef}>
-            <button className="lang-btn" onClick={() => setLangOpen(!langOpen)} aria-label="Language">
+            <button className="lang-btn" onClick={() => setLangOpen(!langOpen)} aria-label={t('nav.language')}>
               <FaGlobe size={14} /> {i18n.language.toUpperCase()}
             </button>
             {langOpen && (

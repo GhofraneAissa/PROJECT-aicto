@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import {
   FaRobot, FaTimes, FaPaperPlane, FaSpinner, FaProjectDiagram,
   FaBuilding, FaBook, FaPlus, FaTrash, FaChevronDown, FaChevronUp,
   FaFile, FaImage, FaPaperclip,
 } from 'react-icons/fa'
-
-const API = 'http://localhost:8000'
+import { API_BASE } from '../config'
+const API = API_BASE
 const entityIcon = { project: <FaProjectDiagram />, stakeholder: <FaBuilding />, resource: <FaBook /> }
 const entityColor = { project: '#059669', stakeholder: '#2563eb', resource: '#f59e0b' }
 const LS_KEY = 'sarai_active_session'
@@ -35,6 +36,8 @@ function ChatBot() {
   const fileRef = useRef(null)
   const endRef = useRef(null)
   const msgCache = useRef({})
+
+  const { t } = useTranslation()
 
   const scrollDown = () => endRef.current?.scrollIntoView({ behavior: 'smooth' })
   useEffect(scrollDown, [messages])
@@ -147,7 +150,7 @@ function ChatBot() {
       msgCache.current[activeSid] = [...(msgCache.current[activeSid] || []), { role: 'user', content: userMsg, attachments }, newMsg]
       await loadSessions()
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I could not process your request. Please try again.' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: t('chat.errorProcessing') }])
     }
     setLoading(false)
   }
@@ -175,7 +178,7 @@ function ChatBot() {
 
   const attachLabel = (a) => {
     if (a.is_image) return <><FaImage /> {a.original_name}</>
-    if (a.has_text) return <><FaFile style={{color:'#059669'}} /> {a.original_name} <span className="chat-doc-read">(read)</span></>
+    if (a.has_text) return <><FaFile style={{color:'#059669'}} /> {a.original_name} <span className="chat-doc-read">{t('chat.readLabel')}</span></>
     return <><FaFile /> {a.original_name}</>
   }
 
@@ -187,7 +190,7 @@ function ChatBot() {
 
   return (
     <>
-      <button className="chat-fab" onClick={() => setOpen(!open)} aria-label="Chat">
+      <button className="chat-fab" onClick={() => setOpen(!open)} aria-label={t('chat.chatLabel')}>
         {open ? <FaTimes /> : <FaRobot />}
       </button>
 
@@ -195,12 +198,12 @@ function ChatBot() {
         <div className="chat-window">
           <div className="chat-header">
             <FaRobot size={20} />
-            <span className="chat-header-title">{activeSession?.title || 'SARAI Assistant'}</span>
+            <span className="chat-header-title">{activeSession?.title || t('chat.assistantTitle')}</span>
             <div className="chat-header-actions">
-              <button className="chat-hdr-btn" onClick={() => setShowSessions(!showSessions)} title="Sessions">
+              <button className="chat-hdr-btn" onClick={() => setShowSessions(!showSessions)} title={t('chat.sessions')}>
                 {showSessions ? <FaChevronUp /> : <FaChevronDown />}
               </button>
-              <button className="chat-hdr-btn" onClick={createSession} title="New Chat"><FaPlus /></button>
+              <button className="chat-hdr-btn" onClick={createSession} title={t('chat.newChat')}><FaPlus /></button>
             </div>
           </div>
 
@@ -213,7 +216,7 @@ function ChatBot() {
                   onClick={() => { switchSession(s.session_id); setShowSessions(false) }}
                 >
                   <span className="chat-session-title">{s.title}</span>
-                  <span className="chat-session-meta">{s.message_count} msgs</span>
+                  <span className="chat-session-meta">{t('chat.messageCount', { count: s.message_count })}</span>
                   <button className="chat-session-del" onClick={(e) => deleteSession(s.session_id, e)}><FaTrash size={10} /></button>
                 </div>
               ))}
@@ -235,7 +238,7 @@ function ChatBot() {
                   )}
                   <div>{msg.content}</div>
                   {msg.provider && msg.provider !== 'template' && (
-                    <div className="chat-badge">{msg.provider === 'groq' ? 'AI' : 'Ollama'} · {msg.timeMs}ms</div>
+                    <div className="chat-badge">{msg.provider === 'groq' ? t('chat.providerAi') : t('chat.providerOllama')} · {msg.timeMs}{t('chat.milliseconds')}</div>
                   )}
                 </div>
                 {msg.results?.length > 0 && (
@@ -252,7 +255,7 @@ function ChatBot() {
             ))}
             {loading && (
               <div className="chat-msg assistant">
-                <div className="chat-bubble loading"><FaSpinner className="spin" /> Thinking...</div>
+                <div className="chat-bubble loading"><FaSpinner className="spin" /> {t('chat.thinking')}</div>
               </div>
             )}
             <div ref={endRef} />
@@ -277,7 +280,7 @@ function ChatBot() {
             <input
               type="text"
               className="chat-input"
-              placeholder="Ask about projects, stakeholders..."
+              placeholder={t('chat.inputPlaceholder')}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

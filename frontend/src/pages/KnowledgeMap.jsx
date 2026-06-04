@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FaGlobeAmericas, FaRocket, FaChartBar, FaArrowRight, FaTimes, FaMapMarkerAlt, FaProjectDiagram, FaUsers } from 'react-icons/fa'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 import L from 'leaflet'
@@ -54,6 +55,7 @@ const getRadius = (count) => {
 function MapController({ mapData, onSelectCountry }) {
   const map = useMap()
   const circlesRef = useRef([])
+  const { t } = useTranslation()
 
   useEffect(() => {
     if (!mapData) return
@@ -82,8 +84,8 @@ function MapController({ mapData, onSelectCountry }) {
             circle.setStyle({ fillOpacity: 1, weight: 3, color: '#f59e0b' })
             circle.bindTooltip(
               `<strong style="font-size:14px">${name}</strong><br/>
-               <span style="color:#93c5fd">Projects:</span> ${stats?.project_count || 0}
-               <span style="margin-left:12px;color:#93c5fd">Stakeholders:</span> ${stats?.stakeholder_count || 0}`,
+               <span style="color:#93c5fd">${t('map.tooltipProjects')}</span> ${stats?.project_count || 0}
+               <span style="margin-left:12px;color:#93c5fd">${t('map.tooltipStakeholders')}</span> ${stats?.stakeholder_count || 0}`,
               { direction: 'top', offset: L.point(0, -10), className: 'map-tooltip' }
             ).openTooltip()
           },
@@ -106,6 +108,7 @@ function KnowledgeMap() {
   const [mapData, setMapData] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedCountry, setSelectedCountry] = useState(null)
+  const { t } = useTranslation()
 
   useEffect(() => {
     fetch(`${API_BASE}/api/analytics/map-data`)
@@ -126,18 +129,21 @@ function KnowledgeMap() {
         </div>
         <div className="container hero-container">
           <div className="hero-content">
-            <div className="hero-badge"><FaGlobeAmericas /><span>Interactive Map</span></div>
+            <div className="hero-badge"><FaGlobeAmericas /><span>{t('map.pageTitle')}</span></div>
           </div>
         </div>
       </section>
       <section className="map-body">
         <div className="container" style={{ textAlign: 'center', padding: '80px 24px' }}>
           <div className="spinner"></div>
-          <p style={{ color: 'var(--p-text-light)', marginTop: 16 }}>Loading regional data...</p>
+          <p style={{ color: 'var(--p-text-light)', marginTop: 16 }}>{t('map.loading')}</p>
         </div>
       </section>
     </div>
   )
+
+  const activeCount = mapData.filter(d => d.project_count > 0).length
+  const totalCount = mapData.reduce((a, b) => a + b.project_count, 0)
 
   return (
     <div className="map-page">
@@ -150,10 +156,10 @@ function KnowledgeMap() {
           <div className="hero-content animate-up">
             <div className="hero-badge">
               <FaGlobeAmericas />
-              <span>Interactive Map</span>
+              <span>{t('map.pageTitle')}</span>
             </div>
-            <h1>Arab AI Activity <span className="text-gradient">Map</span></h1>
-            <p>Explore AI initiatives across the Arab region. Circle size and color indicate project density.</p>
+            <h1>{t('map.heroTitle')} <span className="text-gradient">{t('map.heroTitleHighlight')}</span></h1>
+            <p>{t('map.pageDesc')}. {t('map.pageDesc2')}</p>
           </div>
         </div>
       </section>
@@ -164,15 +170,15 @@ function KnowledgeMap() {
             <div className="map-header-bar">
               <div className="map-header-left">
                 <FaMapMarkerAlt className="header-icon" />
-                <span><strong>{mapData.filter(d => d.project_count > 0).length}</strong> active countries · <strong>{mapData.reduce((a, b) => a + b.project_count, 0)}</strong> total projects</span>
+                <span><strong>{activeCount}</strong> {t('map.activeCountries')} · <strong>{totalCount}</strong> {t('map.totalProjectsText')}</span>
               </div>
               <div className="map-legend">
-                <span className="legend-label">Project Density</span>
+                <span className="legend-label">{t('map.projectDensity')}</span>
                 <div className="legend-items">
-                  <span className="legend-item"><span className="dot" style={{ background: '#94a3b8' }}></span> 0</span>
-                  <span className="legend-item"><span className="dot" style={{ background: '#93c5fd' }}></span> 1-2</span>
-                  <span className="legend-item"><span className="dot" style={{ background: '#3b82f6' }}></span> 3-4</span>
-                  <span className="legend-item"><span className="dot" style={{ background: '#1e3a8a' }}></span> 5+</span>
+                  <span className="legend-item"><span className="dot" style={{ background: '#94a3b8' }}></span> {t('map.legend0')}</span>
+                  <span className="legend-item"><span className="dot" style={{ background: '#93c5fd' }}></span> {t('map.legend1_2')}</span>
+                  <span className="legend-item"><span className="dot" style={{ background: '#3b82f6' }}></span> {t('map.legend3_4')}</span>
+                  <span className="legend-item"><span className="dot" style={{ background: '#1e3a8a' }}></span> {t('map.legend5Plus')}</span>
                 </div>
               </div>
             </div>
@@ -211,23 +217,23 @@ function KnowledgeMap() {
               <div className="panel-stat">
                 <FaProjectDiagram />
                 <span className="stat-value">{selectedCountry.project_count}</span>
-                <span className="stat-label">Projects</span>
+                <span className="stat-label">{t('map.totalProjects')}</span>
               </div>
               <div className="panel-stat">
                 <FaUsers />
                 <span className="stat-value">{selectedCountry.stakeholder_count}</span>
-                <span className="stat-label">Stakeholders</span>
+                <span className="stat-label">{t('map.stakeholders')}</span>
               </div>
             </div>
 
             <div className="panel-card">
-              <h3><FaRocket /> Project Status</h3>
+              <h3><FaRocket /> {t('map.projectStatus')}</h3>
               <ResponsiveContainer width="100%" height={160}>
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Ongoing', value: selectedCountry.ongoing_projects },
-                      { name: 'Completed', value: selectedCountry.completed_projects }
+                      { name: t('projects.ongoing'), value: selectedCountry.ongoing_projects },
+                      { name: t('projects.completed'), value: selectedCountry.completed_projects }
                     ]}
                     cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={5} dataKey="value"
                   >
@@ -238,13 +244,13 @@ function KnowledgeMap() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="panel-mini-legend">
-                <span><span className="dot" style={{ background: '#f59e0b' }}></span> Ongoing ({selectedCountry.ongoing_projects})</span>
-                <span><span className="dot" style={{ background: '#10b981' }}></span> Completed ({selectedCountry.completed_projects})</span>
+                <span><span className="dot" style={{ background: '#f59e0b' }}></span> {t('projects.ongoing')} ({selectedCountry.ongoing_projects})</span>
+                <span><span className="dot" style={{ background: '#10b981' }}></span> {t('projects.completed')} ({selectedCountry.completed_projects})</span>
               </div>
             </div>
 
             <div className="panel-card">
-              <h3><FaChartBar /> Sector Distribution</h3>
+              <h3><FaChartBar /> {t('map.sectorDistribution')}</h3>
               {selectedCountry.sector_distribution.length > 0 ? (
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={selectedCountry.sector_distribution} layout="vertical">
@@ -255,23 +261,23 @@ function KnowledgeMap() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <p className="no-data">No sector data available.</p>
+                <p className="no-data">{t('map.noSectorData')}</p>
               )}
             </div>
 
             <div className="panel-info">
               <div className="panel-info-row">
-                <span className="info-label">Top Sector</span>
-                <span className="info-value">{selectedCountry.top_sector || 'N/A'}</span>
+                <span className="info-label">{t('map.topSector')}</span>
+                <span className="info-value">{selectedCountry.top_sector || t('projects.n/a')}</span>
               </div>
               <div className="panel-info-row">
-                <span className="info-label">Dominant Technology</span>
-                <span className="info-value">{selectedCountry.top_ai_technology || 'N/A'}</span>
+                <span className="info-label">{t('map.dominantTechnology')}</span>
+                <span className="info-value">{selectedCountry.top_ai_technology || t('projects.n/a')}</span>
               </div>
             </div>
 
             <Link to={`/projects?country=${encodeURIComponent(selectedCountry.country)}`} className="panel-cta">
-              All Projects in {selectedCountry.country} <FaArrowRight />
+              {t('map.allProjectsIn')} {selectedCountry.country} <FaArrowRight />
             </Link>
           </div>
         )}

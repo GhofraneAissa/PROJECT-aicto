@@ -53,8 +53,8 @@ function StakeholderDirectory() {
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
             >
-              {STAKEHOLDER_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
+              {STAKEHOLDER_TYPES.map(type => (
+                <option key={type} value={type}>{t(`stakeholders.filter${type === 'All' ? 'All' : type.replace(/ /g, '')}`, type)}</option>
               ))}
             </select>
           </div>

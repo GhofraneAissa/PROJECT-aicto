@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FaSearch, FaFilter, FaArrowRight, FaExternalLinkAlt } from 'react-icons/fa'
 
-const API_BASE = 'http://localhost:8000'
+import { API_BASE } from '../config'
 
 const SDG_COLORS = [
   '#E5243B', '#DDA63A', '#4C9F38', '#C5192D', '#FF3A21', '#26BDE2',
@@ -94,10 +94,10 @@ function SDGs() {
     <div className="sdg-page-wrapper">
       <div className="sdg-container">
         <div className="sdg-header-bar">
-          <div className="sdg-breadcrumb">FRAMEWORK / GLOBAL GOALS</div>
+          <div className="sdg-breadcrumb">{t('sdgs.badge2')}</div>
           <div className="sdg-header-row">
             <h1 className="sdg-main-title">
-              Sustainable Development <span className="sdg-title-blue">Goals</span>
+              {t('sdgs.title')}
             </h1>
             <div className="sdg-header-actions">
               <div className="sdg-search-box">
@@ -105,7 +105,7 @@ function SDGs() {
                 <input
                   type="text"
                   className="sdg-search-input"
-                  placeholder="Find a goal..."
+                  placeholder={t('sdgs.searchPlaceholder')}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
@@ -142,7 +142,7 @@ function SDGs() {
               })}
             </div>
             {filtered.length === 0 && (
-              <div className="sdg-no-results">No goals match your search</div>
+              <div className="sdg-no-results">{t('sdgs.noResults')}</div>
             )}
           </div>
 
@@ -152,7 +152,7 @@ function SDGs() {
                 <div className="sdg-detail-top">
                   <div className="sdg-detail-badge-row">
                     <span className="sdg-detail-badge" style={{ color: SDG_COLORS[goalIndex], background: `${SDG_COLORS[goalIndex]}18` }}>
-                      GOAL {selected.goal_number}
+                      {t('sdgs.goal')} {selected.goal_number}
                     </span>
                     <div className="sdg-detail-thumb">
                       <img src={selected.image_url} alt={selected.title} />
@@ -161,7 +161,7 @@ function SDGs() {
                   <h2 className="sdg-detail-title">{selected.title}</h2>
                   <p className="sdg-detail-desc">
                     {GLOBAL_GOALS[goalIndex] && (
-                      <>Take action to ensure {GLOBAL_GOALS[goalIndex].toLowerCase()} is achieved for all communities across the Arab region through AI-powered initiatives and collaborative projects.</>
+                      <>{t('sdgs.takeAction')}</>
                     )}
                   </p>
                 </div>
@@ -171,7 +171,7 @@ function SDGs() {
                 <div className="sdg-detail-stats">
                   <div className="sdg-stat-box sdg-stat-box--full">
                     <span className="sdg-stat-number">{stats[selected.id]?.projects || 0}</span>
-                    <span className="sdg-stat-label">Aligned Projects</span>
+                    <span className="sdg-stat-label">{t('sdgs.alignedProjects')}</span>
                   </div>
                 </div>
 
@@ -179,7 +179,7 @@ function SDGs() {
 
                 <div className="sdg-detail-actions">
                   <button className="sdg-btn-primary" onClick={() => navigate(`/projects?sdg=${selected.goal_number}`)}>
-                    Explore Aligned Projects <FaArrowRight />
+                    {t('sdgs.exploreAligned')} <FaArrowRight />
                   </button>
                   <a
                     href={`https://sdgs.un.org/goals/goal${selected.goal_number}`}
@@ -187,7 +187,7 @@ function SDGs() {
                     rel="noopener noreferrer"
                     className="sdg-btn-secondary"
                   >
-                    <FaExternalLinkAlt /> UN Progress Report
+                    <FaExternalLinkAlt /> {t('sdgs.unReport')}
                   </a>
                 </div>
               </div>

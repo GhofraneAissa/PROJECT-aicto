@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FaProjectDiagram, FaArrowRight, FaSpinner, FaExclamationCircle, FaHeart, FaLightbulb, FaGlobeAmericas, FaCity, FaRocket, FaMicrochip, FaShieldAlt, FaLeaf, FaClock, FaCheckCircle, FaTimesCircle, FaHourglassHalf } from 'react-icons/fa'
+import { API_BASE } from '../config'
 
 const statusConfig = {
-  pending: { label: 'Pending', icon: <FaHourglassHalf />, color: '#f59e0b', bg: '#fffbeb' },
-  approved: { label: 'Approved', icon: <FaCheckCircle />, color: '#059669', bg: '#ecfdf5' },
-  rejected: { label: 'Rejected', icon: <FaTimesCircle />, color: '#dc2626', bg: '#fef2f2' },
-  active: { label: 'Active', icon: <FaCheckCircle />, color: '#059669', bg: '#ecfdf5' },
-  Active: { label: 'Active', icon: <FaCheckCircle />, color: '#059669', bg: '#ecfdf5' },
-  Completed: { label: 'Completed', icon: <FaCheckCircle />, color: '#2563eb', bg: '#eff6ff' },
-  'In Progress': { label: 'In Progress', icon: <FaClock />, color: '#7c3aed', bg: '#f5f3ff' },
+  pending: { i18nKey: 'projects.status_pending', icon: <FaHourglassHalf />, color: '#f59e0b', bg: '#fffbeb' },
+  approved: { i18nKey: 'projects.status_approved', icon: <FaCheckCircle />, color: '#059669', bg: '#ecfdf5' },
+  rejected: { i18nKey: 'projects.status_rejected', icon: <FaTimesCircle />, color: '#dc2626', bg: '#fef2f2' },
+  active: { i18nKey: 'projects.status_active', icon: <FaCheckCircle />, color: '#059669', bg: '#ecfdf5' },
+  Active: { i18nKey: 'projects.status_active', icon: <FaCheckCircle />, color: '#059669', bg: '#ecfdf5' },
+  Completed: { i18nKey: 'projects.status_completed', icon: <FaCheckCircle />, color: '#2563eb', bg: '#eff6ff' },
+  'In Progress': { i18nKey: 'projects.status_inProgress', icon: <FaClock />, color: '#7c3aed', bg: '#f5f3ff' },
 }
 
 const getSectorInfo = (sector) => {
@@ -29,6 +31,7 @@ const getSectorInfo = (sector) => {
 }
 
 function MyProjects() {
+  const { t } = useTranslation()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -40,22 +43,22 @@ function MyProjects() {
       try {
         const u = JSON.parse(stored)
         setUser(u)
-        fetch(`http://localhost:8000/api/users/${u.id}/projects`)
+        fetch(`${API_BASE}/api/users/${u.id}/projects`)
           .then(res => res.json())
           .then(data => {
             setProjects(data.projects || [])
             setLoading(false)
           })
           .catch(err => {
-            setError('Failed to load projects')
+            setError(t('myProjects.loadError'))
             setLoading(false)
           })
       } catch {
-        setError('User not found. Please log in.')
+        setError(t('myProjects.userNotFound'))
         setLoading(false)
       }
     } else {
-      setError('Please log in to view your projects.')
+      setError(t('myProjects.loginRequired'))
       setLoading(false)
     }
   }, [])
@@ -65,7 +68,7 @@ function MyProjects() {
       <div className="my-projects-page">
         <div className="container" style={{ textAlign: 'center', padding: '100px 0' }}>
           <FaSpinner className="spin" size={32} style={{ color: '#2563eb' }} />
-          <p style={{ marginTop: 16, color: '#6b7280' }}>Loading your projects...</p>
+          <p style={{ marginTop: 16, color: '#6b7280' }}>{t('myProjects.loading')}</p>
         </div>
       </div>
     )
@@ -77,7 +80,7 @@ function MyProjects() {
         <div className="container" style={{ textAlign: 'center', padding: '100px 0' }}>
           <FaExclamationCircle size={48} style={{ color: '#9ca3af' }} />
           <h2 style={{ margin: '16px 0', color: '#374151' }}>{error}</h2>
-          <Link to="/" className="btn btn-primary">Go Home</Link>
+          <Link to="/" className="btn btn-primary">{t('myProjects.goHome')}</Link>
         </div>
       </div>
     )
@@ -90,34 +93,34 @@ function MyProjects() {
           <div className="mp-header-left">
             <FaProjectDiagram size={28} style={{ color: '#2563eb' }} />
             <div>
-              <h1>My Projects</h1>
-              <p>{projects.length} project{projects.length !== 1 ? 's' : ''} submitted</p>
+              <h1>{t('myProjects.title')}</h1>
+              <p>{t('myProjects.projectsSubmitted', { count: projects.length })}</p>
             </div>
           </div>
           <Link to="/projects" className="btn btn-primary">
-            <FaProjectDiagram /> Browse All Projects
+            <FaProjectDiagram /> {t('myProjects.browseAll')}
           </Link>
         </div>
 
         {projects.length === 0 ? (
           <div className="mp-empty">
             <FaProjectDiagram size={48} style={{ color: '#d1d5db' }} />
-            <h3>No projects yet</h3>
-            <p>You haven't submitted any projects yet.</p>
+            <h3>{t('myProjects.noProjects')}</h3>
+            <p>{t('myProjects.noProjectsDesc')}</p>
             <Link to="/projects" className="btn btn-primary">
-              Submit Your First Project
+              {t('myProjects.submitFirst')}
             </Link>
           </div>
         ) : (
           <div className="mp-grid">
             {projects.map(p => {
-              const st = statusConfig[p.status] || { label: p.status, icon: <FaClock />, color: '#6b7280', bg: '#f9fafb' }
+              const st = statusConfig[p.status] || { i18nKey: null, label: p.status, icon: <FaClock />, color: '#6b7280', bg: '#f9fafb' }
               const si = getSectorInfo(p.sector)
               return (
                 <Link to={`/projects/${p.id}`} key={p.id} className="mp-card">
                   <div className="mp-card-top">
                     <div className="mp-status" style={{ background: st.bg, color: st.color }}>
-                      {st.icon} {st.label}
+                      {st.icon} {st.i18nKey ? t(st.i18nKey) : st.label}
                     </div>
                     <div className="mp-sector-icon" style={{ color: si.color }}>
                       {si.icon}
@@ -132,12 +135,12 @@ function MyProjects() {
                   {p.description && <p className="mp-card-desc">{p.description}</p>}
                   {p.status === 'rejected' && p.rejection_reason && (
                     <div className="mp-rejection">
-                      <strong>Reason:</strong> {p.rejection_reason}
+                      <strong>{t('myProjects.reason')}:</strong> {p.rejection_reason}
                     </div>
                   )}
                   <div className="mp-card-footer">
                     <span className="mp-view-details">
-                      View Details <FaArrowRight />
+                      {t('myProjects.viewDetails')} <FaArrowRight />
                     </span>
                   </div>
                 </Link>

@@ -92,6 +92,10 @@ import time
 from datetime import datetime
 from app.services.pdf_report_service import generate_pdf_report
 from app.services.email_service import send_report_email
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from app.limiter import limiter
 
 REPORT_RECIPIENT = os.getenv("REPORT_EMAIL", "aissaghofrane1@gmail.com")
 REPORT_CHECK_INTERVAL = 30  # Check every 30 seconds
@@ -131,6 +135,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # CORS CONFIGURATION
 logger.info("[CORS] Configuring CORS middleware...")
 CORS_ORIGINS = [
@@ -153,6 +160,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 logger.info(f"[CORS] Allowed origins: {CORS_ORIGINS}")
+app.add_middleware(SlowAPIMiddleware)
 # Serve frontend static files
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
 if os.path.exists(frontend_dir):
@@ -205,6 +213,26 @@ def run_scheduled_report():
 
 @app.on_event("startup")
 def startup_event():
+    # Auto-seed countries if table is empty
+    try:
+        from app.database import SessionLocal
+        from app.models.country import Country
+        db = SessionLocal()
+        if db.query(Country).count() == 0:
+            logger.info("[SEED] Countries table is empty. Seeding...")
+            from seed_countries import seed_countries
+            seed_countries()
+        db.close()
+    except Exception as e:
+        logger.warning(f"[SEED] Could not seed countries: {e}")
+
+    # Auto-seed demo data (SDGs, stakeholders, projects, resources)
+    try:
+        from seed_data import seed_database
+        seed_database()
+    except Exception as e:
+        logger.warning(f"[SEED] Could not seed demo data: {e}")
+
     logger.info("[SCHEDULER] Starting background report scheduler (every day at 8:00 AM)...")
     logger.info(f"[SCHEDULER] Will send daily report at {SEND_HOUR:02d}:{SEND_MINUTE:02d} UTC")
     thread = threading.Thread(target=run_scheduled_report, daemon=True)

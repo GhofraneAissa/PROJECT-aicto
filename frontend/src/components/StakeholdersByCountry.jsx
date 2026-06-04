@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { FaExternalLinkAlt, FaChevronDown } from 'react-icons/fa'
-
-const API_BASE = 'http://localhost:8000'
+import { useTranslation } from 'react-i18next'
+import { API_BASE } from '../config'
 
 const TYPE_ICONS = {
   'University': '🏛',
@@ -24,6 +24,7 @@ const TYPE_COLORS = {
 }
 
 function StakeholdersByCountry({ searchQuery = '', typeFilter = 'All' }) {
+  const { t } = useTranslation()
   const [countries, setCountries] = useState([])
   const [stakeholders, setStakeholders] = useState([])
   const [openCountries, setOpenCountries] = useState(new Set())
@@ -121,7 +122,7 @@ function StakeholdersByCountry({ searchQuery = '', typeFilter = 'All' }) {
             ))}
           </div>
         ) : filteredCountries.length === 0 ? (
-          <div className="sbc-no-results">No stakeholders match your search</div>
+          <div className="sbc-no-results">{t('stakeholders.noResults')}</div>
         ) : (
           filteredCountries.map(countryName => {
             const list = getFilteredList(countryName)
@@ -141,7 +142,7 @@ function StakeholdersByCountry({ searchQuery = '', typeFilter = 'All' }) {
                     )}
                     <div className="sbc-country-info">
                       <span className="sbc-country-name">{countryName}</span>
-                      <span className="sbc-country-count">{isSearching || hasTypeFilter ? `${list.length} of ${totalAfterType}` : totalAll} Stakeholder{totalAll !== 1 ? 's' : ''}</span>
+                      <span className="sbc-country-count">{isSearching || hasTypeFilter ? t('stakeholders.totalCountFiltered', { count: list.length, total: totalAfterType }) : t('stakeholders.totalCount', { count: totalAll })}</span>
                     </div>
                   </div>
                   <FaChevronDown className={`sbc-chevron ${isOpen ? 'sbc-chevron--open' : ''}`} size={16} />
@@ -150,7 +151,7 @@ function StakeholdersByCountry({ searchQuery = '', typeFilter = 'All' }) {
                 <div className={`sbc-collapse ${isOpen ? 'sbc-collapse--open' : ''}`}>
                   <div className="sbc-collapse-inner">
                     {list.length === 0 ? (
-                      <div className="sbc-empty-msg">No stakeholders registered yet</div>
+                      <div className="sbc-empty-msg">{t('stakeholders.noneRegistered')}</div>
                     ) : (
                     <div className="sbc-stakeholder-grid">
                       {list.map(s => {
@@ -162,7 +163,7 @@ function StakeholdersByCountry({ searchQuery = '', typeFilter = 'All' }) {
                                 {getIcon(s.type)} {s.type}
                               </span>
                               {s.website && (
-                                <a href={s.website} target="_blank" rel="noopener noreferrer" className="sbc-card-link" title="Visit website">
+                                <a href={s.website} target="_blank" rel="noopener noreferrer" className="sbc-card-link" title={t('stakeholders.visitWebsite')}>
                                   <FaExternalLinkAlt size={12} />
                                 </a>
                               )}
@@ -172,7 +173,7 @@ function StakeholdersByCountry({ searchQuery = '', typeFilter = 'All' }) {
                             <div className="sbc-card-divider" />
                             <div className="sbc-card-footer">
                               <span className="sbc-card-country">
-                                🌐 {s.country || 'Unknown'}
+                                🌐 {s.country || t('stakeholders.unknown')}
                               </span>
                               {s.category && (
                                 <span className="sbc-card-category">{s.category}</span>

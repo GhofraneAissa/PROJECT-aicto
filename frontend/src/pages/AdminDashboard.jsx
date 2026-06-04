@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FaClipboardList, FaCheckCircle, FaTimesCircle, FaEye, FaSignOutAlt, FaGlobeAmericas, FaLayerGroup, FaMicrochip, FaCalendarAlt, FaBuilding, FaUsers, FaUserShield, FaEnvelope, FaPhone, FaGlobe, FaMapMarkerAlt, FaStar, FaIndustry, FaExclamationTriangle } from 'react-icons/fa'
 import { toast } from 'react-toastify'
-
-const API_BASE = 'http://localhost:8000'
+import { API_BASE } from '../config'
 
 function AdminDashboard() {
+  const { t } = useTranslation()
   const [token, setToken] = useState(localStorage.getItem('access_token'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -55,8 +56,8 @@ function AdminDashboard() {
         body: JSON.stringify({ email, password })
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Login failed')
-      if (data.user.role !== 'admin') throw new Error('Access denied: Admin only')
+      if (!res.ok) throw new Error(data.detail || t('admin.login.loginFailed'))
+      if (data.user.role !== 'admin') throw new Error(t('admin.login.accessDenied'))
       
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('user', JSON.stringify(data.user))
@@ -115,16 +116,16 @@ function AdminDashboard() {
         body: JSON.stringify({ admin_id: 1 })
       })
       if (res.ok) {
-        toast.success('Project approved and published successfully!')
+        toast.success(t('admin.projects.approvedToast'))
         fetchPendingProjects()
         fetchStats()
       } else {
         const errData = await res.json()
-        toast.error('Failed to approve: ' + (errData.detail || 'Unknown error'))
+        toast.error(t('admin.projects.approveFailed', { message: errData.detail || t('admin.unknownError') }))
       }
     } catch (err) {
       console.error(`Error approving project:`, err)
-      toast.error('Network error: ' + err.message)
+      toast.error(t('admin.projects.networkError', { message: err.message }))
     } finally {
       setActionLoading(null)
     }
@@ -205,16 +206,16 @@ function AdminDashboard() {
         body: JSON.stringify({ admin_id: 1 })
       })
       if (res.ok) {
-        toast.success('Organization approved successfully!')
+        toast.success(t('admin.organizations.approvedToast'))
         fetchPendingOrgs()
         fetchOrgStats()
       } else {
         const errData = await res.json()
-        toast.error('Failed to approve: ' + (errData.detail || 'Unknown error'))
+        toast.error(t('admin.organizations.approveFailed', { message: errData.detail || t('admin.unknownError') }))
       }
     } catch (err) {
       console.error('Error approving org:', err)
-      toast.error('Network error: ' + err.message)
+      toast.error(t('admin.organizations.networkError', { message: err.message }))
     } finally {
       setOrgActionLoading(null)
     }
@@ -222,7 +223,7 @@ function AdminDashboard() {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      toast.warning('Please provide a reason for rejection.')
+      toast.warning(t('admin.rejectModal.reasonRequired'))
       return
     }
     setActionLoading(rejectProjectId)
@@ -239,7 +240,7 @@ function AdminDashboard() {
         body: JSON.stringify({ reason: rejectReason, admin_id: 1 })
       })
       if (res.ok) {
-        toast.info(rejectType === 'project' ? 'Project has been rejected.' : 'Organization has been rejected.')
+        toast.info(rejectType === 'project' ? t('admin.rejectModal.rejectedProject') : t('admin.rejectModal.rejectedOrg'))
         setShowRejectModal(false)
         if (rejectType === 'project') {
           fetchPendingProjects()
@@ -250,11 +251,11 @@ function AdminDashboard() {
         }
       } else {
         const errData = await res.json()
-        toast.error('Failed to reject: ' + (errData.detail || 'Unknown error'))
+        toast.error(t('admin.rejectModal.rejectFailed', { message: errData.detail || t('admin.unknownError') }))
       }
     } catch (err) {
       console.error(`Error rejecting project:`, err)
-      toast.error('Network error: ' + err.message)
+      toast.error(t('admin.rejectModal.networkError', { message: err.message }))
     } finally {
       setActionLoading(null)
     }
@@ -265,20 +266,20 @@ function AdminDashboard() {
       <div className="admin-login-page">
         <div className="admin-login-container">
           <div className="admin-login-header">
-            <h1>Admin Dashboard</h1>
-            <p>Moderation portal for AI Initiatives</p>
+            <h1>{t('admin.login.title')}</h1>
+            <p>{t('admin.login.subtitle')}</p>
           </div>
           <form onSubmit={handleLogin} className="admin-login-form">
             {loginError && <div className="login-error">{loginError}</div>}
             <div className="form-group">
-              <label>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@aicto.org" required />
+              <label>{t('admin.login.email')}</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('admin.login.emailPlaceholder')} required />
             </div>
             <div className="form-group">
-              <label>Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+              <label>{t('admin.login.password')}</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('admin.login.passwordPlaceholder')} required />
             </div>
-            <button type="submit" className="btn-login">Access Dashboard</button>
+            <button type="submit" className="btn-login">{t('admin.login.submitBtn')}</button>
           </form>
         </div>
         <style>{styles}</style>
@@ -291,11 +292,11 @@ function AdminDashboard() {
       <header className="dashboard-header">
         <div className="container header-content">
           <div className="header-title">
-            <h1>Admin <span className="text-primary">Dashboard</span></h1>
-            <p>Welcome back, Administrator</p>
+            <h1>{t('admin.header.title')} <span className="text-primary">{t('admin.header.titleHighlight')}</span></h1>
+            <p>{t('admin.header.welcome')}</p>
           </div>
           <button className="btn-logout-top" onClick={handleLogout}>
-            <FaSignOutAlt /> Sign Out
+            <FaSignOutAlt /> {t('admin.header.signOut')}
           </button>
         </div>
       </header>
@@ -304,10 +305,10 @@ function AdminDashboard() {
         <div className="container">
           <div className="admin-tabs">
             <button className={`admin-tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>
-              <FaClipboardList /> Projects
+              <FaClipboardList /> {t('admin.tabs.projects')}
             </button>
             <button className={`admin-tab ${activeTab === 'organizations' ? 'active' : ''}`} onClick={() => setActiveTab('organizations')}>
-              <FaUsers /> Organizations
+              <FaUsers /> {t('admin.tabs.organizations')}
             </button>
           </div>
 
@@ -318,41 +319,41 @@ function AdminDashboard() {
                   <div className="stat-icon pending"><FaClipboardList /></div>
                   <div className="stat-data">
                     <span className="stat-val">{stats?.pending || 0}</span>
-                    <span className="stat-lab">Pending</span>
+                    <span className="stat-lab">{t('admin.stats.pending')}</span>
                   </div>
                 </div>
                 <div className="stat-item">
                   <div className="stat-icon approved"><FaCheckCircle /></div>
                   <div className="stat-data">
                     <span className="stat-val">{stats?.approved || 0}</span>
-                    <span className="stat-lab">Approved</span>
+                    <span className="stat-lab">{t('admin.stats.approved')}</span>
                   </div>
                 </div>
                 <div className="stat-item">
                   <div className="stat-icon rejected"><FaTimesCircle /></div>
                   <div className="stat-data">
                     <span className="stat-val">{stats?.rejected || 0}</span>
-                    <span className="stat-lab">Rejected</span>
+                    <span className="stat-lab">{t('admin.stats.rejected')}</span>
                   </div>
                 </div>
               </div>
 
               <div className="content-section">
                 <div className="section-header">
-                  <h2>Awaiting Moderation</h2>
-                  <span className="count-badge">{pendingProjects.length} Projects</span>
+                  <h2>{t('admin.projects.sectionTitle')}</h2>
+                  <span className="count-badge">{t('admin.projects.countLabel', { count: pendingProjects.length })}</span>
                 </div>
 
                 {loading ? (
                   <div className="dashboard-loader">
                     <div className="spinner"></div>
-                    <p>Loading pending queue...</p>
+                    <p>{t('admin.projects.loading')}</p>
                   </div>
                 ) : pendingProjects.length === 0 ? (
                   <div className="empty-dashboard">
                     <div className="empty-icon">🛡️</div>
-                    <h3>Queue is Empty</h3>
-                    <p>All submitted projects have been reviewed.</p>
+                    <h3>{t('admin.projects.emptyTitle')}</h3>
+                    <p>{t('admin.projects.emptyDesc')}</p>
                   </div>
                 ) : (
                   <div className="pending-grid">
@@ -362,10 +363,10 @@ function AdminDashboard() {
                           <div className="card-info">
                             <div className="card-header-main">
                               <h3>{project.title}</h3>
-                              <div className="status-label">Pending Review</div>
+                              <div className="status-label">{t('admin.projects.pendingReview')}</div>
                             </div>
                             <div className="card-meta">
-                              <span className="meta-tag"><FaGlobeAmericas /> {project.country?.name || 'Unknown Country'}</span>
+                              <span className="meta-tag"><FaGlobeAmericas /> {project.country?.name || t('admin.projects.unknownCountry')}</span>
                               <span className="meta-tag"><FaLayerGroup /> {project.sector}</span>
                               <span className="meta-tag"><FaMicrochip /> {project.ai_technology}</span>
                             </div>
@@ -379,14 +380,14 @@ function AdminDashboard() {
                             <div className="detail-item">
                               <FaBuilding className="detail-icon" />
                               <div className="detail-content">
-                                <span className="detail-label">Submitted By</span>
-                                <span className="detail-value">{project.owner?.organization_name || project.owner?.email || 'Unknown User'}</span>
+                                <span className="detail-label">{t('admin.projects.submittedBy')}</span>
+                                <span className="detail-value">{project.owner?.organization_name || project.owner?.email || t('admin.projects.unknownUser')}</span>
                               </div>
                             </div>
                             <div className="detail-item">
                               <FaCalendarAlt className="detail-icon" />
                               <div className="detail-content">
-                                <span className="detail-label">Submission Date</span>
+                                <span className="detail-label">{t('admin.projects.submissionDate')}</span>
                                 <span className="detail-value">{new Date(project.submitted_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                               </div>
                             </div>
@@ -394,10 +395,10 @@ function AdminDashboard() {
                               <div className="detail-item">
                                 <FaEye className="detail-icon" />
                                 <div className="detail-content">
-                                  <span className="detail-label">Website</span>
+                                  <span className="detail-label">{t('admin.projects.website')}</span>
                                   <span className="detail-value">
                                     <a href={project.website} target="_blank" rel="noopener noreferrer" className="project-link">
-                                      Visit Project Site
+                                      {t('admin.projects.visitProjectSite')}
                                     </a>
                                   </span>
                                 </div>
@@ -407,7 +408,7 @@ function AdminDashboard() {
                               <div className="detail-item">
                                 <FaClipboardList className="detail-icon" />
                                 <div className="detail-content">
-                                  <span className="detail-label">Attachments ({project.documents.length})</span>
+                                  <span className="detail-label">{t('admin.projects.attachments', { count: project.documents.length })}</span>
                                   <div className="admin-files-list">
                                     {project.documents.map((doc, idx) => (
                                       <a 
@@ -434,14 +435,14 @@ function AdminDashboard() {
                               onClick={() => openRejectModal(project.id, 'project')}
                               disabled={actionLoading === project.id}
                             >
-                              Reject Submission
+                              {t('admin.projects.rejectBtn')}
                             </button>
                             <button 
                               className="btn-action-approve" 
                               onClick={() => handleApprove(project.id)}
                               disabled={actionLoading === project.id}
                             >
-                              {actionLoading === project.id ? 'Processing...' : 'Approve & Publish'}
+                              {actionLoading === project.id ? t('admin.projects.processing') : t('admin.projects.approveBtn')}
                             </button>
                           </div>
                         </div>
@@ -460,21 +461,21 @@ function AdminDashboard() {
                   <div className="stat-icon pending"><FaUsers /></div>
                   <div className="stat-data">
                     <span className="stat-val">{orgStats?.pending_approval || 0}</span>
-                    <span className="stat-lab">Pending</span>
+                    <span className="stat-lab">{t('admin.stats.pending')}</span>
                   </div>
                 </div>
                 <div className="stat-item">
                   <div className="stat-icon approved"><FaCheckCircle /></div>
                   <div className="stat-data">
                     <span className="stat-val">{orgStats?.approved || 0}</span>
-                    <span className="stat-lab">Approved</span>
+                    <span className="stat-lab">{t('admin.stats.approved')}</span>
                   </div>
                 </div>
                 <div className="stat-item">
                   <div className="stat-icon rejected"><FaTimesCircle /></div>
                   <div className="stat-data">
                     <span className="stat-val">{orgStats?.rejected || 0}</span>
-                    <span className="stat-lab">Rejected</span>
+                    <span className="stat-lab">{t('admin.stats.rejected')}</span>
                   </div>
                 </div>
               </div>
@@ -483,42 +484,42 @@ function AdminDashboard() {
                 <div className="section-header">
                   <div className="filter-tabs">
                     <button className={`filter-tab ${orgFilter === 'pending' ? 'active' : ''}`} onClick={() => setOrgFilter('pending')}>
-                      Pending Review
+                      {t('admin.organizations.filterPending')}
                     </button>
                     <button className={`filter-tab ${orgFilter === 'approved' ? 'active' : ''}`} onClick={() => setOrgFilter('approved')}>
-                      Approved
+                      {t('admin.organizations.filterApproved')}
                     </button>
                     <button className={`filter-tab ${orgFilter === 'rejected' ? 'active' : ''}`} onClick={() => setOrgFilter('rejected')}>
-                      Rejected
+                      {t('admin.organizations.filterRejected')}
                     </button>
                   </div>
                   <span className="count-badge">
-                    {orgFilter === 'pending' ? pendingOrgs.length : orgFilter === 'approved' ? approvedOrgs.length : rejectedOrgs.length} Organizations
+                    {t('admin.organizations.countLabel', { count: orgFilter === 'pending' ? pendingOrgs.length : orgFilter === 'approved' ? approvedOrgs.length : rejectedOrgs.length })}
                   </span>
                 </div>
 
                 {orgsLoading ? (
                   <div className="dashboard-loader">
                     <div className="spinner"></div>
-                    <p>Loading organizations...</p>
+                    <p>{t('admin.organizations.loading')}</p>
                   </div>
                 ) : orgFilter === 'pending' && pendingOrgs.length === 0 ? (
                   <div className="empty-dashboard">
                     <div className="empty-icon">🛡️</div>
-                    <h3>No Pending Organizations</h3>
-                    <p>All organizations have been reviewed.</p>
+                    <h3>{t('admin.organizations.emptyPendingTitle')}</h3>
+                    <p>{t('admin.organizations.emptyPendingDesc')}</p>
                   </div>
                 ) : orgFilter === 'approved' && approvedOrgs.length === 0 ? (
                   <div className="empty-dashboard">
                     <div className="empty-icon">📋</div>
-                    <h3>No Approved Organizations</h3>
-                    <p>No organizations have been approved yet.</p>
+                    <h3>{t('admin.organizations.emptyApprovedTitle')}</h3>
+                    <p>{t('admin.organizations.emptyApprovedDesc')}</p>
                   </div>
                 ) : orgFilter === 'rejected' && rejectedOrgs.length === 0 ? (
                   <div className="empty-dashboard">
                     <div className="empty-icon">📋</div>
-                    <h3>No Rejected Organizations</h3>
-                    <p>No organizations have been rejected.</p>
+                    <h3>{t('admin.organizations.emptyRejectedTitle')}</h3>
+                    <p>{t('admin.organizations.emptyRejectedDesc')}</p>
                   </div>
                 ) : (
                   <div className="pending-grid">
@@ -532,7 +533,7 @@ function AdminDashboard() {
                                 <h3>{org.organization_name}</h3>
                               </div>
                               <div className={`status-label ${orgFilter === 'approved' ? 'status-approved' : orgFilter === 'rejected' ? 'status-rejected' : ''}`}>
-                                {orgFilter === 'pending' ? 'Pending Review' : orgFilter === 'approved' ? 'Approved' : 'Rejected'}
+                                {orgFilter === 'pending' ? t('admin.organizations.pendingReview') : orgFilter === 'approved' ? t('admin.organizations.approved') : t('admin.organizations.rejected')}
                               </div>
                             </div>
                             <div className="card-meta">
@@ -551,7 +552,7 @@ function AdminDashboard() {
                             <div className="detail-item">
                               <FaEnvelope className="detail-icon" />
                               <div className="detail-content">
-                                <span className="detail-label">Email</span>
+                                <span className="detail-label">{t('admin.organizations.email')}</span>
                                 <span className="detail-value">{org.email}</span>
                               </div>
                             </div>
@@ -559,7 +560,7 @@ function AdminDashboard() {
                               <div className="detail-item">
                                 <FaPhone className="detail-icon" />
                                 <div className="detail-content">
-                                  <span className="detail-label">Phone</span>
+                                  <span className="detail-label">{t('admin.organizations.phone')}</span>
                                   <span className="detail-value">{org.phone}</span>
                                 </div>
                               </div>
@@ -568,7 +569,7 @@ function AdminDashboard() {
                               <div className="detail-item">
                                 <FaGlobe className="detail-icon" />
                                 <div className="detail-content">
-                                  <span className="detail-label">Website</span>
+                                  <span className="detail-label">{t('admin.organizations.website')}</span>
                                   <span className="detail-value">
                                     <a href={org.website} target="_blank" rel="noopener noreferrer" className="project-link">{org.website}</a>
                                   </span>
@@ -579,7 +580,7 @@ function AdminDashboard() {
                               <div className="detail-item">
                                 <FaCalendarAlt className="detail-icon" />
                                 <div className="detail-content">
-                                  <span className="detail-label">Registered</span>
+                                  <span className="detail-label">{t('admin.organizations.registered')}</span>
                                   <span className="detail-value">{new Date(org.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                                 </div>
                               </div>
@@ -588,7 +589,7 @@ function AdminDashboard() {
                               <div className="detail-item">
                                 <FaExclamationTriangle className="detail-icon" style={{ color: '#ef4444' }} />
                                 <div className="detail-content">
-                                  <span className="detail-label">Rejection Reason</span>
+                                  <span className="detail-label">{t('admin.organizations.rejectionReason')}</span>
                                   <span className="detail-value" style={{ color: '#ef4444' }}>{org.rejection_reason}</span>
                                 </div>
                               </div>
@@ -604,14 +605,14 @@ function AdminDashboard() {
                                 onClick={() => openRejectModal(org.id, 'org')}
                                 disabled={orgActionLoading === org.id}
                               >
-                                Reject Organization
+                                {t('admin.organizations.rejectBtn')}
                               </button>
                               <button 
                                 className="btn-action-approve" 
                                 onClick={() => handleOrgApprove(org.id)}
                                 disabled={orgActionLoading === org.id}
                               >
-                                {orgActionLoading === org.id ? 'Processing...' : 'Approve Organization'}
+                                {orgActionLoading === org.id ? t('admin.organizations.processing') : t('admin.organizations.approveBtn')}
                               </button>
                             </div>
                           </div>
@@ -630,35 +631,34 @@ function AdminDashboard() {
         <div className="modal-backdrop">
           <div className="modal-content animate-up">
             <div className="modal-header">
-              <h3>Reject {rejectType === 'project' ? 'Submission' : 'Organization'}</h3>
+              <h3>{rejectType === 'project' ? t('admin.rejectModal.titleProject') : t('admin.rejectModal.titleOrg')}</h3>
               <button className="close-btn" onClick={() => setShowRejectModal(false)}><FaTimesCircle /></button>
             </div>
             <div className="modal-body">
-              <p>Please specify why this {rejectType === 'project' ? 'project' : 'organization'} is being rejected.</p>
+              <p>{rejectType === 'project' ? t('admin.rejectModal.bodyProject') : t('admin.rejectModal.bodyOrg')}</p>
               <textarea 
                 value={rejectReason} 
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder={rejectType === 'project' 
-                  ? "e.g. Insufficient description, duplicate entry, or incorrect sector categorization..."
-                  : "e.g. Incomplete information, invalid website, activity unrelated to AI..."}
+                  ? t('admin.rejectModal.placeholderProject')
+                  : t('admin.rejectModal.placeholderOrg')}
                 rows="5"
               ></textarea>
             </div>
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setShowRejectModal(false)}>Cancel</button>
+              <button className="btn-secondary" onClick={() => setShowRejectModal(false)}>{t('admin.rejectModal.cancel')}</button>
               <button 
                 className="btn-danger" 
                 onClick={handleReject}
                 disabled={!rejectReason.trim() || actionLoading}
               >
-                Confirm Rejection
+                {t('admin.rejectModal.confirm')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <style>{styles}</style>
     </div>
   )
 }

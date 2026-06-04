@@ -569,7 +569,8 @@ def get_map_data(db: Session = Depends(get_db)):
     for c in countries:
         projs = db.query(Project).filter(
             Project.country_id == c.id,
-            ~func.lower(Project.status).in_(["pending", "rejected"])
+            Project.status != None,
+            func.lower(Project.status).notin_(["pending", "rejected"])
         ).all()
         project_count = len(projs)
         stakeholder_count = db.query(Stakeholder).filter(Stakeholder.country == c.country).count()
@@ -578,8 +579,12 @@ def get_map_data(db: Session = Depends(get_db)):
         sector_distribution = [{"sector": s, "count": cnt} for s, cnt in sectors.most_common()]
         top_sector = sectors.most_common(1)[0][0] if sectors else None
         top_tech = technologies.most_common(1)[0][0] if technologies else None
+        lat = float(c.latitude) if c.latitude is not None else None
+        lng = float(c.longitude) if c.longitude is not None else None
         result.append({
             "country": c.country,
+            "latitude": lat,
+            "longitude": lng,
             "project_count": project_count,
             "stakeholder_count": stakeholder_count,
             "ongoing_projects": project_count,

@@ -1,13 +1,8 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from app.database import Base
+from app.database import Base, DATABASE_URL
 from app.models.country import Country
 from urllib.parse import quote_plus
-
-password = "0000"
-db_name = "SARAI_DB"
-
-DATABASE_URL = f"postgresql+psycopg://postgres:{quote_plus(password)}@localhost:5432/{db_name}"
 
 def get_flag_url(code: str) -> str:
     return f"https://flagcdn.com/w320/{code.lower()}.png"

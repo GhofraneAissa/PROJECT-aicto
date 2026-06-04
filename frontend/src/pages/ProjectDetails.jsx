@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FaArrowLeft, FaGlobeAmericas, FaHeart, FaCity, FaRocket, FaLeaf, FaShieldAlt, FaMicrochip, FaCalendarAlt, FaExternalLinkAlt, FaBuilding, FaUserTie, FaFlag, FaProjectDiagram, FaDownload } from 'react-icons/fa'
 
-const API_BASE = 'http://localhost:8000'
+import { API_BASE } from '../config'
 
 const getSectorInfo = (sector) => {
   const map = {
@@ -21,17 +22,18 @@ const getSectorInfo = (sector) => {
   return map[sector] || { class: 'default', icon: <FaProjectDiagram /> }
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return 'Ongoing'
-  return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-}
-
 function ProjectDetails() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return t('projects.ongoing')
+    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  }
 
   useEffect(() => {
     fetchProjectDetails()
@@ -60,14 +62,14 @@ function ProjectDetails() {
         </div>
         <div className="container hero-container">
           <div className="hero-content">
-            <div className="hero-badge"><FaProjectDiagram /><span>Project Details</span></div>
+            <div className="hero-badge"><FaProjectDiagram /><span>{t('projectDetails.pageTitle')}</span></div>
           </div>
         </div>
       </section>
       <section className="details-body">
         <div className="container" style={{ textAlign: 'center', padding: '80px 24px' }}>
           <div className="spinner"></div>
-          <p style={{ color: 'var(--p-text-light)', marginTop: 16 }}>Loading project details...</p>
+          <p style={{ color: 'var(--p-text-light)', marginTop: 16 }}>{t('projectDetails.loading')}</p>
         </div>
       </section>
     </div>
@@ -82,15 +84,15 @@ function ProjectDetails() {
         </div>
         <div className="container hero-container">
           <div className="hero-content">
-            <div className="hero-badge"><FaProjectDiagram /><span>Project Details</span></div>
+            <div className="hero-badge"><FaProjectDiagram /><span>{t('projectDetails.pageTitle')}</span></div>
           </div>
         </div>
       </section>
       <section className="details-body">
         <div className="container" style={{ textAlign: 'center', padding: '80px 24px' }}>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>Project Not Found</h2>
-          <p style={{ color: 'var(--p-text-light)', marginBottom: 24 }}>{error || 'The project you are looking for does not exist.'}</p>
-          <button onClick={() => navigate('/projects')} className="action-btn">Back to Projects</button>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>{t('projectDetails.notFound')}</h2>
+          <p style={{ color: 'var(--p-text-light)', marginBottom: 24 }}>{error || t('projectDetails.notFoundDesc')}</p>
+          <button onClick={() => navigate('/projects')} className="action-btn">{t('projectDetails.backToProjects')}</button>
         </div>
       </section>
     </div>
@@ -111,12 +113,12 @@ function ProjectDetails() {
           <div className="hero-content animate-up">
             <div className="hero-badge">
               <FaProjectDiagram />
-              <span>Project Details</span>
+              <span>{t('projectDetails.pageTitle')}</span>
             </div>
             <h1>{project.title}</h1>
             <div className="hero-meta">
               <span className="hero-meta-item">
-                <FaGlobeAmericas /> {project.country_name || 'Regional'}
+                <FaGlobeAmericas /> {project.country_name || t('projectDetails.regional')}
               </span>
               <span className="hero-meta-item">
                 <FaCalendarAlt /> {formatDate(project.start_date)} — {formatDate(project.end_date)}
@@ -130,7 +132,7 @@ function ProjectDetails() {
         <div className="container">
           <div className="body-top animate-up delay-1">
             <button onClick={() => navigate(-1)} className="back-link">
-              <FaArrowLeft /> Back
+              <FaArrowLeft /> {t('projectDetails.back')}
             </button>
             <div className="top-badges">
               <span className={`sector-badge ${sectorInfo.class}`}>
@@ -145,28 +147,28 @@ function ProjectDetails() {
           <div className="info-cards-grid animate-up delay-1">
             <div className="info-card">
               <div className="info-card-icon"><FaBuilding /></div>
-              <span className="info-card-label">Organization</span>
+              <span className="info-card-label">{t('projects.organization')}</span>
               <span className="info-card-value">{project.organization || '-'}</span>
             </div>
             <div className="info-card">
               <div className="info-card-icon"><FaGlobeAmericas /></div>
-              <span className="info-card-label">Country</span>
-              <span className="info-card-value">{project.country_name || 'Regional'}</span>
+              <span className="info-card-label">{t('projects.country')}</span>
+              <span className="info-card-value">{project.country_name || t('projectDetails.regional')}</span>
             </div>
             <div className="info-card">
               <div className="info-card-icon"><FaMicrochip /></div>
-              <span className="info-card-label">Technology</span>
+              <span className="info-card-label">{t('projects.technology')}</span>
               <span className="info-card-value">{project.technology || '-'}</span>
             </div>
             <div className="info-card">
               <div className="info-card-icon"><FaFlag /></div>
-              <span className="info-card-label">SDG Alignment</span>
+              <span className="info-card-label">{t('projectDetails.sdgAlignment')}</span>
               <span className="info-card-value">{project.sdg ? `SDG ${project.sdg.goal_number}: ${project.sdg.title}` : '-'}</span>
             </div>
           </div>
 
           <section className="detail-section animate-up delay-2">
-            <h2>Project Overview</h2>
+            <h2>{t('projectDetails.projectOverview')}</h2>
             <div className="content-card">
               <p className="description-text">{project.description}</p>
             </div>
@@ -174,11 +176,11 @@ function ProjectDetails() {
 
           {(project.website || (project.documents && project.documents.length > 0)) && (
             <section className="detail-section animate-up delay-2">
-              <h2>Resources & Links</h2>
+              <h2>{t('projectDetails.resourcesLinks')}</h2>
               <div className="resources-flex">
                 {project.website && (
                   <a href={project.website} target="_blank" rel="noopener noreferrer" className="resource-link-btn">
-                    <FaExternalLinkAlt /> Visit Official Website
+                    <FaExternalLinkAlt /> {t('projectDetails.visitWebsite')}
                   </a>
                 )}
                 {project.documents && project.documents.length > 0 && project.documents.map((doc, idx) => (
@@ -191,7 +193,7 @@ function ProjectDetails() {
           )}
 
           <section className="detail-section animate-up delay-2">
-            <h2>Stakeholders ({stakeholders.length})</h2>
+            <h2>{t('map.stakeholders')} ({stakeholders.length})</h2>
             {stakeholders.length > 0 ? (
               <div className="stakeholders-grid">
                 {stakeholders.map((s, idx) => (
@@ -205,7 +207,7 @@ function ProjectDetails() {
                     <p className="stakeholder-location">{s.city ? `${s.city}, ` : ''}{s.country}</p>
                     {s.website && (
                       <a href={s.website} target="_blank" rel="noopener noreferrer" className="stakeholder-link">
-                        <FaExternalLinkAlt /> Website
+                        <FaExternalLinkAlt /> {t('profile.website')}
                       </a>
                     )}
                   </div>
@@ -213,7 +215,7 @@ function ProjectDetails() {
               </div>
             ) : (
               <div className="content-card empty-state">
-                <p>No stakeholder information available for this project.</p>
+                <p>{t('projectDetails.noStakeholders')}</p>
               </div>
             )}
           </section>

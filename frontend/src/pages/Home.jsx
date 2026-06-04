@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { FaBrain, FaBuilding, FaProjectDiagram, FaGlobeAmericas, FaBook, FaChartLine, FaArrowRight, FaCheckCircle, FaNetworkWired, FaLeaf, FaSearch, FaRocket, FaTimes, FaSpinner, FaArrowLeft, FaEnvelope, FaUser, FaCommentAlt } from 'react-icons/fa'
 import { toast } from 'react-toastify'
+import { API_BASE } from '../config'
 
 function Home() {
   const { t } = useTranslation()
@@ -21,14 +22,14 @@ function Home() {
   }, [])
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/countries/')
+    fetch(`${API_BASE}/api/countries/`)
       .then(res => res.json())
       .then(data => setCountries(data))
       .catch(err => console.error('Error fetching countries:', err))
   }, [])
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/sdgs/')
+    fetch(`${API_BASE}/api/sdgs/`)
       .then(res => res.json())
       .then(data => setSdgs(data))
       .catch(err => console.error('Error fetching SDGs:', err))
@@ -50,7 +51,7 @@ function Home() {
     setSearchLoading(true)
     try {
       const res = await fetch(
-        `http://localhost:8000/api/search/suggest?q=${encodeURIComponent(q.trim())}&limit=4`
+        `${API_BASE}/api/search/suggest?q=${encodeURIComponent(q.trim())}&limit=4`
       )
       const data = await res.json()
       setSuggestions(data.results || [])
@@ -189,16 +190,16 @@ function Home() {
   const handleContactSubmit = async (e) => {
     e.preventDefault()
     try {
-      const res = await fetch('http://localhost:8000/api/contact', {
+      const res = await fetch(`${API_BASE}/api/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contactForm)
       })
       if (!res.ok) throw new Error('Failed to send message')
-      toast.success('Thank you for your message! We will get back to you soon.')
+      toast.success(t('contact.successMessage'))
       setContactForm({ name: '', email: '', subject: '', message: '' })
     } catch (err) {
-      toast.error('Failed to send message. Please try again later.')
+      toast.error(t('contact.errorMessage'))
     }
   }
 
@@ -232,7 +233,7 @@ function Home() {
                 ref={inputRef}
                 type="text"
                 className="search-input"
-                placeholder={t('home.searchPlaceholder')}
+                placeholder={t('search.placeholder')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -350,7 +351,11 @@ function Home() {
       {[...countries, ...countries].map((country, index) => (
         <div key={index} className="country-marquee-item" title={country.country}>
           <div className="country-marquee-flag">
-            <img src={country.icon_url} alt={`${country.country} flag`} />
+            {country.icon_url ? (
+              <img src={country.icon_url} alt={`${country.country} flag`} />
+            ) : (
+              <div className="country-marquee-fallback">{country.country?.charAt(0) || '?'}</div>
+            )}
           </div>
           <span className="country-marquee-name">{country.country}</span>
         </div>
@@ -414,53 +419,53 @@ function Home() {
       <section className="contact section">
         <div className="container">
           <div className="section-header">
-            <span className="section-subtitle">Get in Touch</span>
-            <h2 className="section-title">Contact Us</h2>
-            <p className="section-desc">Have a question or want to collaborate? Send us a message and we'll respond promptly.</p>
+            <span className="section-subtitle">{t('contact.getInTouch')}</span>
+            <h2 className="section-title">{t('contact.title')}</h2>
+            <p className="section-desc">{t('contact.desc')}</p>
           </div>
           <div className="contact-wrapper">
             <div className="contact-form-card">
               <form onSubmit={handleContactSubmit} className="contact-form">
                 <div className="contact-form-row">
                   <div className="contact-field">
-                    <label><FaUser /> Your Name</label>
-                    <input type="text" name="name" value={contactForm.name} onChange={handleContactChange} required placeholder="John Doe" />
+                    <label><FaUser /> {t('contact.yourName')}</label>
+                    <input type="text" name="name" value={contactForm.name} onChange={handleContactChange} required placeholder={t('contact.namePlaceholder')} />
                   </div>
                   <div className="contact-field">
-                    <label><FaEnvelope /> Your Email</label>
-                    <input type="email" name="email" value={contactForm.email} onChange={handleContactChange} required placeholder="john@example.com" />
+                    <label><FaEnvelope /> {t('contact.yourEmail')}</label>
+                    <input type="email" name="email" value={contactForm.email} onChange={handleContactChange} required placeholder={t('contact.emailPlaceholder')} />
                   </div>
                 </div>
                 <div className="contact-field">
-                  <label><FaCommentAlt /> Subject</label>
-                  <input type="text" name="subject" value={contactForm.subject} onChange={handleContactChange} required placeholder="How can we help you?" />
+                  <label><FaCommentAlt /> {t('contact.subject')}</label>
+                  <input type="text" name="subject" value={contactForm.subject} onChange={handleContactChange} required placeholder={t('contact.subjectPlaceholder')} />
                 </div>
                 <div className="contact-field">
-                  <label><FaEnvelope /> Your Message</label>
-                  <textarea name="message" value={contactForm.message} onChange={handleContactChange} required rows="5" placeholder="Write your message here..."></textarea>
+                  <label><FaEnvelope /> {t('contact.yourMessage')}</label>
+                  <textarea name="message" value={contactForm.message} onChange={handleContactChange} required rows="5" placeholder={t('contact.messagePlaceholder')}></textarea>
                 </div>
-                <button type="submit" className="contact-submit-btn">Send Message <FaArrowRight /></button>
+                <button type="submit" className="contact-submit-btn">{t('contact.sendMessage')} <FaArrowRight /></button>
               </form>
             </div>
             <div className="contact-info">
               <div className="contact-info-item">
                 <div className="contact-info-icon"><FaEnvelope /></div>
                 <div>
-                  <h4>Email</h4>
+                  <h4>{t('contact.email')}</h4>
                   <p>contact@arabi-stocktaking.ai</p>
                 </div>
               </div>
               <div className="contact-info-item">
                 <div className="contact-info-icon"><FaGlobeAmericas /></div>
                 <div>
-                  <h4>Location</h4>
-                  <p>Arab Region</p>
+                  <h4>{t('contact.location')}</h4>
+                  <p>{t('contact.arabRegion')}</p>
                 </div>
               </div>
               <div className="contact-info-item">
                 <div className="contact-info-icon"><FaProjectDiagram /></div>
                 <div>
-                  <h4>Partnerships</h4>
+                  <h4>{t('contact.partnerships')}</h4>
                   <p>partners@arabi-stocktaking.ai</p>
                 </div>
               </div>
@@ -1138,6 +1143,17 @@ function Home() {
         .country-marquee-item:hover .country-marquee-flag {
           transform: translateY(-5px) scale(1.07);
           box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .country-marquee-fallback {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #2563eb, #7c3aed);
+          color: #fff;
+          font-size: 2rem;
+          font-weight: 800;
         }
         .country-marquee-flag img {
           width: 100%;

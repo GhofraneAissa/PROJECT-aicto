@@ -4,6 +4,8 @@ from app.models.stakeholder import Stakeholder
 from app.models.project import Project
 from app.models.resource import Resource
 from app.models.sdg import SDG
+from app.models.country import Country
+from app.models.user import User
 
 SDGS = [
     {"goal_number": 1,  "title": "No Poverty",                          "color": "#e5243b", "image_url": ""},
@@ -82,7 +84,26 @@ def seed_database():
             db_stakeholder = Stakeholder(**s)
             db.add(db_stakeholder)
         
-        # Add projects (resolve sdg_id from goal_number)
+        # Get or create a default owner user for seed projects
+        default_user = db.query(User).filter(User.role == "organization").first()
+        if not default_user:
+            from app.services.auth import hash_password
+            default_user = User(
+                organization_name="Seed Organization",
+                organization_type="NGO",
+                email="seed@example.com",
+                password_hash=hash_password("seed123456"),
+                is_active=True,
+                is_approved=True,
+                role="organization",
+            )
+            db.add(default_user)
+            db.flush()
+
+        # Build country name -> id map
+        country_map = {c.country.lower(): c.id for c in db.query(Country).all()}
+
+        # Add projects (resolve sdg_id from goal_number and country name to country_id)
         for p in projects_data:
             p_copy = dict(p)
             goal = p_copy.pop("sdg_id", None)
@@ -92,6 +113,10 @@ def seed_database():
                 p_copy["sdg_id"] = goal
             else:
                 p_copy["sdg_id"] = None
+            country_name = p_copy.pop("country", "")
+            p_copy["country_id"] = country_map.get(country_name.lower())
+            p_copy["user_id"] = default_user.id
+            p_copy["status"] = "approved"
             db_project = Project(**p_copy)
             db.add(db_project)
         

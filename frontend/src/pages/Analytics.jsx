@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
@@ -16,7 +17,7 @@ import {
   FaRedo
 } from 'react-icons/fa'
 
-const API_BASE = 'http://localhost:8000'
+import { API_BASE } from '../config'
 
 const COLORS = {
   primary: '#2563eb', secondary: '#7c3aed', success: '#10b981',
@@ -25,16 +26,6 @@ const COLORS = {
   chart: ['#2563eb', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#6366f1'],
   status: { approved: '#10b981', pending: '#f59e0b', rejected: '#ef4444' }
 }
-
-const STATUS_LABELS = {
-  pending: 'En attente', approved: 'Approuvé', rejected: 'Rejeté', draft: 'Brouillon'
-}
-
-const DASHBOARDS = [
-  { id: 1, label: 'Projets', title: "Vue d'ensemble des projets", icon: FaClipboardList },
-  { id: 2, label: 'Impact', title: 'Impact & ODD Stratégique', icon: FaLayerGroup },
-  { id: 3, label: 'Communauté', title: 'Communauté & Acteurs', icon: FaUsers },
-]
 
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
@@ -54,31 +45,22 @@ function CustomTooltip({ active, payload, label }) {
   return null
 }
 
-function CustomTreemapContent(props) {
-  const { depth, x, y, width, height, index, colors, name, value } = props
-  if (depth > 1) return null
-  return (
-    <g>
-      <rect x={x} y={y} width={width} height={height}
-        style={{ fill: colors[index % colors.length], stroke: '#fff', strokeWidth: 2 }} />
-      {width > 50 && height > 30 && (
-        <>
-          <text x={x + width / 2} y={y + height / 2 - 7} textAnchor="middle" fill="#fff" fontSize={12} fontWeight={700}>
-            {name}
-          </text>
-          <text x={x + width / 2} y={y + height / 2 + 10} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={10}>
-            {value} projets
-          </text>
-        </>
-      )}
-    </g>
-  )
-}
-
 function Analytics() {
+  const { t } = useTranslation()
   const [activeDashboard, setActiveDashboard] = useState(1)
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState({})
+
+  const STATUS_LABELS = {
+    pending: t('analytics.statusPending'), approved: t('analytics.statusApproved'),
+    rejected: t('analytics.statusRejected'), draft: t('analytics.statusDraft')
+  }
+
+  const DASHBOARDS = [
+    { id: 1, label: t('analytics.dashboard1Label'), title: t('analytics.dashboard1Title'), icon: FaClipboardList },
+    { id: 2, label: t('analytics.dashboard2Label'), title: t('analytics.dashboard2Title'), icon: FaLayerGroup },
+    { id: 3, label: t('analytics.dashboard3Label'), title: t('analytics.dashboard3Title'), icon: FaUsers },
+  ]
 
   const safeFetch = async (url, fallback) => {
     try {
@@ -135,10 +117,31 @@ function Analytics() {
     }
   }
 
+  function CustomTreemapContent(props) {
+    const { depth, x, y, width, height, index, colors, name, value } = props
+    if (depth > 1) return null
+    return (
+      <g>
+        <rect x={x} y={y} width={width} height={height}
+          style={{ fill: colors[index % colors.length], stroke: '#fff', strokeWidth: 2 }} />
+        {width > 50 && height > 30 && (
+          <>
+            <text x={x + width / 2} y={y + height / 2 - 7} textAnchor="middle" fill="#fff" fontSize={12} fontWeight={700}>
+              {name}
+            </text>
+            <text x={x + width / 2} y={y + height / 2 + 10} textAnchor="middle" fill="rgba(255,255,255,0.8)" fontSize={10}>
+              {t('analytics.projects', { count: value })}
+            </text>
+          </>
+        )}
+      </g>
+    )
+  }
+
   if (loading) return (
     <div className="analytics-loading-page">
       <div className="loading-spinner"><div className="spinner-ring"></div></div>
-      <p className="loading-text">Chargement des indicateurs...</p>
+      <p className="loading-text">{t('analytics.loading')}</p>
       <style>{`
         .analytics-loading-page {
           height: 100vh; display: flex; flex-direction: column;
@@ -159,12 +162,12 @@ function Analytics() {
     const { statusDistribution, projectsByCountry, projectsBySector, submissionsByMonth, moderationQueue, approvedRejected, aiTech, statusBreakdown } = data
 
     const d1Kpis = overview ? [
-      { label: 'Total Projets', value: overview.total_projects, icon: FaProjectDiagram, color: COLORS.primary },
-      { label: 'En attente', value: overview.pending_count, icon: FaClock, color: COLORS.warning },
-      { label: 'Approuvés ce mois', value: overview.approved_this_month, icon: FaCheckCircle, color: COLORS.success },
-      { label: 'Rejetés ce mois', value: overview.rejected_this_month, icon: FaTimesCircle, color: COLORS.danger },
-      { label: 'Délai modération', value: `${overview.average_moderation_hours}h`, icon: FaClock, color: COLORS.info },
-      { label: "Taux d'approbation", value: `${overview.approval_rate}%`, icon: FaPercentage, color: COLORS.secondary },
+      { label: t('analytics.totalProjects'), value: overview.total_projects, icon: FaProjectDiagram, color: COLORS.primary },
+      { label: t('analytics.pendingCount'), value: overview.pending_count, icon: FaClock, color: COLORS.warning },
+      { label: t('analytics.approvedThisMonth'), value: overview.approved_this_month, icon: FaCheckCircle, color: COLORS.success },
+      { label: t('analytics.rejectedThisMonth'), value: overview.rejected_this_month, icon: FaTimesCircle, color: COLORS.danger },
+      { label: t('analytics.moderationDelay'), value: `${overview.average_moderation_hours}${t('analytics.hoursAbbr')}`, icon: FaClock, color: COLORS.info },
+      { label: t('analytics.approvalRate'), value: `${overview.approval_rate}%`, icon: FaPercentage, color: COLORS.secondary },
     ] : []
 
     const submissionsChart = (submissionsByMonth || []).map(s => ({
@@ -189,12 +192,12 @@ function Analytics() {
         <div className="chart-grid">
           <div className="chart-card span-2">
             <div className="chart-header">
-              <h3>Répartition par statut</h3>
-              <p>Pipeline d'approbation et projets actifs/terminés</p>
+              <h3>{t('analytics.statusDistribution')}</h3>
+              <p>{t('analytics.statusDistributionDesc')}</p>
             </div>
             <div className="chart-body flex-row">
               <div className="mini-pie">
-                <h4>Pipeline d'approbation</h4>
+                <h4>{t('analytics.approvalPipeline')}</h4>
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie data={statusBreakdown.approvalPipeline} cx="50%" cy="50%" innerRadius={50} outerRadius={75}
@@ -217,7 +220,7 @@ function Analytics() {
                 </div>
               </div>
               <div className="mini-pie">
-                <h4>Actifs / Terminés</h4>
+                <h4>{t('analytics.activeCompleted')}</h4>
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
                     <Pie data={statusBreakdown.activityStatus} cx="50%" cy="50%" innerRadius={50} outerRadius={75}
@@ -244,8 +247,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Projets par pays</h3>
-              <p>Répartition géographique</p>
+              <h3>{t('analytics.projectsByCountry')}</h3>
+              <p>{t('analytics.geographicDistribution')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -255,7 +258,7 @@ function Analytics() {
                     tick={{ fill: '#64748b', fontSize: 11 }} interval={0} angle={-35} textAnchor="end" />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                  <Bar dataKey="projects" fill={COLORS.primary} radius={[6, 6, 0, 0]} barSize={32} name="Projets" />
+                  <Bar dataKey="projects" fill={COLORS.primary} radius={[6, 6, 0, 0]} barSize={32} name={t('analytics.projects')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -263,8 +266,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Projets par secteur</h3>
-              <p>Volume par domaine</p>
+              <h3>{t('analytics.projectsBySector')}</h3>
+              <p>{t('analytics.volumeBySector')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -274,7 +277,7 @@ function Analytics() {
                   <YAxis type="category" dataKey="sector" axisLine={false} tickLine={false}
                     tick={{ fill: '#334155', fontSize: 12 }} width={130} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill={COLORS.secondary} radius={[0, 6, 6, 0]} barSize={22} name="Projets" />
+                  <Bar dataKey="count" fill={COLORS.secondary} radius={[0, 6, 6, 0]} barSize={22} name={t('analytics.projects')} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -282,8 +285,8 @@ function Analytics() {
 
           <div className="chart-card span-2">
             <div className="chart-header">
-              <h3>Soumissions par mois</h3>
-              <p>Évolution temporelle des dépôts de projets</p>
+              <h3>{t('analytics.submissionsByMonth')}</h3>
+              <p>{t('analytics.submissionsByMonthDesc')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -300,7 +303,7 @@ function Analytics() {
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area type="monotone" dataKey="count" stroke={COLORS.primary} strokeWidth={3}
-                    fillOpacity={1} fill="url(#gradSub)" name="Soumissions" />
+                    fillOpacity={1} fill="url(#gradSub)" name={t('analytics.submissions')} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -308,8 +311,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Technologies clés</h3>
-              <p>Top technologies utilisées</p>
+              <h3>{t('analytics.keyTechnologies')}</h3>
+              <p>{t('analytics.topTechnologiesUsed')}</p>
             </div>
             <div className="chart-body tech-list">
               {(aiTech || []).slice(0, 8).map((tech, i) => (
@@ -330,8 +333,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Approuvés vs Rejetés</h3>
-              <p>Par mois</p>
+              <h3>{t('analytics.approvedVsRejected')}</h3>
+              <p>{t('analytics.byMonth')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -342,8 +345,8 @@ function Analytics() {
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="approved" fill={COLORS.success} name="Approuvés" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="rejected" fill={COLORS.danger} name="Rejetés" radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="approved" fill={COLORS.success} name={t('analytics.approved')} radius={[4, 4, 0, 0]} barSize={20} />
+                  <Bar dataKey="rejected" fill={COLORS.danger} name={t('analytics.rejected')} radius={[4, 4, 0, 0]} barSize={20} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -351,23 +354,23 @@ function Analytics() {
 
           <div className="chart-card span-3">
             <div className="chart-header">
-              <h3>File de modération</h3>
-              <p>Projets en attente de décision</p>
+              <h3>{t('analytics.moderationQueue')}</h3>
+              <p>{t('analytics.moderationQueueDesc')}</p>
             </div>
             <div className="chart-body">
               <table className="analytics-table">
                 <thead>
                   <tr>
-                    <th>Titre</th>
-                    <th>Organisation</th>
-                    <th>Pays</th>
-                    <th>Secteur</th>
-                    <th>Soumis le</th>
+                    <th>{t('analytics.title')}</th>
+                    <th>{t('analytics.organization')}</th>
+                    <th>{t('analytics.country')}</th>
+                    <th>{t('analytics.sector')}</th>
+                    <th>{t('analytics.submittedOn')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(moderationQueue || []).length === 0 ? (
-                    <tr><td colSpan={5} className="empty-row">Aucun projet en attente</td></tr>
+                    <tr><td colSpan={5} className="empty-row">{t('analytics.noProjectsPending')}</td></tr>
                   ) : (
                     (moderationQueue || []).slice(0, 6).map(p => (
                       <tr key={p.id}>
@@ -392,19 +395,18 @@ function Analytics() {
     const { sdgCoverage, projectsByRegion, regionSdg, techBySector, durationVsSdg, activeTimeline, avgDuration, orgsActive, aiTech } = data
 
     const radarData = (sdgCoverage || []).map(s => ({
-      subject: `ODD ${s.goal_number}`,
+      subject: `${t('analytics.sdgAbbr')} ${s.goal_number}`,
       value: s.count,
       fullTitle: s.title,
       color: s.color
     }))
 
     const topSdgs = (sdgCoverage || []).filter(s => s.count > 0).sort((a, b) => b.count - a.count).slice(0, 10)
-
-    const techSectorData = (techBySector || []).map(t => ({
-      name: `${t.technology} (${t.sector})`,
-      size: t.count,
-      sector: t.sector,
-      technology: t.technology
+    const techSectorData = (techBySector || []).map(item => ({
+      name: `${item.technology} (${item.sector})`,
+      size: item.count,
+      sector: item.sector,
+      technology: item.technology
     }))
 
     const scatterData = (durationVsSdg || []).map(d => ({
@@ -429,12 +431,12 @@ function Analytics() {
     }
 
     const d2Kpis = [
-      { label: 'ODD le plus couvert', value: topSdgs[0]?.goal_number ? `ODD ${topSdgs[0].goal_number}` : '-', icon: FaLightbulb, color: '#10b981' },
-      { label: 'Projets avec ODD', value: (sdgCoverage || []).reduce((a, b) => a + b.count, 0), icon: FaProjectDiagram, color: COLORS.primary },
-      { label: 'Régions actives', value: (projectsByRegion || []).length, icon: FaGlobeAmericas, color: COLORS.secondary },
-      { label: 'Durée moyenne', value: avgDuration?.avg_duration_days ? `${avgDuration.avg_duration_days} j` : '0 j', icon: FaClock, color: COLORS.warning },
-      { label: 'Organisations actives', value: orgsActive?.count ?? 0, icon: FaBuilding, color: COLORS.info },
-      { label: 'Technologies', value: (aiTech || []).length, icon: FaMicrochip, color: COLORS.danger },
+      { label: t('analytics.topSdg'), value: topSdgs[0]?.goal_number ? `${t('analytics.sdgAbbr')} ${topSdgs[0].goal_number}` : '-', icon: FaLightbulb, color: '#10b981' },
+      { label: t('analytics.projectsWithSdg'), value: (sdgCoverage || []).reduce((a, b) => a + b.count, 0), icon: FaProjectDiagram, color: COLORS.primary },
+      { label: t('analytics.activeRegions'), value: (projectsByRegion || []).length, icon: FaGlobeAmericas, color: COLORS.secondary },
+      { label: t('analytics.avgDuration'), value: avgDuration?.avg_duration_days ? `${avgDuration.avg_duration_days} ${t('analytics.daysAbbr')}` : `0 ${t('analytics.daysAbbr')}`, icon: FaClock, color: COLORS.warning },
+      { label: t('analytics.activeOrganizations'), value: orgsActive?.count ?? 0, icon: FaBuilding, color: COLORS.info },
+      { label: t('analytics.technologies'), value: (aiTech || []).length, icon: FaMicrochip, color: COLORS.danger },
     ]
 
     return (
@@ -454,8 +456,8 @@ function Analytics() {
         <div className="chart-grid">
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Radar ODD</h3>
-              <p>Couverture des 17 Objectifs de Développement Durable</p>
+              <h3>{t('analytics.radarSdg')}</h3>
+              <p>{t('analytics.sdgCoverageDesc')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={280}>
@@ -463,7 +465,7 @@ function Analytics() {
                   <PolarGrid stroke="#e2e8f0" />
                   <PolarAngleAxis dataKey="subject" tick={{ fill: '#475569', fontSize: 10 }} />
                   <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} />
-                  <Radar name="Projets" dataKey="value" stroke={COLORS.primary}
+                  <Radar name={t('analytics.projects')} dataKey="value" stroke={COLORS.primary}
                     fill={COLORS.primary} fillOpacity={0.2} strokeWidth={2} />
                   <Tooltip content={<CustomTooltip />} />
                 </RadarChart>
@@ -473,8 +475,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Top ODD</h3>
-              <p>Classement par nombre de projets</p>
+              <h3>{t('analytics.topSdgChart')}</h3>
+              <p>{t('analytics.sdgRankingDesc')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={280}>
@@ -483,9 +485,9 @@ function Analytics() {
                   <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <YAxis type="category" dataKey="goal_number" axisLine={false} tickLine={false}
                     tick={{ fill: '#334155', fontSize: 12 }}
-                    tickFormatter={(v) => `ODD ${v}`} width={60} />
+                    tickFormatter={(v) => `${t('analytics.sdgAbbr')} ${v}`} width={60} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Projets" radius={[0, 6, 6, 0]} barSize={20}>
+                  <Bar dataKey="count" name={t('analytics.projects')} radius={[0, 6, 6, 0]} barSize={20}>
                     {topSdgs.map((entry, i) => (
                       <Cell key={i} fill={entry.color || COLORS.chart[i % COLORS.chart.length]} />
                     ))}
@@ -497,8 +499,8 @@ function Analytics() {
 
           <div className="chart-card span-2">
             <div className="chart-header">
-              <h3>Technologies × Secteurs</h3>
-              <p>Volume de projets par croisement technologique</p>
+              <h3>{t('analytics.techBySector')}</h3>
+              <p>{t('analytics.techBySectorDesc')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={280}>
@@ -512,8 +514,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Projets par région</h3>
-              <p>Avec ODD dominant</p>
+              <h3>{t('analytics.projectsByRegion')}</h3>
+              <p>{t('analytics.withDominantSdg')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -523,7 +525,7 @@ function Analytics() {
                     tick={{ fill: '#475569', fontSize: 11 }} interval={0} angle={-30} textAnchor="end" />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Projets" radius={[6, 6, 0, 0]} barSize={28}>
+                  <Bar dataKey="count" name={t('analytics.projects')} radius={[6, 6, 0, 0]} barSize={28}>
                     {(projectsByRegion || []).map((entry, i) => {
                       const r = (regionSdg || []).find(rs => rs.region === entry.region)
                       return <Cell key={i} fill={r?.dominant_sdg_color || COLORS.chart[i % COLORS.chart.length]} />
@@ -535,7 +537,7 @@ function Analytics() {
                 {(regionSdg || []).filter(r => r.dominant_sdg).map((r, i) => (
                   <div key={i} className="legend-item">
                     <span className="legend-dot" style={{ backgroundColor: r.dominant_sdg_color }}></span>
-                    <span>{r.region}: ODD {r.dominant_sdg}</span>
+                    <span>{r.region}: {t('analytics.sdgAbbr')} {r.dominant_sdg}</span>
                   </div>
                 ))}
               </div>
@@ -544,20 +546,20 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Durée vs ODD</h3>
-              <p>Corrélation durée ↔ nombre d'ODD</p>
+              <h3>{t('analytics.durationVsSdg')}</h3>
+              <p>{t('analytics.durationSdgCorrelation')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
                 <ScatterChart margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis type="number" dataKey="x" name="Durée (jours)" unit=" j"
+                  <XAxis type="number" dataKey="x" name={t('analytics.durationDays')} unit={` ${t('analytics.daysAbbr')}`}
                     axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-                  <YAxis type="number" dataKey="y" name="Nb ODD"
+                  <YAxis type="number" dataKey="y" name={t('analytics.sdgCount')}
                     axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
                   <ZAxis type="number" dataKey="z" range={[60, 200]} />
                   <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-                  <Scatter data={scatterData} fill={COLORS.primary} fillOpacity={0.6} name="Projets" />
+                  <Scatter data={scatterData} fill={COLORS.primary} fillOpacity={0.6} name={t('analytics.projects')} />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
@@ -565,8 +567,8 @@ function Analytics() {
 
           <div className="chart-card span-2">
             <div className="chart-header">
-              <h3>Timeline projets actifs</h3>
-              <p>Durée par projet (30 plus récents)</p>
+              <h3>{t('analytics.activeTimeline')}</h3>
+              <p>{t('analytics.durationByProject')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={280}>
@@ -574,9 +576,9 @@ function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="title" axisLine={false} tickLine={false}
                     tick={{ fill: '#64748b', fontSize: 9 }} interval={0} angle={-55} textAnchor="end" height={80} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} unit=" j" />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} unit={` ${t('analytics.daysAbbr')}`} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="duration" name="Durée (jours)" radius={[4, 4, 0, 0]} barSize={18}>
+                  <Bar dataKey="duration" name={t('analytics.durationDays')} radius={[4, 4, 0, 0]} barSize={18}>
                     {durationData.map((entry, i) => (
                       <Cell key={i} fill={sectorColors[entry.sector] || COLORS.chart[i % COLORS.chart.length]} />
                     ))}
@@ -599,19 +601,18 @@ function Analytics() {
       count: s.count,
       cumulative: s.cumulative
     }))
-
     const orgTypeColors = {
       'NGO': '#10b981', 'Startup': '#8b5cf6', 'Company': '#2563eb',
       'Government': '#f59e0b', 'University': '#ec4899', 'Research Lab': '#06b6d4'
     }
 
     const d3Kpis = [
-      { label: 'Inscrits (total)', value: (userSignups || []).reduce((a, b) => a + b.count, 0), icon: FaUsers, color: COLORS.primary },
-      { label: 'Actifs (30j)', value: activeUsers?.active_30_days ?? 0, icon: FaUserGraduate, color: COLORS.success },
-      { label: "Taux d'activation", value: `${activationRate?.activation_rate ?? 0}%`, icon: FaPercentage, color: COLORS.secondary },
-      { label: "Types d'organisation", value: (usersByOrgType || []).length, icon: FaBuilding, color: COLORS.warning },
-      { label: 'Stakeholders', value: (stakeholdersByType || []).reduce((a, b) => a + b.count, 0), icon: FaHandshake, color: COLORS.info },
-      { label: 'Projets/utilisateur', value: projectsPerUser?.average ?? 0, icon: FaProjectDiagram, color: COLORS.danger },
+      { label: t('analytics.totalSignups'), value: (userSignups || []).reduce((a, b) => a + b.count, 0), icon: FaUsers, color: COLORS.primary },
+      { label: t('analytics.active30Days'), value: activeUsers?.active_30_days ?? 0, icon: FaUserGraduate, color: COLORS.success },
+      { label: t('analytics.activationRateLabel'), value: `${activationRate?.activation_rate ?? 0}%`, icon: FaPercentage, color: COLORS.secondary },
+      { label: t('analytics.orgTypes'), value: (usersByOrgType || []).length, icon: FaBuilding, color: COLORS.warning },
+      { label: t('analytics.stakeholders'), value: (stakeholdersByType || []).reduce((a, b) => a + b.count, 0), icon: FaHandshake, color: COLORS.info },
+      { label: t('analytics.projectsPerUser'), value: projectsPerUser?.average ?? 0, icon: FaProjectDiagram, color: COLORS.danger },
     ]
 
     const stakeholderCategoryData = (stakeholdersByCategory || []).map(s => ({
@@ -638,8 +639,8 @@ function Analytics() {
         <div className="chart-grid">
           <div className="chart-card span-2">
             <div className="chart-header">
-              <h3>Croissance des inscrits</h3>
-              <p>Évolution mensuelle et cumulative</p>
+              <h3>{t('analytics.signupGrowth')}</h3>
+              <p>{t('analytics.monthlyCumulative')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={280}>
@@ -652,9 +653,9 @@ function Analytics() {
                     tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar yAxisId="left" dataKey="count" fill={COLORS.primary} name="Nouveaux" radius={[4, 4, 0, 0]} barSize={14} />
+                  <Bar yAxisId="left" dataKey="count" fill={COLORS.primary} name={t('analytics.newUsers')} radius={[4, 4, 0, 0]} barSize={14} />
                   <Line yAxisId="right" type="monotone" dataKey="cumulative" stroke={COLORS.success}
-                    strokeWidth={3} name="Cumulatif" dot={false} />
+                    strokeWidth={3} name={t('analytics.cumulative')} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -662,8 +663,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Type d'organisation</h3>
-              <p>Répartition des utilisateurs</p>
+              <h3>{t('analytics.orgTypeDistribution')}</h3>
+              <p>{t('analytics.userDistribution')}</p>
             </div>
             <div className="chart-body flex-center">
               <ResponsiveContainer width="100%" height={220}>
@@ -692,8 +693,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Stakeholders par catégorie</h3>
-              <p>Répartition catégorielle</p>
+              <h3>{t('analytics.stakeholdersByCategory')}</h3>
+              <p>{t('analytics.categoryDistribution')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -703,7 +704,7 @@ function Analytics() {
                   <YAxis type="category" dataKey="category" axisLine={false} tickLine={false}
                     tick={{ fill: '#334155', fontSize: 11 }} width={150} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Stakeholders" radius={[0, 6, 6, 0]} barSize={20}>
+                  <Bar dataKey="count" name={t('analytics.stakeholders')} radius={[0, 6, 6, 0]} barSize={20}>
                     {stakeholderCategoryData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
@@ -715,8 +716,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Utilisateurs par pays</h3>
-              <p>Répartition géographique</p>
+              <h3>{t('analytics.usersByCountry')}</h3>
+              <p>{t('analytics.geographicDistribution')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -726,7 +727,7 @@ function Analytics() {
                     tick={{ fill: '#475569', fontSize: 11 }} interval={0} angle={-35} textAnchor="end" />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                  <Bar dataKey="count" name="Utilisateurs" radius={[6, 6, 0, 0]} barSize={28} fill={COLORS.secondary} />
+                  <Bar dataKey="count" name={t('analytics.users')} radius={[6, 6, 0, 0]} barSize={28} fill={COLORS.secondary} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -734,8 +735,8 @@ function Analytics() {
 
           <div className="chart-card">
             <div className="chart-header">
-              <h3>Projets par utilisateur</h3>
-              <p>Distribution de l'engagement</p>
+              <h3>{t('analytics.projectsPerUserChart')}</h3>
+              <p>{t('analytics.engagementDistribution')}</p>
             </div>
             <div className="chart-body">
               <ResponsiveContainer width="100%" height={250}>
@@ -745,7 +746,7 @@ function Analytics() {
                     tick={{ fill: '#334155', fontSize: 12 }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Utilisateurs" radius={[6, 6, 0, 0]} barSize={40} fill={COLORS.info} />
+                  <Bar dataKey="count" name={t('analytics.users')} radius={[6, 6, 0, 0]} barSize={40} fill={COLORS.info} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -753,24 +754,24 @@ function Analytics() {
 
           <div className="chart-card span-2">
             <div className="chart-header">
-              <h3>Utilisateurs récents</h3>
-              <p>Dernières connexions</p>
+              <h3>{t('analytics.recentUsers')}</h3>
+              <p>{t('analytics.recentConnections')}</p>
             </div>
             <div className="chart-body">
               <table className="analytics-table">
                 <thead>
                   <tr>
-                    <th>Organisation</th>
-                    <th>Type</th>
-                    <th>Pays</th>
-                    <th>Rôle</th>
-                    <th>Statut</th>
-                    <th>Dernière connexion</th>
+                    <th>{t('analytics.organization')}</th>
+                    <th>{t('analytics.type')}</th>
+                    <th>{t('analytics.country')}</th>
+                    <th>{t('analytics.role')}</th>
+                    <th>{t('analytics.status')}</th>
+                    <th>{t('analytics.lastConnection')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentUsersList.length === 0 ? (
-                    <tr><td colSpan={6} className="empty-row">Aucun utilisateur</td></tr>
+                    <tr><td colSpan={6} className="empty-row">{t('analytics.noUsers')}</td></tr>
                   ) : (
                     recentUsersList.map(u => (
                       <tr key={u.id}>
@@ -780,9 +781,9 @@ function Analytics() {
                         <td><span className={`badge-role ${u.role}`}>{u.role}</span></td>
                         <td>
                           <span className={`status-indicator ${u.is_active ? 'active' : 'inactive'}`}></span>
-                          {u.is_active ? 'Actif' : 'Inactif'}
+                          {u.is_active ? t('analytics.active') : t('analytics.inactive')}
                         </td>
-                        <td className="td-date">{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Jamais'}</td>
+                        <td className="td-date">{u.last_login ? new Date(u.last_login).toLocaleDateString() : t('analytics.never')}</td>
                       </tr>
                     ))
                   )}
@@ -794,7 +795,6 @@ function Analytics() {
       </>
     )
   }
-
   return (
     <div className="analytics-page">
       <section className="analytics-hero">
@@ -806,10 +806,10 @@ function Analytics() {
           <div className="hero-content animate-up">
             <div className="hero-badge">
               <FaChartLine />
-              <span>Analytics</span>
+              <span>{t('analytics.heroBadge')}</span>
             </div>
-            <h1>Pilotage <span className="text-gradient">Stratégique</span></h1>
-            <p>Indicateurs clés et visualisations pour le suivi des projets, ODD et communauté.</p>
+            <h1>{t('analytics.heroTitleSuffix')} <span className="text-gradient">{t('analytics.heroTitle')}</span></h1>
+            <p>{t('analytics.heroDescription')}</p>
           </div>
         </div>
       </section>
@@ -831,7 +831,7 @@ function Analytics() {
               })}
             </div>
             <button className="refresh-btn" onClick={fetchAllData}>
-              <FaRedo /> Actualiser
+              <FaRedo /> {t('analytics.refresh')}
             </button>
           </div>
 
@@ -873,11 +873,7 @@ function Analytics() {
           filter: blur(70px);
           opacity: 0.3;
         }
-        .blob {
-          position: absolute;
-          border-radius: 50%;
-          animation: float 15s infinite alternate;
-        }
+        .blob { position: absolute; border-radius: 50%; animation: float 15s infinite alternate; }
         .blob-1 { width: 300px; height: 300px; top: -50px; left: 5%; background: #60a5fa; }
         .blob-2 { width: 250px; height: 250px; bottom: -50px; right: 5%; background: #93c5fd; animation-delay: -5s; }
         @keyframes float {
@@ -888,330 +884,122 @@ function Analytics() {
         .hero-container { position: relative; z-index: 2; }
 
         .hero-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 16px;
-          background: rgba(37, 99, 235, 0.08);
-          border-radius: 100px;
-          color: var(--p-primary);
-          font-weight: 700;
-          font-size: 0.8rem;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 24px;
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 6px 16px; background: rgba(37, 99, 235, 0.08);
+          border-radius: 100px; color: var(--p-primary);
+          font-weight: 700; font-size: 0.8rem;
+          text-transform: uppercase; letter-spacing: 1px; margin-bottom: 24px;
         }
 
         .analytics-hero h1 {
           font-size: clamp(2.5rem, 5vw, 3.5rem);
-          font-weight: 800;
-          line-height: 1.1;
-          margin-bottom: 20px;
-          letter-spacing: -0.02em;
+          font-weight: 800; line-height: 1.1;
+          margin-bottom: 20px; letter-spacing: -0.02em;
           color: var(--p-secondary);
         }
 
         .text-gradient {
           background: linear-gradient(135deg, #2563eb, #7c3aed);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
 
         .analytics-hero p {
-          font-size: 1.15rem;
-          color: var(--p-text-light);
-          max-width: 600px;
-          margin: 0 auto;
-          line-height: 1.6;
+          font-size: 1.15rem; color: var(--p-text-light);
+          max-width: 600px; margin: 0 auto; line-height: 1.6;
         }
 
-        .analytics-body {
-          padding-bottom: 80px;
-          margin-top: -30px;
-        }
+        .analytics-body { padding-bottom: 80px; margin-top: -30px; }
 
         .analytics-controls {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 16px;
-          margin-bottom: 32px;
-          flex-wrap: wrap;
+          display: flex; justify-content: space-between;
+          align-items: center; gap: 16px; margin-bottom: 32px; flex-wrap: wrap;
         }
 
-        .dashboard-tabs {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-        }
+        .dashboard-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
 
         .tab-btn {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 24px;
-          border: 1.5px solid #f1f5f9;
-          border-radius: 16px;
-          background: #fff;
-          cursor: pointer;
-          transition: 0.3s;
-          font-family: inherit;
-          font-size: 0.9rem;
-          font-weight: 700;
-          color: var(--p-text-light);
+          display: flex; align-items: center; gap: 10px;
+          padding: 12px 24px; border: 1.5px solid #f1f5f9;
+          border-radius: 16px; background: #fff; cursor: pointer;
+          transition: 0.3s; font-family: inherit; font-size: 0.9rem;
+          font-weight: 700; color: var(--p-text-light);
         }
         .tab-btn svg { font-size: 1.1rem; color: var(--p-primary); }
         .tab-btn:hover { border-color: #bfdbfe; background: #eff6ff; color: var(--p-primary); }
         .tab-btn.active { border-color: var(--p-primary); background: #eff6ff; color: var(--p-primary); }
 
         .refresh-btn {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 12px 24px;
-          background: var(--p-secondary);
-          color: #fff;
-          border: none;
-          border-radius: 14px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: 0.3s;
-          font-family: inherit;
-          font-size: 0.9rem;
+          display: flex; align-items: center; gap: 8px;
+          padding: 12px 24px; background: var(--p-secondary);
+          color: #fff; border: none; border-radius: 14px;
+          font-weight: 700; cursor: pointer; transition: 0.3s;
+          font-family: inherit; font-size: 0.9rem;
         }
         .refresh-btn:hover { background: #1e293b; transform: translateY(-2px); }
 
-        .dashboard-content {
-          animation: fadeUp 0.5s ease both;
-        }
+        .dashboard-content { animation: fadeUp 0.5s ease both; }
 
         .kpi-grid {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          gap: 16px;
-          margin-bottom: 32px;
+          display: grid; grid-template-columns: repeat(6, 1fr);
+          gap: 16px; margin-bottom: 32px;
         }
 
         .kpi-card {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          background: #fff;
-          border: 1px solid #f1f5f9;
-          border-radius: 20px;
-          padding: 20px;
-          transition: 0.3s;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+          display: flex; align-items: center; gap: 16px;
+          background: #fff; border: 1px solid #f1f5f9;
+          border-radius: 20px; padding: 20px;
+          transition: 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.02);
         }
         .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(0,0,0,0.04); border-color: #e2e8f0; }
 
-        .kpi-icon {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
-          flex-shrink: 0;
-        }
+        .kpi-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+        .kpi-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--p-text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .kpi-value { font-size: 1.4rem; font-weight: 800; color: var(--p-secondary); line-height: 1.2; }
 
-        .kpi-info {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          min-width: 0;
-        }
-        .kpi-label {
-          font-size: 0.7rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-          color: var(--p-text-light);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .kpi-value {
-          font-size: 1.4rem;
-          font-weight: 800;
-          color: var(--p-secondary);
-          line-height: 1.2;
-        }
+        .chart-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 
-        .chart-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 20px;
-        }
-
-        .chart-card {
-          background: #fff;
-          border: 1px solid #f1f5f9;
-          border-radius: 24px;
-          padding: 24px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-          display: flex;
-          flex-direction: column;
-        }
+        .chart-card { background: #fff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); display: flex; flex-direction: column; }
         .span-2 { grid-column: span 2; }
         .span-3 { grid-column: span 3; }
 
-        .chart-header {
-          margin-bottom: 16px;
-        }
-        .chart-header h3 {
-          font-size: 1rem;
-          font-weight: 800;
-          color: var(--p-secondary);
-          margin: 0 0 4px;
-        }
-        .chart-header p {
-          font-size: 0.8rem;
-          color: var(--p-text-light);
-          margin: 0;
-        }
+        .chart-header { margin-bottom: 16px; }
+        .chart-header h3 { font-size: 1rem; font-weight: 800; color: var(--p-secondary); margin: 0 0 4px; }
+        .chart-header p { font-size: 0.8rem; color: var(--p-text-light); margin: 0; }
 
-        .chart-body {
-          flex: 1;
-          min-height: 200px;
-        }
+        .chart-body { flex: 1; min-height: 200px; }
         .flex-center { display: flex; align-items: center; justify-content: center; }
         .flex-row { display: flex; gap: 24px; }
         .flex-row .mini-pie { flex: 1; min-width: 0; }
 
-        .mini-pie h4 {
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: var(--p-text-light);
-          text-align: center;
-          margin: 0 0 8px;
-        }
+        .mini-pie h4 { font-size: 0.8rem; font-weight: 700; color: var(--p-text-light); text-align: center; margin: 0 0 8px; }
 
-        .analytics-tooltip {
-          background: rgba(15, 23, 42, 0.95);
-          backdrop-filter: blur(8px);
-          border-radius: 12px;
-          padding: 12px 16px;
-          color: white;
-          border: 1px solid rgba(255,255,255,0.1);
-          box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-        }
+        .analytics-tooltip { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px); border-radius: 12px; padding: 12px 16px; color: white; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
         .analytics-tooltip .tooltip-label { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; opacity: 0.7; }
         .analytics-tooltip .tooltip-divider { height: 1px; background: rgba(255,255,255,0.1); margin-bottom: 8px; }
         .analytics-tooltip .tooltip-value { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin: 4px 0; }
         .analytics-tooltip .tooltip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-        .pie-legend {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          justify-content: center;
-          margin-top: 12px;
-        }
+        .pie-legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 12px; }
         .pie-legend.compact { gap: 8px; }
 
-        .legend-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: #475569;
-        }
-        .legend-dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 3px;
-          flex-shrink: 0;
-        }
-        .legend-count {
-          font-weight: 800;
-          color: var(--p-secondary);
-          margin-left: 4px;
-        }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; color: #475569; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+        .legend-count { font-weight: 800; color: var(--p-secondary); margin-left: 4px; }
 
-        .inline-legend {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-          margin-top: 12px;
-        }
+        .inline-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 
-        .tech-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          padding-top: 4px;
-        }
-        .tech-row {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .tech-rank {
-          font-size: 0.7rem;
-          font-weight: 800;
-          color: #94a3b8;
-          background: #f1f5f9;
-          width: 24px;
-          height: 24px;
-          border-radius: 6px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-        .tech-name {
-          font-size: 0.85rem;
-          font-weight: 700;
-          color: #334155;
-          width: 100px;
-          flex-shrink: 0;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .tech-bar {
-          flex: 1;
-          height: 8px;
-          background: #f1f5f9;
-          border-radius: 4px;
-          overflow: hidden;
-        }
-        .tech-bar-fill {
-          height: 100%;
-          border-radius: 4px;
-          transition: width 1s ease-out;
-        }
-        .tech-count {
-          font-size: 0.85rem;
-          font-weight: 800;
-          color: var(--p-secondary);
-          width: 30px;
-          text-align: right;
-        }
+        .tech-list { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+        .tech-row { display: flex; align-items: center; gap: 12px; }
+        .tech-rank { font-size: 0.7rem; font-weight: 800; color: #94a3b8; background: #f1f5f9; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .tech-name { font-size: 0.85rem; font-weight: 700; color: #334155; width: 100px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tech-bar { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+        .tech-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease-out; }
+        .tech-count { font-size: 0.85rem; font-weight: 800; color: var(--p-secondary); width: 30px; text-align: right; }
 
-        .analytics-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.85rem;
-        }
-        .analytics-table th {
-          text-align: left;
-          padding: 12px 8px;
-          color: var(--p-text-light);
-          font-weight: 700;
-          font-size: 0.7rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          border-bottom: 2px solid #f1f5f9;
-        }
-        .analytics-table td {
-          padding: 10px 8px;
-          border-bottom: 1px solid #f1f5f9;
-          color: #334155;
-        }
+        .analytics-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .analytics-table th { text-align: left; padding: 12px 8px; color: var(--p-text-light); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; }
+        .analytics-table td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
         .analytics-table tr:hover td { background: #f8fafc; }
         .td-title { font-weight: 700; color: var(--p-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .td-date { color: var(--p-text-light); font-size: 0.8rem; white-space: nowrap; }

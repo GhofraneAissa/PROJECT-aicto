@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FaFileAlt, FaDatabase, FaDownload, FaFileContract, FaFileCode, FaChartLine, FaTimes, FaPlus, FaFilter, FaBook, FaGlobe, FaSearch } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import SearchBar from '../components/SearchBar'
-
-const types = ['All', 'Policy Document', 'White Paper', 'Report', 'Dataset']
-const categories = ['All', 'Strategy', 'Ethics', 'Governance', 'Research', 'Data']
+import { API_BASE } from '../config'
 
 const getIcon = (type) => {
   switch (type) {
@@ -27,6 +26,35 @@ const getTypeClass = (type) => {
 }
 
 function ResourceLibrary() {
+  const { t } = useTranslation()
+
+  const types = [
+    { value: 'All', label: t('resources.all') },
+    { value: 'Policy Document', label: t('resources.typePolicyDocument') },
+    { value: 'White Paper', label: t('resources.typeWhitePaper') },
+    { value: 'Report', label: t('resources.typeReport') },
+    { value: 'Dataset', label: t('resources.typeDataset') },
+  ]
+
+  const categories = [
+    { value: 'All', label: t('resources.all') },
+    { value: 'Strategy', label: t('resources.categoryStrategy') },
+    { value: 'Ethics', label: t('resources.categoryEthics') },
+    { value: 'Governance', label: t('resources.categoryGovernance') },
+    { value: 'Research', label: t('resources.categoryResearch') },
+    { value: 'Data', label: t('resources.categoryData') },
+  ]
+
+  const getTypeLabel = (typeVal) => {
+    const found = types.find(t => t.value === typeVal)
+    return found ? found.label : typeVal
+  }
+
+  const getCategoryLabel = (catVal) => {
+    const found = categories.find(c => c.value === catVal)
+    return found ? found.label : catVal
+  }
+
   const [search, setSearch] = useState('')
   const [selectedType, setSelectedType] = useState('All')
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -47,10 +75,10 @@ function ResourceLibrary() {
   }, [])
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/resources/')
+    fetch(`${API_BASE}/api/resources/`)
       .then(res => res.json())
       .then(data => setResources(data))
-      .catch(() => {})
+      .catch(err => console.error('Error fetching resources:', err))
   }, [])
 
   const filtered = resources.filter(r => {
@@ -77,7 +105,7 @@ function ResourceLibrary() {
     if (!resource.file_url) return
     try {
       const filename = resource.file_url.split('/').pop()
-      const res = await fetch(`http://localhost:8000/api/resources/download/${filename}`)
+      const res = await fetch(`${API_BASE}/api/resources/download/${filename}`)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -88,13 +116,13 @@ function ResourceLibrary() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch {
-      toast.error('Download failed')
+      toast.error(t('resources.downloadFailed'))
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!selectedFile) { toast.error('Please select a file to upload'); return }
+    if (!selectedFile) { toast.error(t('resources.selectFile')); return }
     setSubmitting(true)
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
     const formData = new FormData()
@@ -105,7 +133,7 @@ function ResourceLibrary() {
     if (form.description) formData.append('description', form.description)
     formData.append('file', selectedFile)
     try {
-      const res = await fetch('http://localhost:8000/api/resources/upload', {
+      const res = await fetch(`${API_BASE}/api/resources/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -113,13 +141,13 @@ function ResourceLibrary() {
       if (!res.ok) throw new Error('Failed to create resource')
       const newResource = await res.json()
       setResources(prev => [newResource, ...prev])
-      toast.success('Resource added successfully!')
+      toast.success(t('resources.addedSuccess'))
       setShowModal(false)
       setForm({ title: '', type: 'Policy Document', category: 'Strategy', language: '', description: '' })
       setSelectedFile(null)
       setFileSizeDisplay('')
     } catch {
-      toast.error('Failed to add resource. Please try again.')
+      toast.error(t('resources.addFailed'))
     }
     setSubmitting(false)
   }
@@ -137,10 +165,10 @@ function ResourceLibrary() {
           <div className="hero-content animate-up">
             <div className="hero-badge">
               <FaBook />
-              <span>Resource Library</span>
+              <span>{t('resources.pageTitle')}</span>
             </div>
-            <h1>Resource <span className="text-gradient">Library</span></h1>
-            <p>Discover and share AI-related documents, reports, datasets and white papers from across the Arab region.</p>
+            <h1>{t('resources.heroTitle')} <span className="text-gradient">{t('resources.heroTitleGradient')}</span></h1>
+            <p>{t('resources.pageDesc')}</p>
           </div>
         </div>
       </section>
@@ -151,16 +179,16 @@ function ResourceLibrary() {
             <SearchBar
               value={search}
               onChange={setSearch}
-              placeholder="Search resources by title or category..."
+              placeholder={t('resources.searchPlaceholderFull')}
             />
             <div className="action-buttons">
               <button className={`filter-btn ${filtersOpen ? 'active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
-                <FaFilter /> Filters
+                <FaFilter /> {t('resources.filters')}
                 {(selectedType !== 'All' || selectedCategory !== 'All') && <span className="badge-dot"></span>}
               </button>
               {user && (
                 <button className="submit-btn" onClick={() => setShowModal(true)}>
-                  <FaPlus /> Add Resource
+                  <FaPlus /> {t('resources.addResource')}
                 </button>
               )}
             </div>
@@ -170,24 +198,24 @@ function ResourceLibrary() {
             <div className="modern-filters-panel animate-up">
               <div className="filters-grid">
                 <div className="filter-item">
-                  <label>Type</label>
+                  <label>{t('resources.type')}</label>
                   <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-                    {types.map(t => <option key={t} value={t}>{t}</option>)}
+                    {types.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div className="filter-item">
-                  <label>Category</label>
+                  <label>{t('resources.category')}</label>
                   <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>
               </div>
-              <button className="clear-filters-link" onClick={clearFilters}>Reset all filters</button>
+              <button className="clear-filters-link" onClick={clearFilters}>{t('resources.resetFilters')}</button>
             </div>
           )}
 
           <div className="results-header animate-up delay-1">
-            <span className="results-count">{filtered.length} resources found</span>
+            <span className="results-count">{filtered.length} {t('resources.resourcesFound')}</span>
           </div>
 
           <div className="resources-list animate-up delay-2">
@@ -201,21 +229,21 @@ function ResourceLibrary() {
                     <div className="resource-top">
                       <h3>{r.title}</h3>
                       <div className="resource-badges">
-                        <span className="type-badge">{r.type}</span>
-                        <span className="cat-badge">{r.category}</span>
+                        <span className="type-badge">{getTypeLabel(r.type)}</span>
+                        <span className="cat-badge">{getCategoryLabel(r.category)}</span>
                       </div>
                     </div>
                     <div className="resource-meta">
-                      <span><strong>Language:</strong> {r.language || '-'}</span>
-                      <span><strong>Size:</strong> {r.file_size || '-'}</span>
-                      <span className="dl-count"><FaDownload /> {r.downloads || 0}</span>
+                      <span><strong>{t('resources.language')}:</strong> {r.language || '-'}</span>
+                      <span><strong>{t('resources.size')}:</strong> {r.file_size || '-'}</span>
+                      <span className="dl-count"><FaDownload /> {r.downloads || 0} {t('resources.downloads')}</span>
                     </div>
                     {r.description && <p className="resource-desc">{r.description}</p>}
                   </div>
                   {r.file_url && (
                     <div className="resource-action">
                       <button className="download-btn" onClick={() => handleDownload(r)}>
-                        <FaDownload /> Download
+                        <FaDownload /> {t('resources.download')}
                       </button>
                     </div>
                   )}
@@ -224,9 +252,9 @@ function ResourceLibrary() {
             ) : (
               <div className="no-results-card">
                 <div className="no-results-icon">📚</div>
-                <h3>No resources found</h3>
-                <p>Your search returned no matches. Try a different query or add a new resource.</p>
-                <button className="reset-btn" onClick={clearFilters}>Reset Filters</button>
+                <h3>{t('resources.noResults')}</h3>
+                <p>{t('resources.noResultsDesc')}</p>
+                <button className="reset-btn" onClick={clearFilters}>{t('resources.resetFiltersBtn')}</button>
               </div>
             )}
           </div>
@@ -234,10 +262,10 @@ function ResourceLibrary() {
           {!user && (
             <div className="cta-card animate-up">
               <div className="cta-content">
-                <h3>Contribute to the Library</h3>
-                <p>Sign in to share your own AI resources with the community.</p>
+                <h3>{t('resources.ctaTitle')}</h3>
+                <p>{t('resources.ctaDescription')}</p>
               </div>
-              <a href="/auth.html" className="cta-auth-btn">Sign in to Submit</a>
+              <a href="/auth.html" className="cta-auth-btn">{t('resources.signInToSubmit')}</a>
             </div>
           )}
         </div>
@@ -247,51 +275,51 @@ function ResourceLibrary() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Add New Resource</h3>
+              <h3>{t('resources.addNewResource')}</h3>
               <button className="close-btn" onClick={() => setShowModal(false)}><FaTimes /></button>
             </div>
             <form onSubmit={handleSubmit} className="modal-form">
               <div className="form-grid-mini">
                 <div className="field">
-                  <label>Title *</label>
-                  <input name="title" value={form.title} onChange={handleFormChange} required placeholder="Resource title" />
+                  <label>{t('resources.titleField')} *</label>
+                  <input name="title" value={form.title} onChange={handleFormChange} required placeholder={t('resources.titlePlaceholder')} />
                 </div>
                 <div className="field">
-                  <label>Language</label>
-                  <input name="language" value={form.language} onChange={handleFormChange} placeholder="e.g. English, Arabic" />
+                  <label>{t('resources.language')}</label>
+                  <input name="language" value={form.language} onChange={handleFormChange} placeholder={t('resources.languagePlaceholder')} />
                 </div>
                 <div className="field">
-                  <label>Type *</label>
+                  <label>{t('resources.type')} *</label>
                   <select name="type" value={form.type} onChange={handleFormChange}>
-                    {types.filter(t => t !== 'All').map(t => <option key={t} value={t}>{t}</option>)}
+                    {types.filter(t => t.value !== 'All').map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div className="field">
-                  <label>Category *</label>
+                  <label>{t('resources.category')} *</label>
                   <select name="category" value={form.category} onChange={handleFormChange}>
-                    {categories.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                    {categories.filter(c => c.value !== 'All').map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                   </select>
                 </div>
               </div>
               <div className="field full">
-                <label>File *</label>
+                <label>{t('resources.fileField')} *</label>
                 <div className="file-upload-wrapper">
                   <input type="file" id="resource-file" onChange={handleFileChange} className="file-input-hidden" required />
                   <label htmlFor="resource-file" className="file-upload-label">
                     <FaPlus className="upload-icon" />
-                    <span>{selectedFile ? selectedFile.name : 'Click to select a file'}</span>
+                    <span>{selectedFile ? selectedFile.name : t('resources.clickToSelect')}</span>
                   </label>
                   {fileSizeDisplay && <span className="file-size-badge">{fileSizeDisplay}</span>}
                 </div>
               </div>
               <div className="field full">
-                <label>Description</label>
-                <textarea name="description" value={form.description} onChange={handleFormChange} rows="3" placeholder="Brief description of the resource" />
+                <label>{t('resources.descriptionField')}</label>
+                <textarea name="description" value={form.description} onChange={handleFormChange} rows="3" placeholder={t('resources.descriptionPlaceholder')} />
               </div>
               <div className="modal-footer">
-                <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>{t('resources.cancel')}</button>
                 <button type="submit" className="submit-action-btn" disabled={submitting}>
-                  {submitting ? <>Submitting...</> : 'Add Resource'}
+                  {submitting ? <>{t('resources.submitting')}</> : t('resources.addResource')}
                 </button>
               </div>
             </form>

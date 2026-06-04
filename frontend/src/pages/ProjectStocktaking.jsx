@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { FaPlus, FaCheck, FaFilter, FaTimes, FaLightbulb, FaGlobeAmericas, FaHeart, FaCity, FaRocket, FaMicrochip, FaShieldAlt, FaLeaf, FaSearch, FaArrowRight } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import SearchBar from '../components/SearchBar'
+import { useTranslation } from 'react-i18next'
 
-const API_BASE = 'http://localhost:8000'
+import { API_BASE } from '../config'
 
 const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Transportation', 'Energy', 'Environment', 'Security']
 const technologies = ['NLP', 'Computer Vision', 'Robotics', 'Machine Learning', 'Deep Learning', 'Speech Recognition']
@@ -49,6 +50,7 @@ const getSectorInfo = (sector) => {
 }
 
 function ProjectStocktaking() {
+  const { t } = useTranslation()
   const [projects, setProjects] = useState([])
   const [countries, setCountries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -140,7 +142,7 @@ function ProjectStocktaking() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
-    if (!token) { toast.error('Please login to submit a project'); return }
+    if (!token) { toast.error(t('projects.pleaseLogin')); return }
     const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
     let userId = null
     if (storedUser) {
@@ -149,7 +151,7 @@ function ProjectStocktaking() {
         userId = u.id
       } catch {}
     }
-    if (!userId) { toast.error('User info not found. Please login again.'); return }
+    if (!userId) { toast.error(t('projects.userInfoNotFound')); return }
 
     try {
       const projectData = {
@@ -173,7 +175,7 @@ function ProjectStocktaking() {
 
       if (!response.ok) {
         const errorData = await response.json()
-        let message = 'Failed to submit project'
+        let message = t('projects.failedToSubmit')
         if (response.status === 422 && Array.isArray(errorData.detail)) {
           message = errorData.detail.map(e => `${e.loc?.join('.') || 'field'}: ${e.msg}`).join('\n')
         } else if (typeof errorData.detail === 'string') {
@@ -198,7 +200,7 @@ function ProjectStocktaking() {
           })
         } catch (err) {
           console.error('Failed to upload files:', err)
-          toast.warning('Project created but file upload failed.')
+          toast.warning(t('projects.fileUploadFailed'))
         }
       }
 
@@ -217,7 +219,7 @@ function ProjectStocktaking() {
         }
       }
 
-      toast.success('Your initiative has been submitted for moderation! It will appear publicly once approved.', {
+      toast.success(t('projects.submittedForModeration'), {
         icon: '🚀'
       })
       setShowForm(false)
@@ -230,7 +232,7 @@ function ProjectStocktaking() {
       fetchProjects()
     } catch (err) {
       console.error('Error creating project:', err)
-      toast.error('Error: ' + err.message)
+      toast.error(t('projects.errorPrefix') + err.message)
     }
   }
 
@@ -254,7 +256,7 @@ function ProjectStocktaking() {
 
   const addNewStakeholder = async () => {
     if (!newStakeholder.name.trim() || !newStakeholder.type) {
-      toast.warning('Please fill in required fields (Name and Type)')
+      toast.warning(t('projects.fillRequiredFields'))
       return
     }
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
@@ -264,7 +266,7 @@ function ProjectStocktaking() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(newStakeholder)
       })
-      if (!res.ok) throw new Error('Failed to create stakeholder')
+      if (!res.ok) throw new Error(t('projects.failedCreateStakeholder'))
       const created = await res.json()
       
       setAllStakeholders(prev => [created, ...prev])
@@ -272,16 +274,16 @@ function ProjectStocktaking() {
       
       setNewStakeholder({ name: '', type: '', country: '', website: '', contact_email: '' })
       setShowAddStakeholder(false)
-      toast.success('New organization created and added to your selection!')
+      toast.success(t('projects.orgCreatedAndAdded'))
     } catch (err) {
-      toast.error('Error: ' + err.message)
+      toast.error(t('projects.errorPrefix') + err.message)
     }
   }
 
   const clearFilters = () => { setFilterCountry(''); setFilterSector(''); setFilterSdg(''); setSearchQuery(''); setPage(1) }
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return 'Ongoing'
+    if (!dateStr) return t('projects.ongoing')
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
   }
 
@@ -297,10 +299,10 @@ function ProjectStocktaking() {
           <div className="hero-content animate-up">
             <div className="hero-badge">
               <FaRocket />
-              <span>Regional Activity</span>
+              <span>{t('projects.regionalActivity')}</span>
             </div>
-            <h1>Project <span className="text-gradient">Stocktaking</span></h1>
-            <p>Discover real-world AI initiatives across 22 Arab countries, from desert agriculture to smart cities.</p>
+            <h1>{t('projects.heroTitle')} <span className="text-gradient">{t('projects.heroTitleGradient')}</span></h1>
+            <p>{t('projects.heroDesc')}</p>
           </div>
         </div>
       </section>
@@ -311,18 +313,18 @@ function ProjectStocktaking() {
             <SearchBar 
               value={searchQuery}
               onChange={setSearchQuery}
-              placeholder="Search projects, descriptions or organizations..."
+              placeholder={t('projects.searchPlaceholder')}
             />
             
             <div className="action-buttons">
               <button className={`filter-btn ${filtersOpen ? 'active' : ''}`} onClick={() => setFiltersOpen(!filtersOpen)}>
-                <FaFilter /> Filters
+                <FaFilter /> {t('projects.filters')}
                 {(filterCountry || filterSector || filterSdg) && <span className="badge-dot"></span>}
               </button>
               
               {user && (
                 <button className="submit-btn" onClick={() => setShowForm(!showForm)}>
-                  <FaPlus /> {showForm ? 'Close Form' : 'Submit Project'}
+                  <FaPlus /> {showForm ? t('projects.closeForm') : t('projects.submitProject')}
                 </button>
               )}
             </div>
@@ -332,28 +334,28 @@ function ProjectStocktaking() {
             <div className="modern-filters-panel animate-up">
               <div className="filters-grid">
                 <div className="filter-item">
-                  <label>Country</label>
+                  <label>{t('projects.country')}</label>
                   <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
-                    <option value="">All Countries</option>
+                    <option value="">{t('projects.allCountries')}</option>
                     {arabCountries.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="filter-item">
-                  <label>Sector</label>
+                  <label>{t('projects.sector')}</label>
                   <select value={filterSector} onChange={e => setFilterSector(e.target.value)}>
-                    <option value="">All Sectors</option>
+                    <option value="">{t('projects.allSectors')}</option>
                     {sectors.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="filter-item">
-                  <label>SDG Alignment</label>
+                  <label>{t('projects.sdgAlignment')}</label>
                   <select value={filterSdg} onChange={e => setFilterSdg(e.target.value)}>
-                    <option value="">All SDGs</option>
+                    <option value="">{t('projects.allSdgs')}</option>
                     {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
                   </select>
                 </div>
               </div>
-              <button className="clear-filters-link" onClick={clearFilters}>Reset all filters</button>
+              <button className="clear-filters-link" onClick={clearFilters}>{t('projects.resetAllFilters')}</button>
             </div>
           )}
 
@@ -367,8 +369,8 @@ function ProjectStocktaking() {
                   <span className="step-line"></span>
                   <span className="step-dot"></span>
                 </div>
-                <h3><span className="text-gradient">Share Your Initiative</span></h3>
-                <p>Provide details about your AI project to include it in the regional stocktaking portal.</p>
+                <h3><span className="text-gradient">{t('projects.shareInitiative')}</span></h3>
+                <p>{t('projects.shareInitiativeDesc')}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="project-form">
@@ -376,41 +378,41 @@ function ProjectStocktaking() {
                   <div className="section-heading">
                     <span className="section-step">01</span>
                     <div>
-                      <h4>Basic Information</h4>
-                      <p>Project title, timeline, and target country</p>
+                      <h4>{t('projects.basicInfo')}</h4>
+                      <p>{t('projects.basicInfoDesc')}</p>
                     </div>
                   </div>
                   <div className="form-grid">
                     <div className="field">
-                      <label>Project Title <span className="required-star">*</span></label>
-                      <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder="e.g. AI-Powered Precision Agriculture" />
+                      <label>{t('projects.projectTitle')} <span className="required-star">*</span></label>
+                      <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder={t('projects.titlePlaceholder')} />
                     </div>
                     <div className="field">
-                      <label>Start Date</label>
+                      <label>{t('projects.startDate')}</label>
                       <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} />
                     </div>
                     <div className="field">
-                      <label>End Date</label>
+                      <label>{t('projects.endDate')}</label>
                       <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} />
                     </div>
                     <div className="field">
-                      <label>Target Country</label>
+                      <label>{t('projects.targetCountry')}</label>
                       <select name="country_id" value={formData.country_id} onChange={handleChange}>
-                        <option value="">Select Country</option>
+                        <option value="">{t('projects.selectCountry')}</option>
                         {countries.map(c => <option key={c.id} value={c.id}>{c.country}</option>)}
                       </select>
                     </div>
                     <div className="field">
-                      <label>Primary Sector <span className="required-star">*</span></label>
+                      <label>{t('projects.primarySector')} <span className="required-star">*</span></label>
                       <select name="sector" value={formData.sector} onChange={handleChange} required>
-                        <option value="">Choose Sector</option>
+                        <option value="">{t('projects.selectSector')}</option>
                         {sectors.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div className="field">
-                      <label>Core AI Technology <span className="required-star">*</span></label>
+                      <label>{t('projects.coreTechnology')} <span className="required-star">*</span></label>
                       <select name="technology" value={formData.technology} onChange={handleChange} required>
-                        <option value="">Choose Technology</option>
+                        <option value="">{t('projects.selectTechnology')}</option>
                         {technologies.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
@@ -421,20 +423,20 @@ function ProjectStocktaking() {
                   <div className="section-heading">
                     <span className="section-step">02</span>
                     <div>
-                      <h4>Project Details</h4>
-                      <p>Description and SDG alignment</p>
+                      <h4>{t('projects.projectDetails')}</h4>
+                      <p>{t('projects.projectDetailsDesc')}</p>
                     </div>
                   </div>
 
                   <div className="field full">
-                    <label>Description <span className="required-star">*</span></label>
-                    <textarea name="description" value={formData.description} onChange={handleChange} required rows="5" placeholder="Briefly explain the project goals, impact and current progress..."></textarea>
+                    <label>{t('projects.projectDescription')} <span className="required-star">*</span></label>
+                    <textarea name="description" value={formData.description} onChange={handleChange} required rows="5" placeholder={t('projects.describeProject')}></textarea>
                   </div>
 
                   <div className="field full">
-                    <label>SDG Alignment</label>
+                    <label>{t('projects.sdgAlignment')}</label>
                     <select name="sdg_id" value={formData.sdg_id} onChange={handleChange}>
-                      <option value="">Select SDG</option>
+                      <option value="">{t('projects.selectSdg')}</option>
                       {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
                     </select>
                   </div>
@@ -444,13 +446,13 @@ function ProjectStocktaking() {
                   <div className="section-heading">
                     <span className="section-step">03</span>
                     <div>
-                      <h4>Attachments &amp; Stakeholders</h4>
-                      <p>Supporting files and partner organizations</p>
+                      <h4>{t('projects.attachmentsStakeholders')}</h4>
+                      <p>{t('projects.attachmentsStakeholdersDesc')}</p>
                     </div>
                   </div>
 
                   <div className="field full">
-                    <label>Attachments (PDF, Images, etc.)</label>
+                    <label>{t('projects.attachments')}</label>
                     <div className="file-upload-wrapper">
                       <input 
                         type="file" 
@@ -461,7 +463,7 @@ function ProjectStocktaking() {
                       />
                       <label htmlFor="project-files" className="file-upload-label">
                         <FaPlus className="upload-icon" />
-                        <span>{formData.files.length > 0 ? `${formData.files.length} files selected` : 'Click to select files'}</span>
+                        <span>{formData.files.length > 0 ? t('projects.filesSelected', { count: formData.files.length }) : t('projects.clickToSelectFiles')}</span>
                       </label>
                       {formData.files.length > 0 && (
                         <div className="file-preview-list">
@@ -477,20 +479,20 @@ function ProjectStocktaking() {
                   </div>
 
                   <div className="field full stakeholders-field">
-                    <label>Project Stakeholders <span className="required-star">*</span></label>
-                    <p className="field-hint">Select the organizations involved in this project and define their roles.</p>
+                    <label>{t('projects.projectStakeholders')} <span className="required-star">*</span></label>
+                    <p className="field-hint">{t('projects.stakeholdersHint')}</p>
                     
                     <div className="multi-choice-container">
                       <div className="list-search-wrapper">
                         <FaSearch className="search-icon" />
                         <input 
                           type="text" 
-                          placeholder="Filter organizations..." 
+                          placeholder={t('projects.filterOrganizations')} 
                           value={stakeholderSearch}
                           onChange={(e) => setStakeholderSearch(e.target.value)}
                         />
                         {selectedStakeholders.length > 0 && (
-                          <span className="selected-count-badge">{selectedStakeholders.length} selected</span>
+                          <span className="selected-count-badge">{t('projects.selectedCount', { count: selectedStakeholders.length })}</span>
                         )}
                       </div>
 
@@ -513,15 +515,15 @@ function ProjectStocktaking() {
                                 
                                 {isSelected && (
                                   <div className="role-picker">
-                                    <label>Role:</label>
+                                    <label>{t('projects.role')}</label>
                                     <select 
                                       value={selectedStakeholders.find(ss => ss.stakeholder_id === s.id)?.role || 'partner'}
                                       onChange={(e) => updateStakeholderRole(s.id, e.target.value)}
                                     >
-                                      <option value="partner">Partner</option>
-                                      <option value="developer">Developer</option>
-                                      <option value="research">Research</option>
-                                      <option value="funding">Funding</option>
+                                      <option value="partner">{t('projects.rolePartner')}</option>
+                                      <option value="developer">{t('projects.roleDeveloper')}</option>
+                                      <option value="research">{t('projects.roleResearch')}</option>
+                                      <option value="funding">{t('projects.roleFunding')}</option>
                                     </select>
                                   </div>
                                 )}
@@ -529,13 +531,13 @@ function ProjectStocktaking() {
                             )
                           })}
                         {allStakeholders.filter(s => s.name.toLowerCase().includes(stakeholderSearch.toLowerCase())).length === 0 && (
-                          <div className="no-results-msg">No organizations matching your search.</div>
+                          <div className="no-results-msg">{t('projects.noOrganizations')}</div>
                         )}
                       </div>
 
                       <div className="list-footer">
                         <button type="button" className="btn-create-new" onClick={() => setShowAddStakeholder(true)}>
-                          <FaPlus /> Can't find an organization? Create new
+                          <FaPlus /> {t('projects.createNewOrg')}
                         </button>
                       </div>
                     </div>
@@ -544,40 +546,40 @@ function ProjectStocktaking() {
                       <div className="new-stakeholder-modal-overlay">
                         <div className="new-stakeholder-modal">
                           <div className="modal-header">
-                            <h3>Create New Organization</h3>
+                            <h3>{t('projects.createOrgTitle')}</h3>
                             <button type="button" className="close-btn" onClick={() => setShowAddStakeholder(false)}><FaTimes /></button>
                           </div>
                           <div className="modal-body">
                             <div className="form-grid-mini">
                               <div className="field">
-                                <label>Name <span className="required-star">*</span></label>
-                                <input name="name" value={newStakeholder.name} onChange={handleNewStakeholderChange} placeholder="e.g. AI Research Lab" required />
+                                <label>{t('projects.name')} <span className="required-star">*</span></label>
+                                <input name="name" value={newStakeholder.name} onChange={handleNewStakeholderChange} placeholder={t('projects.orgNamePlaceholder')} required />
                               </div>
                               <div className="field">
-                                <label>Type <span className="required-star">*</span></label>
+                                <label>{t('projects.type')} <span className="required-star">*</span></label>
                                 <select name="type" value={newStakeholder.type} onChange={handleNewStakeholderChange} required>
-                                  <option value="">Select Type</option>
-                                  <option value="business">Business</option>
-                                  <option value="university">University</option>
-                                  <option value="government">Government</option>
-                                  <option value="NGO">NGO</option>
-                                  <option value="lab">Research Lab</option>
-                                  <option value="company">Company</option>
+                                  <option value="">{t('projects.selectType')}</option>
+                                  <option value="business">{t('projects.orgBusiness')}</option>
+                                  <option value="university">{t('projects.orgUniversity')}</option>
+                                  <option value="government">{t('projects.orgGovernment')}</option>
+                                  <option value="NGO">{t('projects.orgNgo')}</option>
+                                  <option value="lab">{t('projects.orgResearchLab')}</option>
+                                  <option value="company">{t('projects.orgCompany')}</option>
                                 </select>
                               </div>
                               <div className="field">
-                                <label>Country</label>
-                                <input name="country" value={newStakeholder.country} onChange={handleNewStakeholderChange} placeholder="Country name" />
+                                <label>{t('projects.country')}</label>
+                                <input name="country" value={newStakeholder.country} onChange={handleNewStakeholderChange} placeholder={t('projects.countryPlaceholder')} />
                               </div>
                               <div className="field">
-                                <label>Website</label>
-                                <input name="website" value={newStakeholder.website} onChange={handleNewStakeholderChange} placeholder="https://..." />
+                                <label>{t('projects.websiteLabel')}</label>
+                                <input name="website" value={newStakeholder.website} onChange={handleNewStakeholderChange} placeholder={t('projects.websitePlaceholder')} />
                               </div>
                             </div>
                           </div>
                           <div className="modal-footer">
-                            <button type="button" className="cancel-btn" onClick={() => setShowAddStakeholder(false)}>Cancel</button>
-                            <button type="button" className="add-btn" onClick={addNewStakeholder}>Create & Add</button>
+                            <button type="button" className="cancel-btn" onClick={() => setShowAddStakeholder(false)}>{t('projects.cancel')}</button>
+                            <button type="button" className="add-btn" onClick={addNewStakeholder}>{t('projects.createAndAdd')}</button>
                           </div>
                         </div>
                       </div>
@@ -586,8 +588,8 @@ function ProjectStocktaking() {
                 </div>
 
                 <div className="form-footer">
-                  <button type="button" className="cancel-btn" onClick={() => setShowForm(false)}>Discard</button>
-                  <button type="submit" className="submit-action-btn">Submit Initiative <FaArrowRight /></button>
+                  <button type="button" className="cancel-btn" onClick={() => setShowForm(false)}>{t('projects.discard')}</button>
+                  <button type="submit" className="submit-action-btn">{t('projects.submitInitiative')} <FaArrowRight /></button>
                 </div>
               </form>
             </div>
@@ -597,13 +599,13 @@ function ProjectStocktaking() {
             {loading ? (
               <div className="loading-state">
                 <div className="spinner"></div>
-                <p>Loading projects...</p>
+                <p>{t('projects.loading')}</p>
               </div>
             ) : projects.length > 0 ? (
               <div className="modern-projects-grid">
                 {projects.map((p, i) => {
                   const info = getSectorInfo(p.sector)
-                  const countryName = getCountryName(p.country_id, countries) || 'Regional'
+                  const countryName = getCountryName(p.country_id, countries) || t('projects.regional')
                   const region = getCountryRegion(countryName)
                   return (
                     <div key={p.id} className="modern-project-card" style={{ animationDelay: `${i * 0.05}s` }}>
@@ -613,7 +615,7 @@ function ProjectStocktaking() {
                         </div>
                         <span className="status-dot-badge">
                           <span className={`dot ${p.status}`}></span>
-                          {p.status || 'Active'}
+                          {p.status || t('projects.status_active')}
                         </span>
                       </div>
                       
@@ -638,25 +640,25 @@ function ProjectStocktaking() {
                           )}
                         </div>
                         <span className="stakeholder-count">
-                          {p.stakeholders?.length || 0} Stakeholder(s)
+                          {p.stakeholders?.length || 0} {t('projects.stakeholders')}
                         </span>
                       </div>
 
                       <div className="card-bottom">
                         <div className="meta-info">
                           <div className="meta-col">
-                            <span className="meta-label">Technology</span>
+                            <span className="meta-label">{t('projects.technology')}</span>
                             <span className="meta-value">{p.technology}</span>
                           </div>
                         </div>
                         <div className="sdg-badge">
-                          {p.sdg ? `SDG${p.sdg.goal_number}` : 'N/A'}
+                          {p.sdg ? `SDG${p.sdg.goal_number}` : t('projects.n/a')}
                         </div>
                       </div>
 
                       <div className="card-actions">
                         <Link to={`/projects/${p.id}`} className="learn-more-btn">
-                          See More <FaArrowRight />
+                          {t('projects.seeMore')} <FaArrowRight />
                         </Link>
                       </div>
                     </div>
@@ -666,9 +668,9 @@ function ProjectStocktaking() {
             ) : (
               <div className="no-results-card">
                 <div className="no-results-icon">🚀</div>
-                <h3>No projects found</h3>
-                <p>Your search returned no matches. Try a different query or submit your own project.</p>
-                <button className="reset-btn" onClick={clearFilters}>Reset Filters</button>
+                <h3>{t('projects.noProjects')}</h3>
+                <p>{t('projects.noProjectsHint')}</p>
+                <button className="reset-btn" onClick={clearFilters}>{t('projects.resetFilters')}</button>
               </div>
             )}
 
