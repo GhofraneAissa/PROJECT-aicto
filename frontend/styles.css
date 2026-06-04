@@ -13,6 +13,10 @@
 }
 
 :root {
+  --p-primary: #2563eb;
+  --p-secondary: #1e40af;
+  --p-accent: #3b82f6;
+  --p-text-light: #6b7280;
   --blue-50: #eff6ff;
   --blue-100: #dbeafe;
   --blue-200: #bfdbfe;
@@ -34,6 +38,8 @@
   --gray-900: #111827;
   --white: #ffffff;
   --red-500: #ef4444;
+  --green-500: #22c55e;
+  --yellow-500: #eab308;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
@@ -43,6 +49,8 @@
   --transition: 0.2s ease;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
@@ -50,7 +58,7 @@ html {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--gray-800);
   background: var(--gray-100);
   min-height: 100vh;
@@ -450,7 +458,7 @@ body {
   flex-direction: column;
   justify-content: center;
   padding: 3rem;
-  background: linear-gradient(145deg, var(--blue-800) 0%, var(--blue-600) 50%, var(--blue-500) 100%);
+  background: linear-gradient(145deg, var(--p-secondary) 0%, var(--p-primary) 50%, var(--p-accent) 100%);
   color: var(--white);
   position: relative;
   overflow: hidden;
@@ -459,23 +467,46 @@ body {
 .auth-branding-panel::before {
   content: '';
   position: absolute;
-  top: -40%;
-  right: -20%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 70%);
+  top: -30%;
+  right: -25%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.07) 0%, transparent 60%);
   border-radius: 50%;
 }
 
 .auth-branding-panel::after {
   content: '';
   position: absolute;
-  bottom: -30%;
-  left: -15%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.04) 0%, transparent 70%);
+  bottom: -20%;
+  left: -20%;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 60%);
   border-radius: 50%;
+}
+
+.auth-branding-panel .blob-1,
+.auth-branding-panel .blob-2 {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.08;
+}
+
+.auth-branding-panel .blob-1 {
+  width: 250px;
+  height: 250px;
+  background: #fff;
+  top: 10%;
+  left: -8%;
+}
+
+.auth-branding-panel .blob-2 {
+  width: 180px;
+  height: 180px;
+  background: #fff;
+  bottom: 15%;
+  right: -5%;
 }
 
 .branding-content {
@@ -689,4 +720,72 @@ body {
 /* ---------- REMEMBER ME CHECKBOX FIX ---------- */
 .checkbox-label input[type="checkbox"] {
   display: none;
+}
+
+/* ---------- PASSWORD STRENGTH ---------- */
+.pw-strength {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.pw-strength-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--gray-200);
+  transition: background 0.3s ease;
+}
+
+.pw-strength-bar.active.weak { background: var(--red-500); }
+.pw-strength-bar.active.medium { background: var(--yellow-500); }
+.pw-strength-bar.active.strong { background: var(--green-500); }
+
+.pw-label {
+  font-size: 0.75rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.pw-label.weak { color: var(--red-500); }
+.pw-label.medium { color: var(--yellow-500); }
+.pw-label.strong { color: var(--green-500); }
+
+/* ---------- PASSWORD REQUIREMENTS ---------- */
+.pw-reqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 6px;
+  font-size: 0.75rem;
+}
+
+.pw-req {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gray-400);
+  transition: color 0.2s;
+}
+
+.pw-req.met {
+  color: var(--green-500);
+}
+
+.pw-req svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* ---------- SECTION DIVIDER ---------- */
+.section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 1rem 0 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--gray-100);
 }

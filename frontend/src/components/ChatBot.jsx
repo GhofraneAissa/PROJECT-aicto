@@ -11,6 +11,15 @@ const entityIcon = { project: <FaProjectDiagram />, stakeholder: <FaBuilding />,
 const entityColor = { project: '#059669', stakeholder: '#2563eb', resource: '#f59e0b' }
 const LS_KEY = 'sarai_active_session'
 
+function getToken() {
+  return localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+}
+
+function authHeaders() {
+  const t = getToken()
+  return t ? { 'Authorization': `Bearer ${t}` } : {}
+}
+
 let sessionsCache = []
 
 function ChatBot() {
@@ -32,7 +41,7 @@ function ChatBot() {
 
   const loadSessions = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/api/chat/sessions`)
+      const r = await fetch(`${API}/api/chat/sessions`, { headers: { ...authHeaders() } })
       const data = await r.json()
       sessionsCache = data
       setSessions(data)
@@ -49,7 +58,7 @@ function ChatBot() {
     }
 
     try {
-      const r = await fetch(`${API}/api/chat/sessions/${sid}`)
+      const r = await fetch(`${API}/api/chat/sessions/${sid}`, { headers: { ...authHeaders() } })
       const data = await r.json()
       const msgs = (data.messages || []).map(m => ({
         role: m.role,
@@ -69,7 +78,7 @@ function ChatBot() {
     try {
       const r = await fetch(`${API}/api/chat/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({}),
       })
       const data = await r.json()
@@ -83,7 +92,7 @@ function ChatBot() {
   const deleteSession = useCallback(async (sid, e) => {
     e.stopPropagation()
     try {
-      await fetch(`${API}/api/chat/sessions/${sid}`, { method: 'DELETE' })
+      await fetch(`${API}/api/chat/sessions/${sid}`, { method: 'DELETE', headers: { ...authHeaders() } })
       sessionsCache = sessionsCache.filter(s => s.session_id !== sid)
       setSessions([...sessionsCache])
       delete msgCache.current[sid]
@@ -124,7 +133,7 @@ function ChatBot() {
     try {
       const res = await fetch(`${API}/api/chat/sessions/${activeSid}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           message: userMsg,
           session_id: activeSid,
@@ -152,7 +161,7 @@ function ChatBot() {
       const fd = new FormData()
       fd.append('file', f)
       try {
-        const r = await fetch(`${API}/api/chat/upload`, { method: 'POST', body: fd })
+        const r = await fetch(`${API}/api/chat/upload`, { method: 'POST', headers: { ...authHeaders() }, body: fd })
         const data = await r.json()
         uploaded.push(data)
       } catch { /* ignore */ }

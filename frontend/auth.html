@@ -1,879 +1,598 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <title>Regional AI Repository | Authentication</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SARAI Platform · Sign In</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .auth-container { min-height: 100vh; }
+    .signin-form, .signup-form { display: none; }
+    .signin-form.active, .signup-form.active { display: block; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Montserrat', sans-serif;
-        }
+    .switch-panel {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+    .switch-panel p {
+      color: var(--gray-500);
+      font-size: 0.9rem;
+    }
 
-        body {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            min-height: 100vh;
-            padding: 20px;
-        }
+    .form-scroll {
+      max-height: 60vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .form-scroll::-webkit-scrollbar { width: 4px; }
+    .form-scroll::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 4px; }
 
-        .container {
-            background-color: #fff;
-            border-radius: 30px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-            width: 960px;
-            max-width: 100%;
-            min-height: 640px;
-        }
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--p-primary);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand-icon svg { width: 24px; height: 24px; stroke: #fff; stroke-width: 2.5; fill: none; }
 
-        .container p {
-            font-size: 14px;
-            line-height: 20px;
-            letter-spacing: 0.3px;
-            margin: 20px 0;
-        }
+    .input-icon-wrap {
+      position: relative;
+    }
+    .input-icon-wrap .form-input { padding-left: 2.5rem; }
+    .input-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--gray-400);
+      pointer-events: none;
+    }
+    .input-icon svg { width: 100%; height: 100%; }
 
-        .container span {
-            font-size: 12px;
-            color: #666;
-        }
+    .pw-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .container a {
-            color: #333;
-            font-size: 13px;
-            text-decoration: none;
-            margin: 15px 0 10px;
-        }
-
-        .container button {
-            background: linear-gradient(135deg, #2563EB, #1E40AF);
-            color: #fff;
-            font-size: 12px;
-            padding: 10px 45px;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            margin-top: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .container button:hover {
-            background: linear-gradient(135deg, #1E40AF, #1E3A8A);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
-        }
-
-        .container button.hidden {
-            background-color: transparent;
-            border-color: #fff;
-        }
-
-        .container button.hidden:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            transform: translateY(-2px);
-        }
-
-        .container form {
-            background-color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            padding: 0 40px;
-            height: 100%;
-            gap: 8px;
-        }
-
-        .container input, .container select, .container textarea {
-            background-color: #f5f5f5;
-            border: 1px solid #e0e0e0;
-            margin: 5px 0;
-            padding: 10px 15px;
-            font-size: 13px;
-            border-radius: 8px;
-            width: 100%;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-
-        .container input:focus, .container select:focus, .container textarea:focus {
-            border-color: #2563EB;
-            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-            background-color: #fff;
-        }
-
-        .container input.input-error, .container select.input-error, .container textarea.input-error {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
-        }
-
-        .container textarea {
-            resize: vertical;
-            font-family: 'Montserrat', sans-serif;
-        }
-
-        .form-select {
-            cursor: pointer;
-            appearance: none;
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23666" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>');
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-        }
-
-        .row-inputs {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .half {
-            width: 50%;
-        }
-
-        .password-wrapper {
-            position: relative;
-            width: 100%;
-        }
-
-        .password-wrapper input {
-            padding-right: 40px;
-        }
-
-        .toggle-password {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            padding: 0;
-            margin: 0;
-            color: #999;
-            cursor: pointer;
-            font-size: 18px;
-        }
-
-        .toggle-password:hover {
-            color: #2563EB;
-        }
-
-        .form-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-
-        .checkbox-label input {
-            width: auto;
-            margin: 0;
-        }
-
-        .alert-message {
-            font-size: 12px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            margin: 10px 0;
-            width: 100%;
-            text-align: center;
-        }
-
-        .alert-message.alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-message.alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .field-error {
-            font-size: 11px;
-            color: #ef4444;
-            text-align: left;
-            width: 100%;
-            padding: 0 5px;
-            display: none;
-        }
-
-        .form-container {
-            position: absolute;
-            top: 0;
-            height: 100%;
-            transition: all 0.6s ease-in-out;
-            overflow-y: auto;
-        }
-
-        .form-container::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .form-container::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-
-        .form-container::-webkit-scrollbar-thumb {
-            background: #2563EB;
-            border-radius: 5px;
-        }
-
-        .sign-in {
-            left: 0;
-            width: 50%;
-            z-index: 2;
-        }
-
-        .container.active .sign-in {
-            transform: translateX(100%);
-        }
-
-        .sign-up {
-            left: 0;
-            width: 50%;
-            opacity: 0;
-            z-index: 1;
-        }
-
-        .container.active .sign-up {
-            transform: translateX(100%);
-            opacity: 1;
-            z-index: 5;
-            animation: move 0.6s;
-        }
-
-        @keyframes move {
-            0%, 49.99% {
-                opacity: 0;
-                z-index: 1;
-            }
-            50%, 100% {
-                opacity: 1;
-                z-index: 5;
-            }
-        }
-
-        .social-icons {
-            margin: 15px 0;
-        }
-
-        .social-icons a {
-            border: 1px solid #ccc;
-            border-radius: 20%;
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 3px;
-            width: 40px;
-            height: 40px;
-            color: #666;
-            transition: all 0.3s ease;
-        }
-
-        .social-icons a:hover {
-            background-color: #2563EB;
-            border-color: #2563EB;
-            color: #fff;
-            transform: translateY(-2px);
-        }
-
-        .toggle-container {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            width: 50%;
-            height: 100%;
-            overflow: hidden;
-            transition: all 0.6s ease-in-out;
-            border-radius: 20px;
-            z-index: 1000;
-        }
-
-        .container.active .toggle-container {
-            transform: translateX(-100%);
-            border-radius: 20px;
-        }
-
-        .toggle {
-            background: linear-gradient(135deg, #2563EB, #1E40AF);
-            height: 100%;
-            color: #fff;
-            position: relative;
-            left: -100%;
-            width: 200%;
-            transform: translateX(0);
-            transition: all 0.6s ease-in-out;
-        }
-
-        .container.active .toggle {
-            transform: translateX(50%);
-        }
-
-        .toggle-panel {
-            position: absolute;
-            width: 50%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            padding: 0 30px;
-            text-align: center;
-            top: 0;
-            transform: translateX(0);
-            transition: all 0.6s ease-in-out;
-        }
-
-        .toggle-left {
-            transform: translateX(-200%);
-        }
-
-        .container.active .toggle-left {
-            transform: translateX(0);
-        }
-
-        .toggle-right {
-            right: 0;
-            transform: translateX(0);
-        }
-
-        .toggle-panel h1 {
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-
-        .toggle-panel p {
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        .btn-loading {
-            pointer-events: none;
-            opacity: 0.7;
-        }
-
-        .btn-loader {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                min-height: auto;
-                border-radius: 20px;
-            }
-            .form-container {
-                width: 100% !important;
-                position: relative;
-                left: 0 !important;
-                height: auto;
-                opacity: 1 !important;
-                z-index: 1 !important;
-            }
-            .toggle-container {
-                display: none;
-            }
-            .sign-up {
-                display: none;
-            }
-            .container.active .sign-up {
-                display: block;
-                transform: none;
-            }
-            .container.active .sign-in {
-                display: none;
-            }
-            .sign-in {
-                width: 100%;
-            }
-            .mobile-toggle-link {
-                display: block;
-                text-align: center;
-                margin-top: 15px;
-                font-size: 13px;
-                cursor: pointer;
-                color: #2563EB;
-            }
-        }
-
-        @media (min-width: 769px) {
-            .mobile-toggle-link {
-                display: none;
-            }
-        }
-    </style>
+    @media(max-width:768px) {
+      .form-scroll { max-height: none; overflow: visible; }
+    }
+  </style>
 </head>
-
 <body>
-    <div class="container" id="container">
-        <!-- Sign up -->
-        <div class="form-container sign-up">
-            <form id="signup-form-el" novalidate>
-                <h1>Create Account</h1>
-                <div class="social-icons">
-                    <a href="#" class="icons"><i class='bx bxl-google'></i></a>
-                    <a href="#" class="icons"><i class='bx bxl-facebook'></i></a>
-                    <a href="#" class="icons"><i class='bx bxl-github'></i></a>
-                    <a href="#" class="icons"><i class='bx bxl-linkedin'></i></a>
-                </div>
-                <span>Register your organization</span>
+  <div class="auth-container">
+    <div class="auth-forms-panel">
+      <div class="auth-forms-inner">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <span class="brand-name">SARAI Platform</span>
+        </div>
 
-                <div id="signup-alert" class="alert-message" style="display:none"></div>
+        <!-- ====== SIGN IN ====== -->
+        <div class="auth-form signin-form active" id="signin-form">
+          <div class="form-header">
+            <h1>Welcome back</h1>
+            <p>Sign in to your organization account</p>
+          </div>
 
-                <input type="text" id="org-name" name="organization_name" placeholder="Organization Name" required>
+          <div id="signin-alert" class="alert" style="display:none"></div>
+
+          <form id="signin-form-el" class="form-body" novalidate autocomplete="on">
+            <div class="form-group">
+              <label for="signin-email" class="form-label">Email</label>
+              <div class="input-icon-wrap">
+                <span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg></span>
+                <input type="email" id="signin-email" class="form-input" placeholder="name@organization.org" autocomplete="email" required>
+              </div>
+              <span class="field-error" id="signin-email-error"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="signin-password" class="form-label">Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="signin-password" class="form-input" placeholder="Enter your password" autocomplete="current-password" required>
+                <button type="button" class="toggle-password" aria-label="Show password">
+                  <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+              <span class="field-error" id="signin-password-error"></span>
+            </div>
+
+            <div class="form-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="remember-me" checked>
+                <span class="checkmark"></span>
+                Remember me
+              </label>
+              <a href="forgot-password.html" class="forgot-link">Forgot password?</a>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="signin-btn">
+              <span class="btn-text">Sign In</span>
+              <span class="btn-loader"></span>
+            </button>
+          </form>
+
+          <div class="switch-panel">
+            <p>Don't have an account? <button class="switch-btn" id="show-signup">Create one</button></p>
+          </div>
+        </div>
+
+        <!-- ====== SIGN UP ====== -->
+        <div class="auth-form signup-form" id="signup-form">
+          <div class="form-header">
+            <h1>Create account</h1>
+            <p>Register your organization</p>
+          </div>
+
+          <div id="signup-alert" class="alert" style="display:none"></div>
+
+          <form id="signup-form-el" class="form-body" novalidate autocomplete="on">
+            <div class="form-scroll">
+              <div class="section-title">Organization</div>
+
+              <div class="form-group">
+                <label for="org-name" class="form-label">Organization name *</label>
+                <input type="text" id="org-name" class="form-input" placeholder="e.g. Ministry of Health" autocomplete="organization" required>
                 <span class="field-error" id="org-name-error"></span>
+              </div>
 
-                <select id="org-type" name="organization_type" class="form-select" required>
-                    <option value="" disabled selected>Select organization type</option>
-                    <option value="NGO">NGO</option>
-                    <option value="Business">Business</option>
-                    <option value="Company">Company</option>
-                    <option value="Government">Government</option>
-                    <option value="University">University</option>
-                    <option value="Research Lab">Research Lab</option>
-                </select>
-                <span class="field-error" id="org-type-error"></span>
-
-                <input type="email" id="signup-email" name="email" placeholder="Email address" required>
-                <span class="field-error" id="signup-email-error"></span>
-
-                <input type="tel" id="phone" name="phone" placeholder="Phone number" required>
-                <span class="field-error" id="phone-error"></span>
-
-                <input type="url" id="website" name="website" placeholder="Website (optional)">
-                <span class="field-error" id="website-error"></span>
-
-                <div class="row-inputs">
-                    <select id="country" name="country" class="form-select half" required>
-                        <option value="" disabled selected>Select country</option>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="org-type" class="form-label">Type *</label>
+                  <div class="select-wrapper">
+                    <select id="org-type" class="form-input form-select" required>
+                      <option value="" disabled selected>Select type</option>
+                      <option value="Government">Government</option>
+                      <option value="University">University</option>
+                      <option value="Research Lab">Research Lab</option>
+                      <option value="NGO">NGO</option>
+                      <option value="Company">Company</option>
+                      <option value="Startup">Startup</option>
                     </select>
-                    <select id="city" name="city" class="form-select half" required disabled>
-                        <option value="" disabled selected>Select city</option>
-                    </select>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <span class="field-error" id="org-type-error"></span>
                 </div>
-                <span class="field-error" id="country-error"></span>
-                <span class="field-error" id="city-error" style="display:none"></span>
+                <div class="form-group">
+                  <label for="sector" class="form-label">Sector *</label>
+                  <div class="select-wrapper">
+                    <select id="sector" class="form-input form-select" required>
+                      <option value="" disabled selected>Select sector</option>
+                      <option value="Health">Health</option>
+                      <option value="EduTech">EduTech</option>
+                      <option value="AgriTech">AgriTech</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Energy">Energy</option>
+                      <option value="Transportation">Transportation</option>
+                      <option value="Environment">Environment</option>
+                      <option value="Cybersecurity">Cybersecurity</option>
+                      <option value="Telecommunications">Telecommunications</option>
+                      <option value="Governance">Governance</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <span class="field-error" id="sector-error"></span>
+                </div>
+              </div>
 
-                <input type="text" id="address" name="address" placeholder="Street address" required>
+              <div class="section-title">Contact</div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="signup-email" class="form-label">Email *</label>
+                  <input type="email" id="signup-email" class="form-input" placeholder="name@organization.org" autocomplete="email" required>
+                  <span class="field-error" id="signup-email-error"></span>
+                </div>
+                <div class="form-group">
+                  <label for="phone" class="form-label">Phone *</label>
+                  <input type="tel" id="phone" class="form-input" placeholder="+216 XX XXX XXX" autocomplete="tel" required>
+                  <span class="field-error" id="phone-error"></span>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="country" class="form-label">Country *</label>
+                  <div class="select-wrapper">
+                    <select id="country" class="form-input form-select" required>
+                      <option value="" disabled selected>Select country</option>
+                    </select>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <span class="field-error" id="country-error"></span>
+                </div>
+                <div class="form-group">
+                  <label for="city" class="form-label">City *</label>
+                  <div class="select-wrapper">
+                    <select id="city" class="form-input form-select" required disabled>
+                      <option value="" disabled selected>Select city</option>
+                    </select>
+                    <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <span class="field-error" id="city-error"></span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="address" class="form-label">Address *</label>
+                <input type="text" id="address" class="form-input" placeholder="Street address" autocomplete="street-address" required>
                 <span class="field-error" id="address-error"></span>
+              </div>
 
-                <input type="text" id="sector" name="sector" placeholder="Sector (AI, Healthcare, Finance...)" required>
-                <span class="field-error" id="sector-error"></span>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="website" class="form-label">Website</label>
+                  <input type="url" id="website" class="form-input" placeholder="https://example.org" autocomplete="url">
+                  <span class="field-error" id="website-error"></span>
+                </div>
+              </div>
 
-                <textarea id="description" name="description" rows="3" placeholder="Brief description of your organization..." required></textarea>
+              <div class="form-group">
+                <label for="description" class="form-label">Description *</label>
+                <textarea id="description" class="form-input form-textarea" rows="3" placeholder="Brief description of your organization..." required></textarea>
                 <span class="field-error" id="description-error"></span>
+              </div>
 
+              <div class="section-title">Security</div>
+
+              <div class="form-group">
+                <label for="signup-password" class="form-label">Password *</label>
                 <div class="password-wrapper">
-                    <input type="password" id="signup-password" name="password" placeholder="Password (min. 8 characters)" required minlength="8">
-                    <button type="button" class="toggle-password" aria-label="Toggle password">
-                        <i class='bx bx-hide'></i>
-                    </button>
+                  <input type="password" id="signup-password" class="form-input" placeholder="Min. 8 characters" autocomplete="new-password" required minlength="8">
+                  <button type="button" class="toggle-password" aria-label="Show password">
+                    <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.5 18.5 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  </button>
+                </div>
+                <div class="pw-strength" id="pw-strength">
+                  <div class="pw-strength-bar" data-idx="0"></div>
+                  <div class="pw-strength-bar" data-idx="1"></div>
+                  <div class="pw-strength-bar" data-idx="2"></div>
+                  <div class="pw-strength-bar" data-idx="3"></div>
+                </div>
+                <div class="pw-label" id="pw-label"></div>
+                <div class="pw-reqs" id="pw-reqs">
+                  <span class="pw-req" data-req="len"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> 8+ characters</span>
+                  <span class="pw-req" data-req="upper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Uppercase</span>
+                  <span class="pw-req" data-req="lower"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Lowercase</span>
+                  <span class="pw-req" data-req="digit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Digit</span>
                 </div>
                 <span class="field-error" id="signup-password-error"></span>
+              </div>
 
-                <button type="submit" id="signup-btn">Sign Up</button>
-
-                <span class="mobile-toggle-link" id="mobile-to-signin">Already have an account? Sign In</span>
-            </form>
-        </div>
-
-        <!-- Sign in -->
-        <div class="form-container sign-in">
-            <form id="signin-form-el" novalidate>
-                <h1>Sign In</h1>
-                <div class="social-icons">
-                    <a href="#" class="icons"><i class='bx bxl-google'></i></a>
-                    <a href="#" class="icons"><i class='bx bxl-facebook'></i></a>
-                    <a href="#" class="icons"><i class='bx bxl-github'></i></a>
-                    <a href="#" class="icons"><i class='bx bxl-linkedin'></i></a>
-                </div>
-                <span>Sign in to your organization account</span>
-
-                <div id="signin-alert" class="alert-message" style="display:none"></div>
-
-                <input type="email" id="signin-email" name="email" placeholder="Email address" required>
-                <span class="field-error" id="signin-email-error"></span>
-
-                <div class="password-wrapper">
-                    <input type="password" id="signin-password" name="password" placeholder="Password" required>
-                    <button type="button" class="toggle-password" aria-label="Toggle password">
-                        <i class='bx bx-hide'></i>
-                    </button>
-                </div>
-                <span class="field-error" id="signin-password-error"></span>
-
-                <div class="form-options">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="remember-me"> Remember me
-                    </label>
-                    <a href="forgot-password.html">Forgot Password?</a>
-                </div>
-
-                <button type="submit" id="signin-btn">Sign In</button>
-
-                <span class="mobile-toggle-link" id="mobile-to-signup">Don't have an account? Sign Up</span>
-            </form>
-        </div>
-
-        <!-- Toggle Panel -->
-        <div class="toggle-container">
-            <div class="toggle">
-                <div class="toggle-panel toggle-left">
-                    <h1>Welcome To<br>Regional AI Repository</h1>
-                    <p>Sign in to access your organization dashboard</p>
-                    <button class="hidden" id="login">Sign In</button>
-                </div>
-                <div class="toggle-panel toggle-right">
-                    <h1>Join the Network</h1>
-                    <p>Register your organization and start collaborating on AI initiatives</p>
-                    <button class="hidden" id="register">Sign Up</button>
-                </div>
+              <div class="form-group" style="margin-top:0.5rem">
+                <label class="checkbox-label terms-checkbox">
+                  <input type="checkbox" id="terms" required>
+                  <span class="checkmark"></span>
+                  I agree to the <a href="#" class="terms-link" onclick="event.preventDefault();alert('Terms &amp; Conditions placeholder')">Terms &amp; Conditions</a> and <a href="#" class="terms-link" onclick="event.preventDefault();alert('Privacy Policy placeholder')">Privacy Policy</a>
+                </label>
+                <span class="field-error" id="terms-error"></span>
+              </div>
             </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="signup-btn" style="margin-top:0.5rem">
+              <span class="btn-text">Create Account</span>
+              <span class="btn-loader"></span>
+            </button>
+          </form>
+
+          <div class="switch-panel">
+            <p>Already have an account? <button class="switch-btn" id="show-signin">Sign in</button></p>
+          </div>
         </div>
+      </div>
     </div>
 
-    <script>
-        const ARAB_COUNTRIES_CITIES = {
-            "Algeria": ["Adrar", "Chlef", "Laghouat", "Oum El Bouaghi", "Batna", "Béjaïa", "Biskra", "Béchar", "Blida", "Bouira", "Tamanrasset", "Tébessa", "Tlemcen", "Tiaret", "Tizi Ouzou", "Alger", "Djelfa", "Jijel", "Sétif", "Saïda", "Skikda", "Sidi Bel Abbès", "Annaba", "Guelma", "Constantine", "Médéa", "Mostaganem", "M'Sila", "Mascara", "Ouargla", "Oran", "El Bayadh", "Illizi", "Bordj Bou Arréridj", "Boumerdès", "El Tarf", "Tindouf", "Tissemsilt", "El Oued", "Khenchela", "Souk Ahras", "Tipaza", "Mila", "Aïn Defla", "Naâma", "Aïn Témouchent", "Ghardaïa", "Relizane", "Timimoun", "Bordj Badji Mokhtar", "Ouled Djellal", "Béni Abbès", "In Salah", "In Guezzam", "Touggourt", "Djanet", "El M'Ghair", "El Meniaa"],
-            "Bahrain": ["Capitale", "Muharraq", "Nord", "Sud"],
-            "Comoros": ["Grande Comore", "Anjouan", "Mohéli"],
-            "Djibouti": ["Ali Sabieh", "Arta", "Dikhil", "Djibouti", "Obock", "Tadjourah"],
-            "Egypt": ["Le Caire", "Gizeh", "Alexandrie", "Dakahlia", "Mer Rouge", "Beheira", "Fayoum", "Gharbia", "Ismaïlia", "Menoufia", "Minya", "Qaliubiya", "Nouvelle Vallée", "Suez", "Assiout", "Beni Suef", "Port-Saïd", "Damiette", "Sharqia", "Kafr el-Sheikh", "Matrouh", "Louxor", "Qena", "Assouan", "Sohag", "Sud-Sinaï", "Nord-Sinaï"],
-            "Iraq": ["Bagdad", "Bassora", "Ninive", "Erbil", "Anbar", "Babil", "Diyala", "Dhi Qar", "Dohuk", "Karbala", "Kirkouk", "Maysan", "Muthanna", "Najaf", "Qadisiyyah", "Salah ad-Din", "Sulaymaniyah", "Wasit"],
-            "Jordan": ["Amman", "Irbid", "Zarqa", "Balqa", "Mafraq", "Karak", "Tafilah", "Ma'an", "Aqaba", "Jerash", "Ajloun", "Madaba"],
-            "Kuwait": ["Al Asimah", "Hawalli", "Farwaniya", "Mubarak Al-Kabeer", "Ahmadi", "Jahra"],
-            "Lebanon": ["Beyrouth", "Mont-Liban", "Nord", "Akkar", "Bekaa", "Baalbek-Hermel", "Sud", "Nabatieh"],
-            "Libya": ["Tripoli", "Benghazi", "Misrata", "Marj", "Jabal al Akhdar", "Derna", "Tobrouk", "Al Wahat", "Kufra", "Sirt", "Jufra", "Murzuq", "Sabha", "Wadi al Shatii", "Ghat", "Nalut", "Jabal al Gharbi", "Zawiya", "Zuwara", "Tajura", "Bani Walid", "Gharyan"],
-            "Mauritania": ["Adrar", "Assaba", "Brakna", "Dakhlet Nouadhibou", "Gorgol", "Guidimaka", "Hodh Ech Chargui", "Hodh El Gharbi", "Inchiri", "Nouakchott-Nord", "Nouakchott-Ouest", "Nouakchott-Sud", "Tagant", "Tiris Zemmour", "Trarza"],
-            "Morocco": ["Tanger-Tétouan-Al Hoceïma", "Oriental", "Fès-Meknès", "Rabat-Salé-Kénitra", "Béni Mellal-Khénifra", "Casablanca-Settat", "Marrakech-Safi", "Drâa-Tafilalet", "Souss-Massa", "Guelmim-Oued Noun", "Laâyoune-Sakia El Hamra", "Dakhla-Oued Ed-Dahab"],
-            "Oman": ["Muscat", "Dhofar", "Musandam", "Al Buraimi", "Al Dakhiliya", "Al Dhahirah", "Al Sharqiya Nord", "Al Sharqiya Sud", "Al Batinah Nord", "Al Batinah Sud", "Al Wusta"],
-            "Palestine": ["Jérusalem", "Ramallah", "Hébron", "Naplouse", "Jénine", "Tulkarem", "Qalqilya", "Salfit", "Jéricho", "Bethléem", "Tubas", "Gaza Nord", "Gaza", "Deir al-Balah", "Khan Younès", "Rafah"],
-            "Qatar": ["Doha", "Al Rayyan", "Al Wakrah", "Umm Salal", "Al Khor", "Al Shamal", "Al Daayen", "Al Shahaniya"],
-            "Saudi Arabia": ["Riyad", "La Mecque", "Médine", "Qassim", "Province de l'Est", "Asir", "Tabuk", "Hail", "Nord", "Jazan", "Najran", "Al Bahah", "Al Jawf"],
-            "Somalia": ["Awdal", "Bakool", "Banaadir", "Bari", "Bay", "Galguduud", "Gedo", "Hiraan", "Lower Juba", "Middle Juba", "Lower Shabelle", "Middle Shabelle", "Mudug", "Nugal", "Sanaag", "Sool", "Togdheer", "Woqooyi Galbeed"],
-            "Sudan": ["Khartoum", "Darfour Nord", "Darfour Sud", "Darfour Ouest", "Darfour Centre", "Darfour Est", "Kassala", "Gedaref", "Nil Bleu", "Nil Blanc", "Nord", "River Nile", "Sennar", "Kordofan Nord", "Kordofan Sud", "Kordofan Ouest", "Mer Rouge", "Al Jazirah"],
-            "Syria": ["Damas", "Alep", "Homs", "Hama", "Lattaquié", "Tartous", "Idleb", "Deir ez-Zor", "Raqqa", "Hassaké", "Daraa", "Soueïda", "Quneitra", "Rif Dimashq"],
-            "Tunisia": ["Tunis", "Ariana", "Ben Arous", "Manouba", "Nabeul", "Zaghouan", "Bizerte", "Béja", "Jendouba", "Le Kef", "Siliana", "Sousse", "Monastir", "Mahdia", "Sfax", "Kairouan", "Kasserine", "Sidi Bouzid", "Gabès", "Médenine", "Tataouine", "Gafsa", "Tozeur", "Kébili"],
-            "United Arab Emirates": ["Abou Dabi", "Dubaï", "Sharjah", "Ajman", "Umm Al-Quwain", "Ras Al Khaimah", "Fujairah"],
-            "Yemen": ["Sanaa", "Aden", "Taiz", "Ibb", "Hadramout", "Al Hudaydah", "Al Mahrah", "Al Jawf", "Al Bayda", "Dhamar", "Saada", "Hajjah", "Lahj", "Marib", "Raymah", "Shabwah", "Abyan", "Amran", "Al Dhale'e", "Socotra", "Al Mahwit", "Sana'a Ville"]
-        };
+    <div class="auth-branding-panel">
+      <div class="blob-1"></div>
+      <div class="blob-2"></div>
+      <div class="branding-content">
+        <div class="branding-icon">
+          <svg viewBox="0 0 120 120" fill="none">
+            <rect x="10" y="20" width="100" height="80" rx="16" stroke="rgba(255,255,255,0.3)" stroke-width="2" fill="rgba(255,255,255,0.05)"/>
+            <path d="M45 55L60 40L75 55" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M60 40V80" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="60" cy="55" r="20" stroke="rgba(255,255,255,0.15)" stroke-width="1" fill="none"/>
+          </svg>
+        </div>
+        <h2>Stocktaking of Arab Regional AI Initiatives</h2>
+        <p>Unify, discover, and collaborate on AI projects, stakeholders, and resources across 22 Arab nations.</p>
+        <div class="features-list">
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Centralized AI project repository
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Cross-sector collaboration tools
+          </div>
+          <div class="feature-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            AI-powered analytics &amp; insights
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        const countrySelect = document.getElementById('country');
-        const citySelect = document.getElementById('city');
+  <script>
+    const API_BASE = "http://127.0.0.1:8000";
 
-        if (countrySelect) {
-            Object.keys(ARAB_COUNTRIES_CITIES).forEach(country => {
-                const option = document.createElement('option');
-                option.value = country;
-                option.textContent = country;
-                countrySelect.appendChild(option);
-            });
+    // ── Country / City data ──
+    const ARAB_COUNTRIES_CITIES = {
+      "Algeria": ["Adrar","Chlef","Laghouat","Oum El Bouaghi","Batna","Bejaia","Biskra","Bechar","Blida","Bouira","Tamanrasset","Tebessa","Tlemcen","Tiaret","Tizi Ouzou","Algiers","Djelfa","Jijel","Setif","Saida","Skikda","Sidi Bel Abbes","Annaba","Guelma","Constantine","Medea","Mostaganem","M'Sila","Mascara","Ouargla","Oran","El Bayadh","Illizi","Bordj Bou Arreridj","Boumerdes","El Tarf","Tindouf","Tissemsilt","El Oued","Khenchela","Souk Ahras","Tipaza","Mila","Ain Defla","Naama","Ain Temouchent","Ghardaia","Relizane"],
+      "Bahrain": ["Manama","Muharraq","Riffa","Hamad Town","Isa Town"],
+      "Comoros": ["Moroni","Moutsamoudou","Fomboni","Domoni"],
+      "Djibouti": ["Djibouti City","Ali Sabieh","Tadjourah","Obock","Dikhil","Arta"],
+      "Egypt": ["Cairo","Alexandria","Giza","Luxor","Aswan","Port Said","Suez","Ismailia","Damietta","Mansoura","Tanta","Zagazig","Fayoum","Minya","Asyut","Sohag","Qena","Hurghada","Sharm El Sheikh"],
+      "Iraq": ["Baghdad","Basra","Mosul","Erbil","Kirkuk","Najaf","Karbala","Sulaymaniyah","Dohuk","Ramadi","Hillah","Nasiriyah","Amara","Diwaniya","Samawah"],
+      "Jordan": ["Amman","Irbid","Zarqa","Aqaba","Madaba","Salt","Karak","Mafraq","Jerash","Ajloun","Tafilah","Maan"],
+      "Kuwait": ["Kuwait City","Hawalli","Farwaniya","Ahmadi","Jahra","Mubarak Al-Kabeer"],
+      "Lebanon": ["Beirut","Tripoli","Sidon","Tyre","Zahle","Jounieh","Byblos","Baalbek","Nabatieh"],
+      "Libya": ["Tripoli","Benghazi","Misrata","Bayda","Zawiya","Derna","Tobruk","Sabha","Gharyan","Sirte"],
+      "Mauritania": ["Nouakchott","Nouadhibou","Rosso","Kiffa","Zouerat","Atar","Selibaby"],
+      "Morocco": ["Casablanca","Rabat","Marrakech","Fes","Tangier","Agadir","Meknes","Oujda","Kenitra","Tetouan","Safi","El Jadida"],
+      "Oman": ["Muscat","Salalah","Sohar","Nizwa","Sur","Ibri","Barka","Rustaq"],
+      "Palestine": ["Jerusalem","Ramallah","Gaza","Hebron","Nablus","Bethlehem","Jenin","Tulkarm","Qalqilya","Jericho"],
+      "Qatar": ["Doha","Al Rayyan","Al Wakrah","Umm Salal","Al Khor","Al Shamal"],
+      "Saudi Arabia": ["Riyadh","Jeddah","Mecca","Medina","Dammam","Khobar","Dhahran","Tabuk","Abha","Buraidah","Hail","Najran","Jubail","Yanbu"],
+      "Somalia": ["Mogadishu","Hargeisa","Kismayo","Baidoa","Bosaso","Galkayo","Merca","Berbera"],
+      "Sudan": ["Khartoum","Omdurman","Port Sudan","Nyala","Kassala","El Obeid","Gedaref","Wad Madani"],
+      "Syria": ["Damascus","Aleppo","Homs","Hama","Latakia","Deir ez-Zor","Raqqa","Idlib","Daraa","Tartus","Qamishli","Hasaka"],
+      "Tunisia": ["Tunis","Sfax","Sousse","Kairouan","Bizerte","Gabes","Ariana","Ben Arous","Nabeul","Monastir","Mahdia","Gafsa","Tozeur","Medenine","Tataouine"],
+      "United Arab Emirates": ["Abu Dhabi","Dubai","Sharjah","Ajman","Ras Al Khaimah","Fujairah","Umm Al Quwain","Al Ain"],
+      "Yemen": ["Sanaa","Aden","Taiz","Hudaydah","Ibb","Mukalla","Dhamar","Saada","Marib","Zinjibar"]
+    };
 
-            countrySelect.addEventListener('change', function() {
-                citySelect.innerHTML = '<option value="" disabled selected>Select city</option>';
-                const selectedCountry = this.value;
-                if (selectedCountry && ARAB_COUNTRIES_CITIES[selectedCountry]) {
-                    citySelect.disabled = false;
-                    ARAB_COUNTRIES_CITIES[selectedCountry].forEach(city => {
-                        const option = document.createElement('option');
-                        option.value = city;
-                        option.textContent = city;
-                        citySelect.appendChild(option);
-                    });
-                } else {
-                    citySelect.disabled = true;
-                }
-                clearFieldError('country');
-            });
-        }
+    // ── Helpers ──
+    function qs(id) { return document.getElementById(id); }
+    function show(id, msg, type) {
+      const el = qs(id);
+      el.className = 'alert alert-' + type;
+      el.textContent = msg;
+      el.style.display = 'block';
+      if (type === 'success') setTimeout(() => el.style.display = 'none', 5000);
+    }
+    function hide(id) { qs(id).style.display = 'none'; }
 
-        citySelect.addEventListener('change', () => {
-            clearFieldError('city');
+    function fieldErr(fieldId, msg) {
+      const err = qs(fieldId + '-error');
+      if (err) { err.textContent = msg; err.style.display = msg ? 'block' : 'none'; }
+      const inp = qs(fieldId);
+      if (inp) inp.classList.toggle('input-error', !!msg);
+    }
+    function clearAll(form) {
+      form.querySelectorAll('.field-error').forEach(e => { e.textContent = ''; e.style.display = 'none'; });
+      form.querySelectorAll('.input-error').forEach(e => e.classList.remove('input-error'));
+    }
+
+    function setLoading(btnId, loading) {
+      const btn = qs(btnId);
+      btn.querySelector('.btn-text').style.display = loading ? 'none' : 'inline';
+      btn.querySelector('.btn-loader').style.display = loading ? 'inline-block' : 'none';
+      btn.disabled = loading;
+    }
+
+    function validEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+    function validUrl(u) { if (!u) return true; try { new URL(u); return true; } catch { return false; } }
+
+    async function apiCall(url, payload, alertPrefix) {
+      try {
+        const res = await fetch(API_BASE + url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          mode: 'cors',
+          credentials: 'omit',
+          body: JSON.stringify(payload),
         });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { detail: text }; }
+        if (res.ok) return { ok: true, data };
+        let msg = data.detail || 'An error occurred';
+        if (res.status === 422 && Array.isArray(data.detail))
+          msg = data.detail.map(e => e.msg).join('\n');
+        show(alertPrefix + '-alert', typeof msg === 'string' ? msg : JSON.stringify(msg), 'error');
+        return { ok: false };
+      } catch (err) {
+        show(alertPrefix + '-alert',
+          err.message && err.message.includes('Failed to fetch')
+            ? 'Cannot reach backend server. Make sure it is running on port 8000.'
+            : 'Network error: ' + err.message, 'error');
+        return { ok: false };
+      }
+    }
 
-        const API_BASE = "http://127.0.0.1:8000";
+    // ── Password strength ──
+    function evalPassword(pw) {
+      const len = pw.length >= 8;
+      const upper = /[A-Z]/.test(pw);
+      const lower = /[a-z]/.test(pw);
+      const digit = /[0-9]/.test(pw);
+      document.querySelectorAll('.pw-req').forEach(el => {
+        const req = el.dataset.req;
+        el.classList.toggle('met', { len, upper, lower, digit }[req]);
+      });
+      const score = [len, upper, lower, digit].filter(Boolean).length;
+      const bars = document.querySelectorAll('.pw-strength-bar');
+      bars.forEach((b, i) => {
+        b.classList.toggle('active', i < score);
+        b.className = 'pw-strength-bar' + (i < score ? ' active ' + ['','weak','medium','strong','strong'][score] : '');
+      });
+      const label = qs('pw-label');
+      const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+      label.textContent = score ? labels[score] : '';
+      label.className = 'pw-label' + (score ? ' ' + ['','weak','medium','strong','strong'][score] : '');
+    }
 
-        function showAlert(elementId, message, type) {
-            const alert = document.getElementById(elementId);
-            if (alert) {
-                alert.className = 'alert-message alert-' + type;
-                alert.textContent = message;
-                alert.style.display = 'block';
-                if (type === 'success') {
-                    setTimeout(() => { alert.style.display = 'none'; }, 5000);
-                }
-            }
+    // ── Country / City ──
+    const countrySel = qs('country');
+    const citySel = qs('city');
+    if (countrySel) {
+      Object.keys(ARAB_COUNTRIES_CITIES).sort().forEach(c => {
+        const o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        countrySel.appendChild(o);
+      });
+      countrySel.addEventListener('change', function() {
+        citySel.innerHTML = '<option value="" disabled selected>Select city</option>';
+        citySel.disabled = true;
+        const cities = ARAB_COUNTRIES_CITIES[this.value];
+        if (cities) {
+          cities.forEach(ci => {
+            const o = document.createElement('option');
+            o.value = ci; o.textContent = ci;
+            citySel.appendChild(o);
+          });
+          citySel.disabled = false;
         }
+        fieldErr('country', '');
+      });
+      citySel.addEventListener('change', () => fieldErr('city', ''));
+    }
 
-        function setFieldError(fieldId, message) {
-            const errorEl = document.getElementById(fieldId + '-error');
-            if (errorEl) {
-                errorEl.textContent = message;
-                errorEl.style.display = 'block';
-            }
-            const input = document.getElementById(fieldId);
-            if (input) input.classList.add('input-error');
+    // ── Form switching ──
+    function showForm(name) {
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      qs(name).classList.add('active');
+    }
+    qs('show-signup').addEventListener('click', () => showForm('signup-form'));
+    qs('show-signin').addEventListener('click', () => showForm('signin-form'));
+
+    // ── Toggle password visibility ──
+    document.querySelectorAll('.toggle-password').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const inp = this.parentElement.querySelector('input');
+        const open = this.querySelector('.eye-open');
+        const closed = this.querySelector('.eye-closed');
+        if (inp.type === 'password') {
+          inp.type = 'text';
+          open.style.display = 'none';
+          closed.style.display = 'block';
+        } else {
+          inp.type = 'password';
+          open.style.display = 'block';
+          closed.style.display = 'none';
         }
+      });
+    });
 
-        function clearFieldError(fieldId) {
-            const errorEl = document.getElementById(fieldId + '-error');
-            if (errorEl) {
-                errorEl.textContent = '';
-                errorEl.style.display = 'none';
-            }
-            const input = document.getElementById(fieldId);
-            if (input) input.classList.remove('input-error');
-        }
+    // ── Password strength listener ──
+    qs('signup-password').addEventListener('input', function() {
+      evalPassword(this.value);
+      fieldErr('signup-password', '');
+    });
 
-        function clearAllErrors(formEl) {
-            formEl.querySelectorAll('.field-error').forEach(el => {
-                el.textContent = '';
-                el.style.display = 'none';
-            });
-            formEl.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
-        }
+    // ── Clear errors on input ──
+    document.querySelectorAll('input, select, textarea').forEach(el => {
+      el.addEventListener('input', () => fieldErr(el.id, ''));
+      el.addEventListener('change', () => fieldErr(el.id, ''));
+    });
 
-        function setLoading(buttonId, loading) {
-            const btn = document.getElementById(buttonId);
-            if (!btn) return;
-            if (loading) {
-                btn.disabled = true;
-                btn.classList.add('btn-loading');
-                btn.innerHTML = '<span class="btn-loader"></span>';
-            } else {
-                btn.disabled = false;
-                btn.classList.remove('btn-loading');
-                btn.textContent = buttonId === 'signup-btn' ? 'Sign Up' : 'Sign In';
-            }
-        }
+    // ── SIGN UP ──
+    qs('signup-form-el').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAll(e.target);
+      hide('signup-alert');
 
-        function isValidEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        }
+      const orgName = qs('org-name').value.trim();
+      const orgType = qs('org-type').value;
+      const email = qs('signup-email').value.trim();
+      const phone = qs('phone').value.trim();
+      const website = qs('website').value.trim();
+      const country = qs('country').value;
+      const city = qs('city').value;
+      const address = qs('address').value.trim();
+      const sector = qs('sector').value;
+      const description = qs('description').value.trim();
+      const password = qs('signup-password').value;
+      const terms = qs('terms').checked;
 
-        function isValidUrl(url) {
-            if (!url) return true;
-            try { new URL(url); return true; } catch { return false; }
-        }
+      let err = false;
+      if (!orgName) { fieldErr('org-name', 'Required'); err = true; }
+      if (!orgType) { fieldErr('org-type', 'Required'); err = true; }
+      if (!email) { fieldErr('signup-email', 'Required'); err = true; }
+      else if (!validEmail(email)) { fieldErr('signup-email', 'Invalid email'); err = true; }
+      if (!phone) { fieldErr('phone', 'Required'); err = true; }
+      if (website && !validUrl(website)) { fieldErr('website', 'Invalid URL'); err = true; }
+      if (!country) { fieldErr('country', 'Required'); err = true; }
+      if (!city) { fieldErr('city', 'Required'); err = true; }
+      if (!address) { fieldErr('address', 'Required'); err = true; }
+      if (!sector) { fieldErr('sector', 'Required'); err = true; }
+      if (!description) { fieldErr('description', 'Required'); err = true; }
+      if (!password) { fieldErr('signup-password', 'Required'); err = true; }
+      else if (password.length < 8) { fieldErr('signup-password', 'Min 8 chars'); err = true; }
+      else if (!/[A-Z]/.test(password)) { fieldErr('signup-password', 'Need uppercase'); err = true; }
+      else if (!/[a-z]/.test(password)) { fieldErr('signup-password', 'Need lowercase'); err = true; }
+      else if (!/[0-9]/.test(password)) { fieldErr('signup-password', 'Need a digit'); err = true; }
+      if (!terms) { fieldErr('terms', 'You must agree to the terms'); err = true; }
+      if (err) return;
 
-        async function apiCall(url, payload, alertPrefix) {
-            const fullUrl = API_BASE + url;
-            let response;
-            try {
-                response = await fetch(fullUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                    mode: "cors",
-                    credentials: "omit",
-                    body: JSON.stringify(payload),
-                });
-            } catch (err) {
-                if (err.message && err.message.includes("Failed to fetch")) {
-                    showAlert(alertPrefix + '-alert', 'Cannot reach backend server. Make sure it is running on port 8000.', 'error');
-                } else {
-                    showAlert(alertPrefix + '-alert', 'Network error: ' + err.message, 'error');
-                }
-                return null;
-            }
+      setLoading('signup-btn', true);
+      const result = await apiCall('/api/users/register', {
+        organization_name: orgName,
+        organization_type: orgType,
+        email, phone,
+        website: website || null,
+        country, city, address, sector, description,
+        role: 'organization',
+        password,
+      }, 'signup');
 
-            let data;
-            try {
-                const text = await response.text();
-                data = JSON.parse(text);
-            } catch {
-                showAlert(alertPrefix + '-alert', 'Unexpected server response.', 'error');
-                return null;
-            }
+      if (result && result.ok) {
+        show('signup-alert', 'Account created! Please check your email to activate your account.', 'success');
+        e.target.reset();
+        citySel.innerHTML = '<option value="" disabled selected>Select city</option>';
+        citySel.disabled = true;
+        qs('pw-strength').querySelectorAll('.pw-strength-bar').forEach(b => { b.className = 'pw-strength-bar'; });
+        qs('pw-label').textContent = '';
+        document.querySelectorAll('.pw-req').forEach(r => r.classList.remove('met'));
+        setTimeout(() => showForm('signin-form'), 4000);
+      }
+      setLoading('signup-btn', false);
+    });
 
-            if (response.ok) {
-                return { response, data, ok: true };
-            } else {
-                let message = 'An error occurred';
-                if (response.status === 422 && Array.isArray(data.detail)) {
-                    message = data.detail.map(e => e.msg || `${e.loc?.join('.')}: ${e.msg}`).join('\n');
-                } else if (typeof data.detail === 'string') {
-                    message = data.detail;
-                } else if (typeof data.detail === 'object') {
-                    message = JSON.stringify(data.detail);
-                }
-                showAlert(alertPrefix + '-alert', message, 'error');
-                return { response, data, ok: false };
-            }
-        }
+    // ── SIGN IN ──
+    qs('signin-form-el').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAll(e.target);
+      hide('signin-alert');
 
-        // Toggle between sign in and sign up
-        const container = document.getElementById('container');
-        const registerBtn = document.getElementById('register');
-        const loginBtn = document.getElementById('login');
-        const mobileToSignup = document.getElementById('mobile-to-signup');
-        const mobileToSignin = document.getElementById('mobile-to-signin');
+      const email = qs('signin-email').value.trim();
+      const password = qs('signin-password').value;
+      const remember = qs('remember-me').checked;
 
-        if (registerBtn) registerBtn.addEventListener('click', () => container.classList.add("active"));
-        if (loginBtn) loginBtn.addEventListener('click', () => container.classList.remove("active"));
-        if (mobileToSignup) mobileToSignup.addEventListener('click', () => container.classList.add("active"));
-        if (mobileToSignin) mobileToSignin.addEventListener('click', () => container.classList.remove("active"));
+      let err = false;
+      if (!email) { fieldErr('signin-email', 'Required'); err = true; }
+      else if (!validEmail(email)) { fieldErr('signin-email', 'Invalid email'); err = true; }
+      if (!password) { fieldErr('signin-password', 'Required'); err = true; }
+      if (err) return;
 
-        // Password visibility toggle
-        document.querySelectorAll('.toggle-password').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const input = this.parentElement.querySelector('input');
-                const icon = this.querySelector('i');
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.classList.remove('bx-hide');
-                    icon.classList.add('bx-show');
-                } else {
-                    input.type = 'password';
-                    icon.classList.remove('bx-show');
-                    icon.classList.add('bx-hide');
-                }
-            });
-        });
+      setLoading('signin-btn', true);
+      const result = await apiCall('/api/users/login', { email, password }, 'signin');
 
-        // Clear errors on input
-        document.querySelectorAll('input, select, textarea').forEach(el => {
-            el.addEventListener('input', () => clearFieldError(el.id));
-            el.addEventListener('change', () => clearFieldError(el.id));
-        });
-
-        // Sign Up handler
-        document.getElementById('signup-form-el').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearAllErrors(e.target);
-
-            const orgName = document.getElementById('org-name').value.trim();
-            const orgType = document.getElementById('org-type').value;
-            const email = document.getElementById('signup-email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const website = document.getElementById('website').value.trim();
-            const country = document.getElementById('country').value;
-            const city = document.getElementById('city').value;
-            const address = document.getElementById('address').value.trim();
-            const sector = document.getElementById('sector').value.trim();
-            const description = document.getElementById('description').value.trim();
-            const password = document.getElementById('signup-password').value;
-
-            let hasError = false;
-
-            if (!orgName) { setFieldError('org-name', 'Required'); hasError = true; }
-            if (!orgType) { setFieldError('org-type', 'Required'); hasError = true; }
-            if (!email) { setFieldError('signup-email', 'Required'); hasError = true; }
-            else if (!isValidEmail(email)) { setFieldError('signup-email', 'Invalid email'); hasError = true; }
-            if (!phone) { setFieldError('phone', 'Required'); hasError = true; }
-            if (website && !isValidUrl(website)) { setFieldError('website', 'Invalid URL'); hasError = true; }
-            if (!country) { setFieldError('country', 'Required'); hasError = true; }
-            if (!city) { setFieldError('city', 'Required'); hasError = true; }
-            if (!address) { setFieldError('address', 'Required'); hasError = true; }
-            if (!sector) { setFieldError('sector', 'Required'); hasError = true; }
-            if (!description) { setFieldError('description', 'Required'); hasError = true; }
-            if (!password) { setFieldError('signup-password', 'Required'); hasError = true; }
-            else if (password.length < 8) { setFieldError('signup-password', 'Min 8 characters'); hasError = true; }
-            else if (!/[A-Z]/.test(password)) { setFieldError('signup-password', 'Need uppercase'); hasError = true; }
-            else if (!/[a-z]/.test(password)) { setFieldError('signup-password', 'Need lowercase'); hasError = true; }
-            else if (!/[0-9]/.test(password)) { setFieldError('signup-password', 'Need a digit'); hasError = true; }
-
-            if (hasError) return;
-
-            setLoading('signup-btn', true);
-
-            const payload = {
-                organization_name: orgName,
-                organization_type: orgType,
-                email: email,
-                phone: phone,
-                website: website || null,
-                country: country,
-                city: city,
-                address: address,
-                sector: sector,
-                description: description,
-                role: 'organization',
-                password: password
-            };
-
-            const result = await apiCall('/api/users/register', payload, 'signup');
-
-            if (result && result.ok) {
-                showAlert('signup-alert', 'Account created! Please check your email to activate your account before signing in.', 'success');
-                e.target.reset();
-                citySelect.innerHTML = '<option value="" disabled selected>Select country first</option>';
-                citySelect.disabled = true;
-                setTimeout(() => {
-                    container.classList.remove('active');
-                }, 4000);
-            }
-
-            setLoading('signup-btn', false);
-        });
-
-        // Sign In handler
-        document.getElementById('signin-form-el').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearAllErrors(e.target);
-
-            const email = document.getElementById('signin-email').value.trim();
-            const password = document.getElementById('signin-password').value;
-            const remember = document.getElementById('remember-me').checked;
-
-            let hasError = false;
-            if (!email) { setFieldError('signin-email', 'Required'); hasError = true; }
-            else if (!isValidEmail(email)) { setFieldError('signin-email', 'Invalid email'); hasError = true; }
-            if (!password) { setFieldError('signin-password', 'Required'); hasError = true; }
-
-            if (hasError) return;
-
-            setLoading('signin-btn', true);
-
-            const result = await apiCall('/api/users/login', { email, password }, 'signin');
-
-            if (result && result.ok) {
-                const storage = remember ? localStorage : sessionStorage;
-                storage.setItem('access_token', result.data.access_token);
-                storage.setItem('token_type', result.data.token_type);
-                storage.setItem('user', JSON.stringify(result.data.user));
-                showAlert('signin-alert', 'Login successful! Redirecting...', 'success');
-                setTimeout(() => {
-                    window.location.href = 'http://localhost:3001/';
-                }, 1000);
-            }
-
-            setLoading('signin-btn', false);
-        });
-    </script>
+      if (result && result.ok) {
+        const storage = remember ? localStorage : sessionStorage;
+        storage.setItem('access_token', result.data.access_token);
+        storage.setItem('token_type', result.data.token_type);
+        storage.setItem('user', JSON.stringify(result.data.user));
+        show('signin-alert', 'Login successful! Redirecting...', 'success');
+        setTimeout(() => { window.location.href = '/'; }, 1000);
+      }
+      setLoading('signin-btn', false);
+    });
+  </script>
 </body>
-
 </html>

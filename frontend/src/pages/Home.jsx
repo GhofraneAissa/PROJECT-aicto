@@ -148,13 +148,13 @@ function Home() {
       link: '/projects',
       color: '#059669'
     },
-    ...(user?.role === 'admin' ? [{
+    {
       icon: <FaGlobeAmericas />,
       title: t('home.featureMapTitle'),
       desc: t('home.featureMapDesc'),
       link: '/map',
       color: '#7c3aed'
-    }] : []),
+    },
     {
       icon: <FaBook />,
       title: t('home.featureResourceTitle'),
@@ -300,11 +300,9 @@ function Home() {
               <Link to="/projects" className="btn btn-primary btn-lg">
                 <FaRocket /> {t('home.submitProject')}
               </Link>
-              {user?.role === 'admin' && (
-                <Link to="/map" className="btn btn-secondary btn-lg">
-                  <FaGlobeAmericas /> {t('home.exploreMap')}
-                </Link>
-              )}
+              <Link to="/map" className="btn btn-secondary btn-lg">
+                <FaGlobeAmericas /> {t('home.exploreMap')}
+              </Link>
             </div>
           )}
           <div className="hero-stats">

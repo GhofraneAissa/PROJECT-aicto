@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -20,18 +20,6 @@ import AdminDashboard from './pages/AdminDashboard'
 import MyProjects from './pages/MyProjects'
 import ChatBot from './components/ChatBot'
 
-function AdminRoute({ children }) {
-  const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
-  if (!storedUser) return <Navigate to="/" replace />
-  try {
-    const user = JSON.parse(storedUser)
-    if (user.role !== 'admin') return <Navigate to="/" replace />
-  } catch {
-    return <Navigate to="/" replace />
-  }
-  return children
-}
-
 function App() {
   const { i18n } = useTranslation()
 
@@ -51,7 +39,7 @@ function App() {
           <Route path="/stakeholders" element={<StakeholderDirectory />} />
           <Route path="/projects" element={<ProjectStocktaking />} />
           <Route path="/projects/:id" element={<ProjectDetails />} />
-          <Route path="/map" element={<AdminRoute><KnowledgeMap /></AdminRoute>} />
+          <Route path="/map" element={<KnowledgeMap />} />
           <Route path="/resources" element={<ResourceLibrary />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/profile" element={<Profile />} />

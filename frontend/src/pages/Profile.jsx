@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
-  FaEnvelope, FaPhone, FaGlobe, FaMapMarkerAlt, FaRocket, FaShareAlt, FaSyncAlt, FaStar
+  FaEnvelope, FaPhone, FaGlobe, FaMapMarkerAlt, FaRocket, FaShareAlt, FaSyncAlt, FaStar,
+  FaCog, FaLock, FaCalendarAlt, FaClock, FaUserShield, FaProjectDiagram, FaExternalLinkAlt,
+  FaSpinner
 } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 
@@ -15,6 +17,12 @@ function Profile() {
   const [form, setForm] = useState({})
   const [avatarHover, setAvatarHover] = useState(false)
   const [toast, setToast] = useState(null)
+  const [activeTab, setActiveTab] = useState('profile')
+  const [projects, setProjects] = useState([])
+  const [projectsLoading, setProjectsLoading] = useState(false)
+  const [projectStats, setProjectStats] = useState({ total: 0 })
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordSaving, setPasswordSaving] = useState(false)
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
@@ -132,6 +140,59 @@ function Profile() {
       }
     }
     reader.readAsDataURL(file)
+  }
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A'
+    try {
+      return new Date(dateStr).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    } catch { return 'N/A' }
+  }
+
+  const fetchProjects = useCallback(async () => {
+    if (!user) return
+    setProjectsLoading(true)
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+      const res = await fetch(`http://127.0.0.1:8000/api/users/${user.id}/projects`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setProjects(data.projects || [])
+        setProjectStats({ total: data.total || 0 })
+      }
+    } catch { /* ignore */ }
+    setProjectsLoading(false)
+  }, [user])
+
+  useEffect(() => {
+    if (activeTab === 'my-projects') fetchProjects()
+  }, [activeTab, fetchProjects])
+
+  const handlePasswordChange = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setToast({ type: 'error', message: t('profile.passwordsDoNotMatch') })
+      return
+    }
+    setPasswordSaving(true)
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+      const res = await fetch(`http://127.0.0.1:8000/api/users/${user.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: passwordForm.newPassword })
+      })
+      if (!res.ok) throw new Error('Failed')
+      setToast({ type: 'success', message: t('profile.passwordChanged') })
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch {
+      setToast({ type: 'error', message: t('profile.passwordChangeFailed') })
+    }
+    setPasswordSaving(false)
   }
 
   if (loading) {
@@ -280,140 +341,287 @@ function Profile() {
           </div>
         </div>
 
+        <div className="profile-stats">
+          <div className="profile-stat">
+            <FaUserShield size={16} />
+            <div className="profile-stat-info">
+              <span className="profile-stat-value">{user.role === 'admin' ? 'Admin' : 'Organization'}</span>
+              <span className="profile-stat-label">{t('profile.role')}</span>
+            </div>
+          </div>
+          <div className="profile-stat">
+            <FaCalendarAlt size={16} />
+            <div className="profile-stat-info">
+              <span className="profile-stat-value">{formatDate(user.created_at)}</span>
+              <span className="profile-stat-label">{t('profile.memberSince')}</span>
+            </div>
+          </div>
+          <div className="profile-stat">
+            <FaClock size={16} />
+            <div className="profile-stat-info">
+              <span className="profile-stat-value">{formatDate(user.last_login)}</span>
+              <span className="profile-stat-label">{t('profile.lastLogin')}</span>
+            </div>
+          </div>
+          <div className="profile-stat">
+            <FaProjectDiagram size={16} />
+            <div className="profile-stat-info">
+              <span className="profile-stat-value">{projectStats.total}</span>
+              <span className="profile-stat-label">{t('profile.myProjects')}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="profile-tabs">
+          <button
+            className={`profile-tab ${activeTab === 'profile' ? 'active' : ''}`}
+            onClick={() => setActiveTab('profile')}
+          >
+            <FaUserShield size={13} />
+            {t('profile.editProfile')}
+          </button>
+          <button
+            className={`profile-tab ${activeTab === 'my-projects' ? 'active' : ''}`}
+            onClick={() => setActiveTab('my-projects')}
+          >
+            <FaProjectDiagram size={13} />
+            {t('profile.myProjects')}
+          </button>
+          <button
+            className={`profile-tab ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            <FaCog size={13} />
+            {t('profile.settings')}
+          </button>
+        </div>
+
         <div className="profile-body">
-          <div className="profile-section">
-            <h2 className="profile-section-title">
-              <FaEnvelope size={14} /> {t('profile.contactInfo')}
-            </h2>
-            <div className="profile-details-grid">
-              <div className="profile-detail-item">
-                <div className="profile-detail-icon-wrap">
-                  <FaEnvelope size={14} />
-                </div>
-                <div className="profile-detail-content">
-                  <span className="profile-detail-label">{t('profile.email')}</span>
-                  {editing ? (
-                    <input type="email" className="profile-edit-field" value={user.email} disabled title={t('profile.emailCannotChange')} />
-                  ) : (
-                    <span className="profile-detail-value">{user.email || t('profile.notProvided')}</span>
-                  )}
-                </div>
-              </div>
-              <div className="profile-detail-item">
-                <div className="profile-detail-icon-wrap">
-                  <FaPhone size={14} />
-                </div>
-                <div className="profile-detail-content">
-                  <span className="profile-detail-label">{t('profile.phone')}</span>
-                  {editing ? (
-                    <input type="tel" className="profile-edit-field" value={form.phone} onChange={e => handleChange('phone', e.target.value)} placeholder={t('profile.phonePlaceholder')} />
-                  ) : (
-                    <span className="profile-detail-value">{user.phone || t('profile.notProvided')}</span>
-                  )}
-                </div>
-              </div>
-              <div className="profile-detail-item">
-                <div className="profile-detail-icon-wrap">
-                  <FaGlobe size={14} />
-                </div>
-                <div className="profile-detail-content">
-                  <span className="profile-detail-label">{t('profile.website')}</span>
-                  {editing ? (
-                    <input type="url" className="profile-edit-field" value={form.website} onChange={e => handleChange('website', e.target.value)} placeholder={t('profile.websitePlaceholder')} />
-                  ) : user.website ? (
-                    <span className="profile-detail-value"><a href={user.website} target="_blank" rel="noopener noreferrer">{user.website}</a></span>
-                  ) : (
-                    <span className="profile-detail-value">{t('profile.notProvided')}</span>
-                  )}
-                </div>
-              </div>
-              <div className="profile-detail-item">
-                <div className="profile-detail-icon-wrap">
-                  <FaMapMarkerAlt size={14} />
-                </div>
-                <div className="profile-detail-content">
-                  <span className="profile-detail-label">{t('profile.address')}</span>
-                  {editing ? (
-                    <input type="text" className="profile-edit-field" value={form.address} onChange={e => handleChange('address', e.target.value)} placeholder={t('profile.addressPlaceholder')} />
-                  ) : (
-                    <span className="profile-detail-value">{user.address || t('profile.notProvided')}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="profile-section">
-            <h2 className="profile-section-title">
-              <FaStar size={14} /> {t('profile.descriptionExpertise')}
-            </h2>
-            {editing ? (
-              <div className="profile-edit-section">
-                <textarea
-                  className="profile-edit-textarea"
-                  value={form.description}
-                  onChange={e => handleChange('description', e.target.value)}
-                  placeholder={t('profile.orgDescription')}
-                  rows={3}
-                />
-                <input
-                  type="text"
-                  className="profile-edit-field"
-                  value={form.sector}
-                  onChange={e => handleChange('sector', e.target.value)}
-                  placeholder={t('profile.sectorsPlaceholder')}
-                />
-              </div>
-            ) : (
-              <>
-                {user.description && (
-                  <p className="profile-description">{user.description}</p>
-                )}
-                {sectorTags.length > 0 && (
-                  <div className="profile-skills-pills">
-                    {sectorTags.map((tag, i) => (
-                      <span key={i} className="profile-skill-pill">{tag}</span>
-                    ))}
+          {activeTab === 'profile' && (
+            <>
+              <div className="profile-section">
+                <h2 className="profile-section-title">
+                  <FaEnvelope size={14} /> {t('profile.contactInfo')}
+                </h2>
+                <div className="profile-details-grid">
+                  <div className="profile-detail-item">
+                    <div className="profile-detail-icon-wrap">
+                      <FaEnvelope size={14} />
+                    </div>
+                    <div className="profile-detail-content">
+                      <span className="profile-detail-label">{t('profile.email')}</span>
+                      {editing ? (
+                        <input type="email" className="profile-edit-field" value={user.email} disabled title={t('profile.emailCannotChange')} />
+                      ) : (
+                        <span className="profile-detail-value">{user.email || t('profile.notProvided')}</span>
+                      )}
+                    </div>
                   </div>
+                  <div className="profile-detail-item">
+                    <div className="profile-detail-icon-wrap">
+                      <FaPhone size={14} />
+                    </div>
+                    <div className="profile-detail-content">
+                      <span className="profile-detail-label">{t('profile.phone')}</span>
+                      {editing ? (
+                        <input type="tel" className="profile-edit-field" value={form.phone} onChange={e => handleChange('phone', e.target.value)} placeholder={t('profile.phonePlaceholder')} />
+                      ) : (
+                        <span className="profile-detail-value">{user.phone || t('profile.notProvided')}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="profile-detail-item">
+                    <div className="profile-detail-icon-wrap">
+                      <FaGlobe size={14} />
+                    </div>
+                    <div className="profile-detail-content">
+                      <span className="profile-detail-label">{t('profile.website')}</span>
+                      {editing ? (
+                        <input type="url" className="profile-edit-field" value={form.website} onChange={e => handleChange('website', e.target.value)} placeholder={t('profile.websitePlaceholder')} />
+                      ) : user.website ? (
+                        <span className="profile-detail-value"><a href={user.website} target="_blank" rel="noopener noreferrer">{user.website}</a></span>
+                      ) : (
+                        <span className="profile-detail-value">{t('profile.notProvided')}</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="profile-detail-item">
+                    <div className="profile-detail-icon-wrap">
+                      <FaMapMarkerAlt size={14} />
+                    </div>
+                    <div className="profile-detail-content">
+                      <span className="profile-detail-label">{t('profile.address')}</span>
+                      {editing ? (
+                        <input type="text" className="profile-edit-field" value={form.address} onChange={e => handleChange('address', e.target.value)} placeholder={t('profile.addressPlaceholder')} />
+                      ) : (
+                        <span className="profile-detail-value">{user.address || t('profile.notProvided')}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="profile-section">
+                <h2 className="profile-section-title">
+                  <FaStar size={14} /> {t('profile.descriptionExpertise')}
+                </h2>
+                {editing ? (
+                  <div className="profile-edit-section">
+                    <textarea
+                      className="profile-edit-textarea"
+                      value={form.description}
+                      onChange={e => handleChange('description', e.target.value)}
+                      placeholder={t('profile.orgDescription')}
+                      rows={3}
+                    />
+                    <input
+                      type="text"
+                      className="profile-edit-field"
+                      value={form.sector}
+                      onChange={e => handleChange('sector', e.target.value)}
+                      placeholder={t('profile.sectorsPlaceholder')}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    {user.description && (
+                      <p className="profile-description">{user.description}</p>
+                    )}
+                    {sectorTags.length > 0 && (
+                      <div className="profile-skills-pills">
+                        {sectorTags.map((tag, i) => (
+                          <span key={i} className="profile-skill-pill">{tag}</span>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </div>
+              </div>
 
-          <div className="profile-divider"></div>
+              <div className="profile-divider"></div>
 
-          <div className="profile-actions">
-            <div className="profile-action-card">
-              <div className="profile-action-icon-wrap">
-                <FaRocket size={20} />
+              <div className="profile-actions">
+                <Link to="/projects" className="profile-action-card">
+                  <div className="profile-action-icon-wrap">
+                    <FaRocket size={20} />
+                  </div>
+                  <h3>{t('profile.submitProject')}</h3>
+                  <p>{t('profile.readyForWorkDesc')}</p>
+                  <div className="profile-arrow-btn">
+                    <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </div>
+                </Link>
+                <Link to="/sdgs" className="profile-action-card">
+                  <div className="profile-action-icon-wrap">
+                    <FaShareAlt size={20} />
+                  </div>
+                  <h3>{t('profile.sharePosts')}</h3>
+                  <p>{t('profile.sharePostsDesc')}</p>
+                  <div className="profile-arrow-btn">
+                    <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </div>
+                </Link>
+                <div className="profile-action-card" onClick={() => { setActiveTab('settings'); setEditing(false) }}>
+                  <div className="profile-action-icon-wrap">
+                    <FaSyncAlt size={20} />
+                  </div>
+                  <h3>{t('profile.updateProfile')}</h3>
+                  <p>{t('profile.updateProfileDesc')}</p>
+                  <div className="profile-arrow-btn">
+                    <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </div>
+                </div>
               </div>
-              <h3>{t('profile.readyForWork')}</h3>
-              <p>{t('profile.readyForWorkDesc')}</p>
-              <div className="profile-arrow-btn">
-                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </>
+          )}
+
+          {activeTab === 'my-projects' && (
+            <div className="profile-tab-content">
+              <h2 className="profile-section-title">
+                <FaProjectDiagram size={14} /> {t('profile.myProjects')}
+              </h2>
+              <p className="profile-tab-desc">{t('profile.myProjectsDesc')}</p>
+              {projectsLoading ? (
+                <div className="profile-loading-inline">
+                  <FaSpinner className="spin" /> {t('common.loading')}
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="profile-empty-state">
+                  <FaProjectDiagram size={40} />
+                  <h3>{t('profile.noProjects')}</h3>
+                  <p>{t('profile.noProjectsDesc')}</p>
+                  <Link to="/projects" className="btn btn-primary">
+                    <FaRocket /> {t('profile.submitProject')}
+                  </Link>
+                </div>
+              ) : (
+                <div className="profile-projects-list">
+                  {projects.map(project => (
+                    <Link to={`/projects/${project.id}`} key={project.id} className="profile-project-card">
+                      <div className="profile-project-info">
+                        <h3>{project.title}</h3>
+                        <div className="profile-project-meta">
+                          {project.status && (
+                            <span className={`profile-project-badge status-${project.status.toLowerCase()}`}>
+                              {project.status}
+                            </span>
+                          )}
+                          {project.sector && <span className="profile-project-tag">{project.sector}</span>}
+                          {project.country && <span className="profile-project-tag">{project.country}</span>}
+                        </div>
+                        {project.description && (
+                          <p className="profile-project-desc">{project.description}</p>
+                        )}
+                      </div>
+                      <FaExternalLinkAlt size={12} className="profile-project-link-icon" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="profile-tab-content">
+              <h2 className="profile-section-title">
+                <FaLock size={14} /> {t('profile.changePassword')}
+              </h2>
+              <p className="profile-tab-desc">{t('profile.settingsDesc')}</p>
+              <div className="profile-password-form">
+                <div className="profile-password-field">
+                  <label>{t('profile.newPassword')}</label>
+                  <input
+                    type="password"
+                    className="profile-edit-field"
+                    value={passwordForm.newPassword}
+                    onChange={e => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div className="profile-password-field">
+                  <label>{t('profile.confirmPassword')}</label>
+                  <input
+                    type="password"
+                    className="profile-edit-field"
+                    value={passwordForm.confirmPassword}
+                    onChange={e => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <button
+                  className="profile-btn-edit profile-btn-save"
+                  onClick={handlePasswordChange}
+                  disabled={passwordSaving || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                >
+                  {passwordSaving ? (
+                    <span className="profile-save-spinner"></span>
+                  ) : (
+                    <><FaLock size={12} /> {t('profile.changePassword')}</>
+                  )}
+                </button>
               </div>
             </div>
-            <div className="profile-action-card">
-              <div className="profile-action-icon-wrap">
-                <FaShareAlt size={20} />
-              </div>
-              <h3>{t('profile.sharePosts')}</h3>
-              <p>{t('profile.sharePostsDesc')}</p>
-              <div className="profile-arrow-btn">
-                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </div>
-            </div>
-            <div className="profile-action-card">
-              <div className="profile-action-icon-wrap">
-                <FaSyncAlt size={20} />
-              </div>
-              <h3>{t('profile.updateProfile')}</h3>
-              <p>{t('profile.updateProfileDesc')}</p>
-              <div className="profile-arrow-btn">
-                <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -441,6 +649,200 @@ function Profile() {
           margin: 0 auto 16px;
         }
         @keyframes pSpin { to { transform: rotate(360deg); } }
+        .spin { animation: pSpin 0.8s linear infinite; }
+
+        /* Stats Row */
+        .profile-stats {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          padding: 20px 28px;
+          background: var(--gray-50);
+          border-bottom: 1px solid var(--gray-100);
+        }
+        .profile-stat {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: var(--white);
+          padding: 14px 16px;
+          border-radius: 12px;
+          border: 1px solid var(--gray-100);
+        }
+        .profile-stat svg { color: var(--primary-color); flex-shrink: 0; }
+        .profile-stat-info { display: flex; flex-direction: column; min-width: 0; }
+        .profile-stat-value {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--gray-900);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .profile-stat-label {
+          font-size: 0.65rem;
+          color: var(--gray-500);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          font-weight: 600;
+        }
+
+        /* Tabs */
+        .profile-tabs {
+          display: flex;
+          gap: 4px;
+          padding: 16px 28px 0;
+          border-bottom: 1px solid var(--gray-100);
+          background: var(--white);
+        }
+        .profile-tab {
+          padding: 10px 20px;
+          border: none;
+          background: none;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: var(--gray-500);
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+          transition: all 0.2s;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: -1px;
+        }
+        .profile-tab:hover { color: var(--gray-700); }
+        .profile-tab.active {
+          color: var(--primary-color);
+          border-bottom-color: var(--primary-color);
+        }
+
+        /* Tab Content */
+        .profile-tab-content { padding-top: 4px; }
+        .profile-tab-desc {
+          font-size: 0.85rem;
+          color: var(--gray-500);
+          margin-bottom: 20px;
+        }
+        .profile-loading-inline {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 40px 0;
+          justify-content: center;
+          color: var(--gray-500);
+          font-size: 0.9rem;
+        }
+
+        /* Empty State */
+        .profile-empty-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: var(--gray-400);
+        }
+        .profile-empty-state svg { margin-bottom: 12px; }
+        .profile-empty-state h3 {
+          font-size: 1.1rem;
+          color: var(--gray-700);
+          margin-bottom: 6px;
+        }
+        .profile-empty-state p {
+          font-size: 0.85rem;
+          color: var(--gray-500);
+          margin-bottom: 20px;
+        }
+
+        /* Projects List */
+        .profile-projects-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .profile-project-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          padding: 16px 18px;
+          background: var(--gray-50);
+          border-radius: 14px;
+          border: 1.5px solid var(--gray-100);
+          text-decoration: none;
+          color: inherit;
+          transition: all 0.2s;
+        }
+        .profile-project-card:hover {
+          border-color: var(--primary-color);
+          background: rgba(37, 99, 235, 0.03);
+          transform: translateX(4px);
+        }
+        .profile-project-info { flex: 1; min-width: 0; }
+        .profile-project-info h3 {
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: var(--gray-900);
+          margin-bottom: 6px;
+        }
+        .profile-project-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-bottom: 6px;
+        }
+        .profile-project-badge {
+          font-size: 0.68rem;
+          font-weight: 700;
+          padding: 2px 10px;
+          border-radius: 999px;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+        }
+        .profile-project-badge.status-ongoing,
+        .profile-project-badge.status-active { background: rgba(5, 150, 105, 0.1); color: #059669; }
+        .profile-project-badge.status-completed { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+        .profile-project-badge.status-planned { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+        .profile-project-tag {
+          font-size: 0.72rem;
+          font-weight: 500;
+          padding: 2px 10px;
+          border-radius: 999px;
+          background: var(--gray-100);
+          color: var(--gray-600);
+        }
+        .profile-project-desc {
+          font-size: 0.82rem;
+          color: var(--gray-500);
+          line-height: 1.5;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .profile-project-link-icon {
+          flex-shrink: 0;
+          margin-top: 4px;
+          color: var(--gray-400);
+          transition: color 0.2s;
+        }
+        .profile-project-card:hover .profile-project-link-icon { color: var(--primary-color); }
+
+        /* Password Form */
+        .profile-password-form {
+          max-width: 400px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .profile-password-field label {
+          display: block;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: var(--gray-600);
+          margin-bottom: 6px;
+        }
+        .profile-password-form .profile-btn-save {
+          align-self: flex-start;
+          padding: 11px 24px;
+        }
 
         .profile-toast {
           position: fixed;
@@ -946,6 +1348,9 @@ function Profile() {
           .profile-page { padding: 16px 12px 48px; }
           .profile-header-content { padding: 0 16px 20px; flex-wrap: wrap; }
           .profile-body { padding: 0 16px 20px; }
+          .profile-stats { padding: 16px; grid-template-columns: repeat(2, 1fr); }
+          .profile-tabs { padding: 12px 16px 0; overflow-x: auto; }
+          .profile-tab { white-space: nowrap; padding: 8px 14px; font-size: 0.8rem; }
           .profile-details-grid { grid-template-columns: 1fr; }
           .profile-actions { grid-template-columns: 1fr; }
           .profile-header-info h1 { font-size: 1.3rem; }
@@ -963,6 +1368,8 @@ function Profile() {
           .profile-header-actions { margin-top: 12px; }
           .profile-location { justify-content: center; }
           .profile-edit-location-row { justify-content: center; }
+          .profile-stats { grid-template-columns: 1fr 1fr; }
+          .profile-stat-value { font-size: 0.75rem; }
         }
       `}</style>
     </div>

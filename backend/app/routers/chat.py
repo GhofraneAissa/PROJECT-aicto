@@ -20,6 +20,8 @@ from app.models.stakeholder import Stakeholder
 from app.models.resource import Resource
 from app.models.country import Country
 from app.models.chat import ChatSession, ChatMessage
+from app.models.user import User
+from app.routers.resources import get_current_user
 from app.schemas.chat import (
     ChatSessionCreate, ChatSessionResponse, ChatSessionListItem,
     ChatRequest, ChatResponse, ChatResult, ChatMessageSchema,
@@ -390,8 +392,12 @@ def encode_image(image_path):
 # ── Session Endpoints ──
 
 @router.post("/sessions", response_model=ChatSessionResponse)
-def create_session(data: ChatSessionCreate, db: Session = Depends(get_db)):
-    session = ChatSession(title=data.title or "New Chat")
+def create_session(
+    data: ChatSessionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    session = ChatSession(title=data.title or "New Chat", user_id=current_user.id)
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -399,9 +405,13 @@ def create_session(data: ChatSessionCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/sessions", response_model=List[ChatSessionListItem])
-def list_sessions(db: Session = Depends(get_db)):
+def list_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     sessions = (
         db.query(ChatSession)
+        .filter(ChatSession.user_id == current_user.id)
         .order_by(desc(ChatSession.updated_at))
         .all()
     )
@@ -419,18 +429,30 @@ def list_sessions(db: Session = Depends(get_db)):
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
-def get_session(session_id: str, db: Session = Depends(get_db)):
+def get_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id is not None and session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this session")
     return session
 
 
 @router.delete("/sessions/{session_id}")
-def delete_session(session_id: str, db: Session = Depends(get_db)):
+def delete_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id is not None and session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this session")
     db.delete(session)
     db.commit()
     return {"ok": True}
@@ -491,11 +513,14 @@ def chat_send(
     session_id: str,
     request: ChatRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     start = time.time()
     session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if session.user_id is not None and session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this session")
 
     query = request.message.strip()
     attachments = request.attachments
@@ -599,11 +624,15 @@ def chat_send(
 
 
 @router.post("/", response_model=ChatResponse)
-def chat_endpoint_legacy(request: ChatRequest, db: Session = Depends(get_db)):
+def chat_endpoint_legacy(
+    request: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     if not request.session_id:
-        session = ChatSession(title="New Chat")
+        session = ChatSession(title="New Chat", user_id=current_user.id)
         db.add(session)
         db.commit()
         db.refresh(session)
         request.session_id = session.session_id
-    return chat_send(request.session_id, request, db)
+    return chat_send(request.session_id, request, db, current_user)

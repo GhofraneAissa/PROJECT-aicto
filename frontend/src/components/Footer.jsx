@@ -43,7 +43,7 @@ function Footer() {
               <ul>
                 <li><a href="/stakeholders">{t('footer.stakeholderDir')}</a></li>
                 <li><a href="/projects">{t('footer.projectStocktaking')}</a></li>
-                {user?.role === 'admin' && <li><a href="/map">{t('footer.knowledgeMap')}</a></li>}
+                <li><a href="/map">{t('footer.knowledgeMap')}</a></li>
                 <li><a href="/resources">{t('footer.resourceLibrary')}</a></li>
                 <li><a href="/analytics">{t('footer.analyticsDashboard')}</a></li>
               </ul>
