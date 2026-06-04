@@ -427,3 +427,75 @@ def send_report_email(recipient_email: str, pdf_bytes: bytes, year: int) -> bool
     except Exception as e:
         logger.error(f"[EMAIL] Failed to send report email: {type(e).__name__}: {e}")
         return False
+
+
+def send_org_rejection_email(recipient_email: str, organization_name: str, reason: str) -> bool:
+    if not all([SMTP_EMAIL, SMTP_PASSWORD]):
+        logger.error("[EMAIL] SMTP credentials not configured!")
+        return False
+    if SMTP_EMAIL == "ton.email@gmail.com" or SMTP_PASSWORD == "ton-app-password-gmail":
+        logger.error("[EMAIL] Using placeholder SMTP credentials!")
+        return False
+
+    logger.info(f"[EMAIL] Sending org rejection email to {recipient_email}")
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .container {{ max-width: 600px; margin: 0 auto; font-family: 'Segoe UI', Arial, sans-serif; }}
+        .header {{ background: linear-gradient(135deg, #DC2626, #B91C1C); color: white; padding: 30px 20px; text-align: center; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ padding: 40px 30px; background: #ffffff; }}
+        .reason-box {{ background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0; }}
+        .reason-box p {{ margin: 0; color: #991b1b; font-size: 15px; line-height: 1.6; }}
+        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }}
+        .button {{ display: inline-block; padding: 12px 28px; background: #2563EB; color: white !important;
+                   text-decoration: none; border-radius: 8px; font-weight: 600; }}
+    </style>
+</head>
+<body style="margin: 0; padding: 20px; background: #f3f4f6;">
+    <div class="container">
+        <div class="header">
+            <h1>Organization Registration Update</h1>
+        </div>
+        <div class="content">
+            <h2 style="margin-top: 0;">Dear {organization_name},</h2>
+            <p>Thank you for registering your organization on the Regional AI Repository platform.</p>
+            <p>After reviewing your application, we regret to inform you that your organization registration has been <strong style="color:#DC2626;">rejected</strong>.</p>
+            <p><strong>Reason for rejection:</strong></p>
+            <div class="reason-box">
+                <p>{reason}</p>
+            </div>
+            <p>You may re-register with corrected information at any time.</p>
+            <p style="margin-top: 24px;">
+                <a href="{FRONTEND_URL}" class="button">Go to Platform</a>
+            </p>
+            <div class="footer">
+                &copy; 2026 Regional AI Repository Platform<br>
+                This is an automated email, please do not reply.
+            </div>
+        </div>
+    </div>
+</body>
+</html>"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Organization Registration Status - Regional AI Repository"
+    msg["From"] = f"Regional AI Repository <{SMTP_EMAIL}>"
+    msg["To"] = recipient_email
+    msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        logger.info(f"[EMAIL] Connecting to SMTP server {SMTP_SERVER}:{SMTP_PORT}")
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_EMAIL, SMTP_PASSWORD)
+            server.sendmail(SMTP_EMAIL, recipient_email, msg.as_string())
+        logger.info(f"[EMAIL] Org rejection email sent successfully to {recipient_email}")
+        return True
+    except Exception as e:
+        logger.error(f"[EMAIL] Failed to send org rejection email: {type(e).__name__}: {e}")
+        return False

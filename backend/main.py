@@ -116,6 +116,12 @@ try:
             if col not in project_columns:
                 conn.execute(text(f"ALTER TABLE projects ADD COLUMN {col} {col_type} NULL"))
                 logger.info(f"[DB] Added column {col} to projects table")
+        # Add new columns to users table if missing (for org moderation)
+        user_columns = [c["name"] for c in inspector.get_columns("users")]
+        for col, col_type in [("is_approved", "BOOLEAN DEFAULT false"), ("rejection_reason", "TEXT")]:
+            if col not in user_columns:
+                conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+                logger.info(f"[DB] Added column {col} to users table")
         conn.commit()
 except Exception as e:
     logger.error(f"[DB] ERROR: {e}")

@@ -31,6 +31,8 @@ class User(Base):
         server_default="organization",
     )
     is_active = Column(Boolean, nullable=False, default=False)
+    is_approved = Column(Boolean, nullable=False, default=False)
+    rejection_reason = Column(Text, nullable=True)
     activation_token = Column(String(100), nullable=True, unique=True, index=True)
     reset_token = Column(String(100), nullable=True, unique=True, index=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
@@ -72,6 +74,8 @@ class User(Base):
             "logo": self.logo,
             "role": self.role,
             "is_active": self.is_active,
+            "is_approved": self.is_approved,
+            "rejection_reason": self.rejection_reason,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "last_login": self.last_login,

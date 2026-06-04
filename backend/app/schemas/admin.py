@@ -38,3 +38,31 @@ class AdminApproveRequest(BaseModel):
 class AdminRejectRequest(BaseModel):
     reason: str
     admin_id: int
+
+# --- Organization moderation schemas ---
+
+class AdminPendingOrganization(BaseModel):
+    id: int
+    organization_name: str
+    organization_type: str
+    email: str
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    country: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    sector: Optional[str] = None
+    description: Optional[str] = None
+    logo: Optional[str] = None
+    role: str
+    is_active: bool
+    is_approved: bool
+    rejection_reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
+
+class AdminOrgStats(BaseModel):
+    pending_approval: int
+    approved: int
+    rejected: int

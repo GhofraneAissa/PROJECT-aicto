@@ -9,8 +9,8 @@ import os
 from app.database import get_db
 from app.models.project import Project
 from app.models.user import User
-from app.schemas.admin import AdminPendingProject, AdminStats, AdminProjectDocument, AdminProjectCountry, AdminProjectOwner, AdminApproveRequest, AdminRejectRequest
-from app.services.email_service import send_rejection_email
+from app.schemas.admin import AdminPendingProject, AdminStats, AdminProjectDocument, AdminProjectCountry, AdminProjectOwner, AdminApproveRequest, AdminRejectRequest, AdminPendingOrganization, AdminOrgStats
+from app.services.email_service import send_rejection_email, send_org_rejection_email
 
 router = APIRouter()
 
@@ -83,6 +83,134 @@ def get_stats(db: Session = Depends(get_db), admin: User = Depends(get_admin_use
         if status in stats:
             stats[status] = count
     return AdminStats(**stats)
+
+@router.get("/orgs/stats", response_model=AdminOrgStats)
+def get_org_stats(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    total = db.query(User).filter(User.role == "organization").count()
+    approved = db.query(User).filter(User.role == "organization", User.is_approved == True).count()
+    rejected = db.query(User).filter(User.role == "organization", User.rejection_reason.isnot(None)).count()
+    pending = total - approved - rejected
+    return AdminOrgStats(pending_approval=pending, approved=approved, rejected=rejected)
+
+@router.get("/orgs/pending", response_model=List[AdminPendingOrganization])
+def get_pending_organizations(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    orgs = (
+        db.query(User)
+        .filter(User.role == "organization", User.is_approved == False, User.rejection_reason.is_(None))
+        .order_by(User.created_at.desc())
+        .all()
+    )
+    return [AdminPendingOrganization(
+        id=o.id,
+        organization_name=o.organization_name,
+        organization_type=o.organization_type,
+        email=o.email,
+        phone=o.phone,
+        website=o.website,
+        country=o.country,
+        city=o.city,
+        address=o.address,
+        sector=o.sector,
+        description=o.description,
+        logo=o.logo,
+        role=o.role,
+        is_active=o.is_active,
+        is_approved=o.is_approved,
+        rejection_reason=o.rejection_reason,
+        created_at=o.created_at,
+        updated_at=o.updated_at,
+        last_login=o.last_login,
+    ) for o in orgs]
+
+@router.get("/orgs/rejected", response_model=List[AdminPendingOrganization])
+def get_rejected_organizations(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    orgs = (
+        db.query(User)
+        .filter(User.role == "organization", User.rejection_reason.isnot(None))
+        .order_by(User.updated_at.desc())
+        .all()
+    )
+    return [AdminPendingOrganization(
+        id=o.id,
+        organization_name=o.organization_name,
+        organization_type=o.organization_type,
+        email=o.email,
+        phone=o.phone,
+        website=o.website,
+        country=o.country,
+        city=o.city,
+        address=o.address,
+        sector=o.sector,
+        description=o.description,
+        logo=o.logo,
+        role=o.role,
+        is_active=o.is_active,
+        is_approved=o.is_approved,
+        rejection_reason=o.rejection_reason,
+        created_at=o.created_at,
+        updated_at=o.updated_at,
+        last_login=o.last_login,
+    ) for o in orgs]
+
+@router.get("/orgs/approved", response_model=List[AdminPendingOrganization])
+def get_approved_organizations(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    orgs = (
+        db.query(User)
+        .filter(User.role == "organization", User.is_approved == True)
+        .order_by(User.updated_at.desc())
+        .all()
+    )
+    return [AdminPendingOrganization(
+        id=o.id,
+        organization_name=o.organization_name,
+        organization_type=o.organization_type,
+        email=o.email,
+        phone=o.phone,
+        website=o.website,
+        country=o.country,
+        city=o.city,
+        address=o.address,
+        sector=o.sector,
+        description=o.description,
+        logo=o.logo,
+        role=o.role,
+        is_active=o.is_active,
+        is_approved=o.is_approved,
+        rejection_reason=o.rejection_reason,
+        created_at=o.created_at,
+        updated_at=o.updated_at,
+        last_login=o.last_login,
+    ) for o in orgs]
+
+@router.put("/orgs/{user_id}/approve")
+def approve_organization(user_id: int, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    org = db.query(User).filter(User.id == user_id, User.role == "organization").first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    org.is_approved = True
+    org.rejection_reason = None
+    db.commit()
+    return {"message": "Organization approved successfully"}
+
+@router.put("/orgs/{user_id}/reject")
+def reject_organization(user_id: int, body: AdminRejectRequest, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    if not body.reason or not body.reason.strip():
+        raise HTTPException(status_code=400, detail="Rejection reason is required")
+    org = db.query(User).filter(User.id == user_id, User.role == "organization").first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    org.is_approved = False
+    org.rejection_reason = body.reason.strip()
+    db.commit()
+
+    if org.email:
+        send_org_rejection_email(
+            recipient_email=org.email,
+            organization_name=org.organization_name or "User",
+            reason=body.reason.strip()
+        )
+
+    return {"message": "Organization rejected"}
 
 @router.put("/projects/{project_id}/approve")
 def approve_project(project_id: int, body: AdminApproveRequest, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):

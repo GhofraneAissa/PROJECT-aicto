@@ -102,6 +102,12 @@ def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="Account not activated. Please check your email for the activation link."
         )
 
+    if user.role == "organization" and not user.is_approved:
+        raise HTTPException(
+            status_code=403,
+            detail="Your account is pending approval by an administrator. You will be notified once your organization is approved."
+        )
+
     user.last_login = datetime.now(timezone.utc)
     db.commit()
     db.refresh(user)

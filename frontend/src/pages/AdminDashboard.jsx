@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FaClipboardList, FaCheckCircle, FaTimesCircle, FaEye, FaSignOutAlt, FaGlobeAmericas, FaLayerGroup, FaMicrochip, FaCalendarAlt, FaBuilding } from 'react-icons/fa'
+import { FaClipboardList, FaCheckCircle, FaTimesCircle, FaEye, FaSignOutAlt, FaGlobeAmericas, FaLayerGroup, FaMicrochip, FaCalendarAlt, FaBuilding, FaUsers, FaUserShield, FaEnvelope, FaPhone, FaGlobe, FaMapMarkerAlt, FaStar, FaIndustry, FaExclamationTriangle } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 
 const API_BASE = 'http://localhost:8000'
@@ -17,13 +17,33 @@ function AdminDashboard() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectProjectId, setRejectProjectId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [rejectType, setRejectType] = useState('project')
+  const [activeTab, setActiveTab] = useState('projects')
+  const [pendingOrgs, setPendingOrgs] = useState([])
+  const [approvedOrgs, setApprovedOrgs] = useState([])
+  const [rejectedOrgs, setRejectedOrgs] = useState([])
+  const [orgsLoading, setOrgsLoading] = useState(false)
+  const [orgStats, setOrgStats] = useState(null)
+  const [orgFilter, setOrgFilter] = useState('pending')
+  const [orgActionLoading, setOrgActionLoading] = useState(null)
 
   useEffect(() => {
     if (token) {
       fetchPendingProjects()
       fetchStats()
+      fetchOrgStats()
+      fetchPendingOrgs()
     }
   }, [token])
+
+  useEffect(() => {
+    if (token && activeTab === 'organizations') {
+      fetchOrgStats()
+      if (orgFilter === 'pending') fetchPendingOrgs()
+      else if (orgFilter === 'approved') fetchApprovedOrgs()
+      else fetchRejectedOrgs()
+    }
+  }, [token, activeTab, orgFilter])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -110,10 +130,94 @@ function AdminDashboard() {
     }
   }
 
-  const openRejectModal = (projectId) => {
-    setRejectProjectId(projectId)
+  const openRejectModal = (id, type = 'project') => {
+    setRejectProjectId(id)
+    setRejectType(type)
     setShowRejectModal(true)
     setRejectReason('')
+  }
+
+  const fetchOrgStats = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orgs/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setOrgStats(data)
+      }
+    } catch (err) {
+      console.error('Error fetching org stats:', err)
+    }
+  }
+
+  const fetchPendingOrgs = async () => {
+    try {
+      setOrgsLoading(true)
+      const res = await fetch(`${API_BASE}/api/admin/orgs/pending`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) setPendingOrgs(await res.json())
+    } catch (err) {
+      console.error('Error fetching pending orgs:', err)
+    } finally {
+      setOrgsLoading(false)
+    }
+  }
+
+  const fetchApprovedOrgs = async () => {
+    try {
+      setOrgsLoading(true)
+      const res = await fetch(`${API_BASE}/api/admin/orgs/approved`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) setApprovedOrgs(await res.json())
+    } catch (err) {
+      console.error('Error fetching approved orgs:', err)
+    } finally {
+      setOrgsLoading(false)
+    }
+  }
+
+  const fetchRejectedOrgs = async () => {
+    try {
+      setOrgsLoading(true)
+      const res = await fetch(`${API_BASE}/api/admin/orgs/rejected`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) setRejectedOrgs(await res.json())
+    } catch (err) {
+      console.error('Error fetching rejected orgs:', err)
+    } finally {
+      setOrgsLoading(false)
+    }
+  }
+
+  const handleOrgApprove = async (orgId) => {
+    setOrgActionLoading(orgId)
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/orgs/${orgId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ admin_id: 1 })
+      })
+      if (res.ok) {
+        toast.success('Organization approved successfully!')
+        fetchPendingOrgs()
+        fetchOrgStats()
+      } else {
+        const errData = await res.json()
+        toast.error('Failed to approve: ' + (errData.detail || 'Unknown error'))
+      }
+    } catch (err) {
+      console.error('Error approving org:', err)
+      toast.error('Network error: ' + err.message)
+    } finally {
+      setOrgActionLoading(null)
+    }
   }
 
   const handleReject = async () => {
@@ -123,7 +227,10 @@ function AdminDashboard() {
     }
     setActionLoading(rejectProjectId)
     try {
-      const res = await fetch(`${API_BASE}/api/admin/projects/${rejectProjectId}/reject`, {
+      const endpoint = rejectType === 'project'
+        ? `${API_BASE}/api/admin/projects/${rejectProjectId}/reject`
+        : `${API_BASE}/api/admin/orgs/${rejectProjectId}/reject`
+      const res = await fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -132,10 +239,15 @@ function AdminDashboard() {
         body: JSON.stringify({ reason: rejectReason, admin_id: 1 })
       })
       if (res.ok) {
-        toast.info('Project has been rejected.')
+        toast.info(rejectType === 'project' ? 'Project has been rejected.' : 'Organization has been rejected.')
         setShowRejectModal(false)
-        fetchPendingProjects()
-        fetchStats()
+        if (rejectType === 'project') {
+          fetchPendingProjects()
+          fetchStats()
+        } else {
+          fetchPendingOrgs()
+          fetchOrgStats()
+        }
       } else {
         const errData = await res.json()
         toast.error('Failed to reject: ' + (errData.detail || 'Unknown error'))
@@ -190,143 +302,327 @@ function AdminDashboard() {
 
       <main className="dashboard-main">
         <div className="container">
-          <div className="stats-bar">
-            <div className="stat-item">
-              <div className="stat-icon pending"><FaClipboardList /></div>
-              <div className="stat-data">
-                <span className="stat-val">{stats?.pending || 0}</span>
-                <span className="stat-lab">Pending</span>
-              </div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon approved"><FaCheckCircle /></div>
-              <div className="stat-data">
-                <span className="stat-val">{stats?.approved || 0}</span>
-                <span className="stat-lab">Approved</span>
-              </div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-icon rejected"><FaTimesCircle /></div>
-              <div className="stat-data">
-                <span className="stat-val">{stats?.rejected || 0}</span>
-                <span className="stat-lab">Rejected</span>
-              </div>
-            </div>
+          <div className="admin-tabs">
+            <button className={`admin-tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>
+              <FaClipboardList /> Projects
+            </button>
+            <button className={`admin-tab ${activeTab === 'organizations' ? 'active' : ''}`} onClick={() => setActiveTab('organizations')}>
+              <FaUsers /> Organizations
+            </button>
           </div>
 
-          <div className="content-section">
-            <div className="section-header">
-              <h2>Awaiting Moderation</h2>
-              <span className="count-badge">{pendingProjects.length} Projects</span>
-            </div>
+          {activeTab === 'projects' && (
+            <>
+              <div className="stats-bar">
+                <div className="stat-item">
+                  <div className="stat-icon pending"><FaClipboardList /></div>
+                  <div className="stat-data">
+                    <span className="stat-val">{stats?.pending || 0}</span>
+                    <span className="stat-lab">Pending</span>
+                  </div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-icon approved"><FaCheckCircle /></div>
+                  <div className="stat-data">
+                    <span className="stat-val">{stats?.approved || 0}</span>
+                    <span className="stat-lab">Approved</span>
+                  </div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-icon rejected"><FaTimesCircle /></div>
+                  <div className="stat-data">
+                    <span className="stat-val">{stats?.rejected || 0}</span>
+                    <span className="stat-lab">Rejected</span>
+                  </div>
+                </div>
+              </div>
 
-            {loading ? (
-              <div className="dashboard-loader">
-                <div className="spinner"></div>
-                <p>Loading pending queue...</p>
-              </div>
-            ) : pendingProjects.length === 0 ? (
-              <div className="empty-dashboard">
-                <div className="empty-icon">🛡️</div>
-                <h3>Queue is Empty</h3>
-                <p>All submitted projects have been reviewed.</p>
-              </div>
-            ) : (
-              <div className="pending-grid">
-                {pendingProjects.map((project) => (
-                  <div key={project.id} className="moderation-card animate-up">
-                    <div className="card-top">
-                      <div className="card-info">
-                        <div className="card-header-main">
-                          <h3>{project.title}</h3>
-                          <div className="status-label">Pending Review</div>
-                        </div>
-                        <div className="card-meta">
-                          <span className="meta-tag"><FaGlobeAmericas /> {project.country?.name || 'Unknown Country'}</span>
-                          <span className="meta-tag"><FaLayerGroup /> {project.sector}</span>
-                          <span className="meta-tag"><FaMicrochip /> {project.ai_technology}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="project-body">
-                      <p className="project-preview">{project.description}</p>
-                      
-                      <div className="submission-details">
-                        <div className="detail-item">
-                          <FaBuilding className="detail-icon" />
-                          <div className="detail-content">
-                            <span className="detail-label">Submitted By</span>
-                            <span className="detail-value">{project.owner?.organization_name || project.owner?.email || 'Unknown User'}</span>
-                          </div>
-                        </div>
-                        <div className="detail-item">
-                          <FaCalendarAlt className="detail-icon" />
-                          <div className="detail-content">
-                            <span className="detail-label">Submission Date</span>
-                            <span className="detail-value">{new Date(project.submitted_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                          </div>
-                        </div>
-                        {project.website && (
-                          <div className="detail-item">
-                            <FaEye className="detail-icon" />
-                            <div className="detail-content">
-                              <span className="detail-label">Website</span>
-                              <span className="detail-value">
-                                <a href={project.website} target="_blank" rel="noopener noreferrer" className="project-link">
-                                  Visit Project Site
-                                </a>
-                              </span>
+              <div className="content-section">
+                <div className="section-header">
+                  <h2>Awaiting Moderation</h2>
+                  <span className="count-badge">{pendingProjects.length} Projects</span>
+                </div>
+
+                {loading ? (
+                  <div className="dashboard-loader">
+                    <div className="spinner"></div>
+                    <p>Loading pending queue...</p>
+                  </div>
+                ) : pendingProjects.length === 0 ? (
+                  <div className="empty-dashboard">
+                    <div className="empty-icon">🛡️</div>
+                    <h3>Queue is Empty</h3>
+                    <p>All submitted projects have been reviewed.</p>
+                  </div>
+                ) : (
+                  <div className="pending-grid">
+                    {pendingProjects.map((project) => (
+                      <div key={project.id} className="moderation-card animate-up">
+                        <div className="card-top">
+                          <div className="card-info">
+                            <div className="card-header-main">
+                              <h3>{project.title}</h3>
+                              <div className="status-label">Pending Review</div>
+                            </div>
+                            <div className="card-meta">
+                              <span className="meta-tag"><FaGlobeAmericas /> {project.country?.name || 'Unknown Country'}</span>
+                              <span className="meta-tag"><FaLayerGroup /> {project.sector}</span>
+                              <span className="meta-tag"><FaMicrochip /> {project.ai_technology}</span>
                             </div>
                           </div>
-                        )}
-                        {project.documents && project.documents.length > 0 && (
-                          <div className="detail-item">
-                            <FaClipboardList className="detail-icon" />
-                            <div className="detail-content">
-                              <span className="detail-label">Attachments ({project.documents.length})</span>
-                              <div className="admin-files-list">
-                                {project.documents.map((doc, idx) => (
-                                  <a 
-                                    key={idx} 
-                                    href={`${API_BASE}${doc.file_url}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="admin-file-link"
-                                  >
-                                    {doc.original_filename}
-                                  </a>
-                                ))}
+                        </div>
+                        
+                        <div className="project-body">
+                          <p className="project-preview">{project.description}</p>
+                          
+                          <div className="submission-details">
+                            <div className="detail-item">
+                              <FaBuilding className="detail-icon" />
+                              <div className="detail-content">
+                                <span className="detail-label">Submitted By</span>
+                                <span className="detail-value">{project.owner?.organization_name || project.owner?.email || 'Unknown User'}</span>
                               </div>
                             </div>
+                            <div className="detail-item">
+                              <FaCalendarAlt className="detail-icon" />
+                              <div className="detail-content">
+                                <span className="detail-label">Submission Date</span>
+                                <span className="detail-value">{new Date(project.submitted_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                              </div>
+                            </div>
+                            {project.website && (
+                              <div className="detail-item">
+                                <FaEye className="detail-icon" />
+                                <div className="detail-content">
+                                  <span className="detail-label">Website</span>
+                                  <span className="detail-value">
+                                    <a href={project.website} target="_blank" rel="noopener noreferrer" className="project-link">
+                                      Visit Project Site
+                                    </a>
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {project.documents && project.documents.length > 0 && (
+                              <div className="detail-item">
+                                <FaClipboardList className="detail-icon" />
+                                <div className="detail-content">
+                                  <span className="detail-label">Attachments ({project.documents.length})</span>
+                                  <div className="admin-files-list">
+                                    {project.documents.map((doc, idx) => (
+                                      <a 
+                                        key={idx} 
+                                        href={`${API_BASE}${doc.file_url}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="admin-file-link"
+                                      >
+                                        {doc.original_filename}
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="card-footer">
+                          <div className="card-actions">
+                            <button 
+                              className="btn-action-reject" 
+                              onClick={() => openRejectModal(project.id, 'project')}
+                              disabled={actionLoading === project.id}
+                            >
+                              Reject Submission
+                            </button>
+                            <button 
+                              className="btn-action-approve" 
+                              onClick={() => handleApprove(project.id)}
+                              disabled={actionLoading === project.id}
+                            >
+                              {actionLoading === project.id ? 'Processing...' : 'Approve & Publish'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeTab === 'organizations' && (
+            <>
+              <div className="stats-bar">
+                <div className="stat-item">
+                  <div className="stat-icon pending"><FaUsers /></div>
+                  <div className="stat-data">
+                    <span className="stat-val">{orgStats?.pending_approval || 0}</span>
+                    <span className="stat-lab">Pending</span>
+                  </div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-icon approved"><FaCheckCircle /></div>
+                  <div className="stat-data">
+                    <span className="stat-val">{orgStats?.approved || 0}</span>
+                    <span className="stat-lab">Approved</span>
+                  </div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-icon rejected"><FaTimesCircle /></div>
+                  <div className="stat-data">
+                    <span className="stat-val">{orgStats?.rejected || 0}</span>
+                    <span className="stat-lab">Rejected</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="content-section">
+                <div className="section-header">
+                  <div className="filter-tabs">
+                    <button className={`filter-tab ${orgFilter === 'pending' ? 'active' : ''}`} onClick={() => setOrgFilter('pending')}>
+                      Pending Review
+                    </button>
+                    <button className={`filter-tab ${orgFilter === 'approved' ? 'active' : ''}`} onClick={() => setOrgFilter('approved')}>
+                      Approved
+                    </button>
+                    <button className={`filter-tab ${orgFilter === 'rejected' ? 'active' : ''}`} onClick={() => setOrgFilter('rejected')}>
+                      Rejected
+                    </button>
+                  </div>
+                  <span className="count-badge">
+                    {orgFilter === 'pending' ? pendingOrgs.length : orgFilter === 'approved' ? approvedOrgs.length : rejectedOrgs.length} Organizations
+                  </span>
+                </div>
+
+                {orgsLoading ? (
+                  <div className="dashboard-loader">
+                    <div className="spinner"></div>
+                    <p>Loading organizations...</p>
+                  </div>
+                ) : orgFilter === 'pending' && pendingOrgs.length === 0 ? (
+                  <div className="empty-dashboard">
+                    <div className="empty-icon">🛡️</div>
+                    <h3>No Pending Organizations</h3>
+                    <p>All organizations have been reviewed.</p>
+                  </div>
+                ) : orgFilter === 'approved' && approvedOrgs.length === 0 ? (
+                  <div className="empty-dashboard">
+                    <div className="empty-icon">📋</div>
+                    <h3>No Approved Organizations</h3>
+                    <p>No organizations have been approved yet.</p>
+                  </div>
+                ) : orgFilter === 'rejected' && rejectedOrgs.length === 0 ? (
+                  <div className="empty-dashboard">
+                    <div className="empty-icon">📋</div>
+                    <h3>No Rejected Organizations</h3>
+                    <p>No organizations have been rejected.</p>
+                  </div>
+                ) : (
+                  <div className="pending-grid">
+                    {(orgFilter === 'pending' ? pendingOrgs : orgFilter === 'approved' ? approvedOrgs : rejectedOrgs).map((org) => (
+                      <div key={org.id} className="moderation-card animate-up">
+                        <div className="card-top">
+                          <div className="card-info">
+                            <div className="card-header-main">
+                              <div className="org-header-title">
+                                {org.logo ? <img src={org.logo} alt="" className="org-avatar-sm" /> : <div className="org-avatar-sm org-avatar-placeholder-sm"><FaBuilding /></div>}
+                                <h3>{org.organization_name}</h3>
+                              </div>
+                              <div className={`status-label ${orgFilter === 'approved' ? 'status-approved' : orgFilter === 'rejected' ? 'status-rejected' : ''}`}>
+                                {orgFilter === 'pending' ? 'Pending Review' : orgFilter === 'approved' ? 'Approved' : 'Rejected'}
+                              </div>
+                            </div>
+                            <div className="card-meta">
+                              <span className="meta-tag"><FaUserShield /> {org.organization_type}</span>
+                              {org.country && <span className="meta-tag"><FaGlobeAmericas /> {org.country}</span>}
+                              {org.sector && <span className="meta-tag"><FaIndustry /> {org.sector}</span>}
+                              {org.city && <span className="meta-tag"><FaMapMarkerAlt /> {org.city}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="project-body">
+                          {org.description && <p className="project-preview">{org.description}</p>}
+
+                          <div className="submission-details">
+                            <div className="detail-item">
+                              <FaEnvelope className="detail-icon" />
+                              <div className="detail-content">
+                                <span className="detail-label">Email</span>
+                                <span className="detail-value">{org.email}</span>
+                              </div>
+                            </div>
+                            {org.phone && (
+                              <div className="detail-item">
+                                <FaPhone className="detail-icon" />
+                                <div className="detail-content">
+                                  <span className="detail-label">Phone</span>
+                                  <span className="detail-value">{org.phone}</span>
+                                </div>
+                              </div>
+                            )}
+                            {org.website && (
+                              <div className="detail-item">
+                                <FaGlobe className="detail-icon" />
+                                <div className="detail-content">
+                                  <span className="detail-label">Website</span>
+                                  <span className="detail-value">
+                                    <a href={org.website} target="_blank" rel="noopener noreferrer" className="project-link">{org.website}</a>
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            {org.created_at && (
+                              <div className="detail-item">
+                                <FaCalendarAlt className="detail-icon" />
+                                <div className="detail-content">
+                                  <span className="detail-label">Registered</span>
+                                  <span className="detail-value">{new Date(org.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                </div>
+                              </div>
+                            )}
+                            {org.rejection_reason && (
+                              <div className="detail-item">
+                                <FaExclamationTriangle className="detail-icon" style={{ color: '#ef4444' }} />
+                                <div className="detail-content">
+                                  <span className="detail-label">Rejection Reason</span>
+                                  <span className="detail-value" style={{ color: '#ef4444' }}>{org.rejection_reason}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {orgFilter === 'pending' && (
+                          <div className="card-footer">
+                            <div className="card-actions">
+                              <button 
+                                className="btn-action-reject" 
+                                onClick={() => openRejectModal(org.id, 'org')}
+                                disabled={orgActionLoading === org.id}
+                              >
+                                Reject Organization
+                              </button>
+                              <button 
+                                className="btn-action-approve" 
+                                onClick={() => handleOrgApprove(org.id)}
+                                disabled={orgActionLoading === org.id}
+                              >
+                                {orgActionLoading === org.id ? 'Processing...' : 'Approve Organization'}
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
-                    </div>
-                    
-                    <div className="card-footer">
-                      <div className="card-actions">
-                        <button 
-                          className="btn-action-reject" 
-                          onClick={() => openRejectModal(project.id)}
-                          disabled={actionLoading === project.id}
-                        >
-                          Reject Submission
-                        </button>
-                        <button 
-                          className="btn-action-approve" 
-                          onClick={() => handleApprove(project.id)}
-                          disabled={actionLoading === project.id}
-                        >
-                          {actionLoading === project.id ? 'Processing...' : 'Approve & Publish'}
-                        </button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </main>
 
@@ -334,15 +630,17 @@ function AdminDashboard() {
         <div className="modal-backdrop">
           <div className="modal-content animate-up">
             <div className="modal-header">
-              <h3>Reject Submission</h3>
+              <h3>Reject {rejectType === 'project' ? 'Submission' : 'Organization'}</h3>
               <button className="close-btn" onClick={() => setShowRejectModal(false)}><FaTimesCircle /></button>
             </div>
             <div className="modal-body">
-              <p>Please specify why this project is being rejected.</p>
+              <p>Please specify why this {rejectType === 'project' ? 'project' : 'organization'} is being rejected.</p>
               <textarea 
                 value={rejectReason} 
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="e.g. Insufficient description, duplicate entry, or incorrect sector categorization..."
+                placeholder={rejectType === 'project' 
+                  ? "e.g. Insufficient description, duplicate entry, or incorrect sector categorization..."
+                  : "e.g. Incomplete information, invalid website, activity unrelated to AI..."}
                 rows="5"
               ></textarea>
             </div>
@@ -455,6 +753,23 @@ const styles = `
   .btn-login { width: 100%; background: #0f172a; color: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 0.9375rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
   .btn-login:hover { background: #334155; }
   .login-error { background: #fef2f2; color: #ef4444; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8125rem; font-weight: 600; text-align: center; border: 1px solid #fee2e2; }
+
+  .admin-tabs { display: flex; gap: 0; margin-bottom: 24px; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+  .admin-tab { flex: 1; padding: 14px 24px; border: none; background: #fff; font-size: 0.875rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; font-family: inherit; border-bottom: 2px solid transparent; }
+  .admin-tab:hover { background: #f8fafc; color: #1e293b; }
+  .admin-tab.active { background: #f8fafc; color: #3b82f6; border-bottom-color: #3b82f6; }
+
+  .filter-tabs { display: flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 8px; }
+  .filter-tab { padding: 6px 14px; border: none; background: transparent; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; border-radius: 6px; transition: 0.2s; font-family: inherit; }
+  .filter-tab:hover { color: #1e293b; }
+  .filter-tab.active { background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+
+  .org-header-title { display: flex; align-items: center; gap: 12px; }
+  .org-avatar-sm { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+  .org-avatar-placeholder-sm { background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1rem; }
+
+  .status-label.status-approved { background: #f0fdf4; color: #10b981; border-color: #bbf7d0; }
+  .status-label.status-rejected { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
 
   .spinner { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
   @keyframes spin { to { transform: rotate(360deg); } }
