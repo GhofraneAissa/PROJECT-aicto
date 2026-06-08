@@ -19,6 +19,7 @@
     "logoSubtitle": "مبادرة الذكاء الاصطناعي العربية",
     "takeTour": "قم بجولة إرشادية",
     "myProjects": "مشاريعي",
+    "myPublications": "منشوراتي",
     "moderation": "الإشراف",
     "language": "اللغة"
   },
@@ -333,7 +334,21 @@
     "viewDetails": "عرض التفاصيل",
     "loadError": "فشل تحميل المشاريع",
     "userNotFound": "المستخدم غير موجود. الرجاء تسجيل الدخول.",
-    "loginRequired": "الرجاء تسجيل الدخول لعرض مشاريعك."
+    "loginRequired": "الرجاء تسجيل الدخول لعرض مشاريعك.",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "confirmDelete": "هل أنت متأكد من حذف هذا العنصر؟",
+    "deleted": "تم الحذف بنجاح",
+    "deleteFailed": "فشل الحذف",
+    "editResource": "تعديل المورد",
+    "editProject": "تعديل المشروع",
+    "sector": "القطاع",
+    "technology": "التقنية",
+    "saving": "جارٍ الحفظ...",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "updated": "تم التحديث بنجاح",
+    "updateFailed": "فشل التحديث"
   },
   "resources": {
     "pageTitle": "مكتبة الموارد",
@@ -386,7 +401,17 @@
     "categoryEthics": "أخلاقيات",
     "categoryGovernance": "حوكمة",
     "categoryResearch": "بحث",
-    "categoryData": "بيانات"
+    "categoryData": "بيانات",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "editResource": "تعديل المورد",
+    "confirmDelete": "هل أنت متأكد من حذف هذا المورد؟",
+    "deleted": "تم الحذف بنجاح",
+    "deleteFailed": "فشل الحذف",
+    "saving": "جارٍ الحفظ...",
+    "save": "حفظ",
+    "updated": "تم التحديث بنجاح",
+    "updateFailed": "فشل التحديث"
   },
   "analytics": {
     "pageTitle": "لوحة التحليلات",

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FaFileAlt, FaDatabase, FaDownload, FaFileContract, FaFileCode, FaChartLine, FaTimes, FaPlus, FaFilter, FaBook, FaGlobe, FaSearch } from 'react-icons/fa'
+import { FaFileAlt, FaDatabase, FaDownload, FaFileContract, FaFileCode, FaChartLine, FaTimes, FaPlus, FaFilter, FaBook, FaGlobe, FaSearch, FaEdit, FaTrash, FaSpinner } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import SearchBar from '../components/SearchBar'
 import { API_BASE } from '../config'
@@ -152,6 +152,56 @@ function ResourceLibrary() {
     setSubmitting(false)
   }
 
+  const [deletingId, setDeletingId] = useState(null)
+  const [editingResource, setEditingResource] = useState(null)
+  const [editForm, setEditForm] = useState({ title: '', type: '', category: '', language: '', description: '' })
+  const [submittingEdit, setSubmittingEdit] = useState(false)
+
+  const handleDeleteResource = async (id) => {
+    if (!window.confirm(t('resources.confirmDelete'))) return
+    setDeletingId(id)
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+      const res = await fetch(`${API_BASE}/api/resources/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error('Delete failed')
+      setResources(prev => prev.filter(r => r.id !== id))
+      toast.success(t('resources.deleted'))
+    } catch {
+      toast.error(t('resources.deleteFailed'))
+    }
+    setDeletingId(null)
+  }
+
+  const handleEditResource = (r) => {
+    setEditForm({ title: r.title, type: r.type, category: r.category, language: r.language || '', description: r.description || '' })
+    setEditingResource(r)
+  }
+
+  const handleUpdateResource = async (e) => {
+    e.preventDefault()
+    if (!editingResource) return
+    setSubmittingEdit(true)
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+      const res = await fetch(`${API_BASE}/api/resources/${editingResource.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(editForm)
+      })
+      if (!res.ok) throw new Error('Update failed')
+      const updated = await res.json()
+      setResources(prev => prev.map(r => r.id === updated.id ? updated : r))
+      toast.success(t('resources.updated'))
+      setEditingResource(null)
+    } catch {
+      toast.error(t('resources.updateFailed'))
+    }
+    setSubmittingEdit(false)
+  }
+
   const clearFilters = () => { setSelectedType('All'); setSelectedCategory('All'); setSearch('') }
 
   return (
@@ -240,13 +290,23 @@ function ResourceLibrary() {
                     </div>
                     {r.description && <p className="resource-desc">{r.description}</p>}
                   </div>
-                  {r.file_url && (
-                    <div className="resource-action">
+                  <div className="resource-action">
+                    {user && r.user_id === user.id && (
+                      <>
+                        <button className="edit-btn" onClick={() => handleEditResource(r)} title={t('resources.edit')}>
+                          <FaEdit />
+                        </button>
+                        <button className="delete-btn" onClick={() => handleDeleteResource(r.id)} disabled={deletingId === r.id} title={t('resources.delete')}>
+                          {deletingId === r.id ? <FaSpinner className="rl-spin" /> : <FaTrash />}
+                        </button>
+                      </>
+                    )}
+                    {r.file_url && (
                       <button className="download-btn" onClick={() => handleDownload(r)}>
                         <FaDownload /> {t('resources.download')}
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
@@ -320,6 +380,59 @@ function ResourceLibrary() {
                 <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>{t('resources.cancel')}</button>
                 <button type="submit" className="submit-action-btn" disabled={submitting}>
                   {submitting ? <>{t('resources.submitting')}</> : t('resources.addResource')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingResource && (
+        <div className="modal-overlay" onClick={() => setEditingResource(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}
+            style={{ maxWidth: 520, padding: '32px', borderRadius: 16 }}>
+            <div className="modal-header" style={{ marginBottom: 20 }}>
+              <h3>{t('resources.editResource')}</h3>
+              <button className="close-btn" onClick={() => setEditingResource(null)}><FaTimes /></button>
+            </div>
+            <form onSubmit={handleUpdateResource} className="modal-form">
+              <div className="form-grid-mini">
+                <div className="field">
+                  <label>{t('resources.titleField')} *</label>
+                  <input name="title" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} required />
+                </div>
+                <div className="field">
+                  <label>{t('resources.language')}</label>
+                  <input name="language" value={editForm.language} onChange={e => setEditForm({ ...editForm, language: e.target.value })} />
+                </div>
+                <div className="field">
+                  <label>{t('resources.type')} *</label>
+                  <select name="type" value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value })}>
+                    <option value="Policy Document">{t('resources.typePolicyDocument')}</option>
+                    <option value="White Paper">{t('resources.typeWhitePaper')}</option>
+                    <option value="Dataset">{t('resources.typeDataset')}</option>
+                    <option value="Report">{t('resources.typeReport')}</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>{t('resources.category')} *</label>
+                  <select name="category" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
+                    <option value="Strategy">{t('resources.categoryStrategy')}</option>
+                    <option value="Ethics">{t('resources.categoryEthics')}</option>
+                    <option value="Governance">{t('resources.categoryGovernance')}</option>
+                    <option value="Research">{t('resources.categoryResearch')}</option>
+                    <option value="Data">{t('resources.categoryData')}</option>
+                  </select>
+                </div>
+              </div>
+              <div className="field full">
+                <label>{t('resources.descriptionField')}</label>
+                <textarea name="description" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows="3" />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="cancel-btn" onClick={() => setEditingResource(null)}>{t('resources.cancel')}</button>
+                <button type="submit" className="submit-action-btn" disabled={submittingEdit}>
+                  {submittingEdit ? <>{t('resources.saving')}</> : t('resources.save')}
                 </button>
               </div>
             </form>
@@ -545,7 +658,7 @@ function ResourceLibrary() {
           margin: 6px 0 0;
         }
 
-        .resource-action { flex-shrink: 0; align-self: center; }
+        .resource-action { flex-shrink: 0; align-self: center; display: flex; align-items: center; gap: 6px; }
 
         .download-btn {
           display: flex;
@@ -569,6 +682,28 @@ function ResourceLibrary() {
           border-color: var(--p-primary);
           transform: translateY(-2px);
         }
+
+        .rl-spin { animation: rl-spincw 0.6s linear infinite; }
+        @keyframes rl-spincw { to { transform: rotate(360deg); } }
+
+        .edit-btn, .delete-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          border: 1.5px solid #e2e8f0;
+          cursor: pointer;
+          font-size: 0.85rem;
+          transition: 0.2s;
+          background: #fff;
+        }
+        .edit-btn { color: #2563eb; }
+        .edit-btn:hover { background: #eff6ff; border-color: #2563eb; }
+        .delete-btn { color: #dc2626; }
+        .delete-btn:hover { background: #fef2f2; border-color: #dc2626; }
+        .delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .no-results-card {
           text-align: center; background: #fff; padding: 60px;

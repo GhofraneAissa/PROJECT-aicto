@@ -41,6 +41,7 @@ class User(Base):
     last_login = Column(DateTime(timezone=True), nullable=True)
 
     projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan", foreign_keys="Project.user_id")
+    resources = relationship("Resource", back_populates="publisher", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint(

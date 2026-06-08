@@ -44,6 +44,7 @@ def get_resources(
     search: str = None,
     type_filter: str = None,
     category: str = None,
+    user_id: int = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(Resource)
@@ -57,6 +58,8 @@ def get_resources(
         query = query.filter(Resource.type == type_filter)
     if category and category != "All":
         query = query.filter(Resource.category == category)
+    if user_id:
+        query = query.filter(Resource.user_id == user_id)
     
     return query.offset(skip).limit(limit).all()
 
@@ -69,7 +72,7 @@ def get_resource(id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=ResourceResponse)
 def create_resource(resource: ResourceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_resource = Resource(**resource.model_dump())
+    db_resource = Resource(**resource.model_dump(), user_id=current_user.id)
     db.add(db_resource)
     db.commit()
     db.refresh(db_resource)
@@ -108,7 +111,8 @@ async def upload_resource(
         description=description,
         file_size=size_str,
         file_url=f"/api/resources/view/{unique_name}",
-        downloads=0
+        downloads=0,
+        user_id=current_user.id
     )
     db.add(db_resource)
     db.commit()
@@ -116,10 +120,12 @@ async def upload_resource(
     return db_resource
 
 @router.put("/{id}", response_model=ResourceResponse)
-def update_resource(id: int, resource: ResourceUpdate, db: Session = Depends(get_db)):
+def update_resource(id: int, resource: ResourceUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_resource = db.query(Resource).filter(Resource.id == id).first()
     if not db_resource:
         raise HTTPException(status_code=404, detail="Resource not found")
+    if db_resource.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to modify this resource")
     
     update_data = resource.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -130,10 +136,12 @@ def update_resource(id: int, resource: ResourceUpdate, db: Session = Depends(get
     return db_resource
 
 @router.delete("/{id}")
-def delete_resource(id: int, db: Session = Depends(get_db)):
+def delete_resource(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_resource = db.query(Resource).filter(Resource.id == id).first()
     if not db_resource:
         raise HTTPException(status_code=404, detail="Resource not found")
+    if db_resource.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to delete this resource")
     
     db.delete(db_resource)
     db.commit()

@@ -25,6 +25,7 @@ class ResourceUpdate(BaseModel):
 
 class ResourceResponse(ResourceBase):
     id: int
+    user_id: Optional[int] = None
     downloads: int
     created_at: datetime
     updated_at: datetime

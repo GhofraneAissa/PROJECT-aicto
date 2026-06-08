@@ -19,6 +19,7 @@
     "logoSubtitle": "Arab AI Initiative",
     "takeTour": "Take a guided tour",
     "myProjects": "My Projects",
+    "myPublications": "My Publications",
     "moderation": "Moderation",
     "language": "Language"
   },
@@ -340,7 +341,21 @@
     "viewDetails": "View Details",
     "loadError": "Failed to load projects",
     "userNotFound": "User not found. Please log in.",
-    "loginRequired": "Please log in to view your projects."
+    "loginRequired": "Please log in to view your projects.",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "deleted": "Deleted successfully",
+    "deleteFailed": "Failed to delete",
+    "editResource": "Edit Resource",
+    "editProject": "Edit Project",
+    "sector": "Sector",
+    "technology": "Technology",
+    "saving": "Saving...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "updated": "Updated successfully",
+    "updateFailed": "Failed to update"
   },
   "resources": {
     "pageTitle": "Resource Library",
@@ -393,7 +408,17 @@
     "categoryEthics": "Ethics",
     "categoryGovernance": "Governance",
     "categoryResearch": "Research",
-    "categoryData": "Data"
+    "categoryData": "Data",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editResource": "Edit Resource",
+    "confirmDelete": "Are you sure you want to delete this resource?",
+    "deleted": "Deleted successfully",
+    "deleteFailed": "Failed to delete",
+    "saving": "Saving...",
+    "save": "Save",
+    "updated": "Updated successfully",
+    "updateFailed": "Failed to update"
   },
   "analytics": {
     "pageTitle": "Analytics Dashboard",

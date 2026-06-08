@@ -1,16 +1,38 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Header
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 import os
+from jose import JWTError, jwt
 from fastapi.responses import FileResponse
 from app.database import get_db
 from app.models.project import Project, ProjectStakeholderAssociation
 from app.models.country import Country
 from app.models.stakeholder import Stakeholder
+from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectDetailResponse, ProjectSubmit, StakeholderAssociationOut, ProjectPaginatedResponse
+from app.routers.users import SECRET_KEY, ALGORITHM
 import json
 
 router = APIRouter()
+
+
+def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            raise HTTPException(status_code=401, detail="Invalid authorization header")
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 @router.get("/", response_model=ProjectPaginatedResponse)
 def get_projects(
@@ -279,10 +301,12 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     return db_project
 
 @router.put("/{id}", response_model=ProjectResponse)
-def update_project(id: int, project: ProjectUpdate, db: Session = Depends(get_db)):
+def update_project(id: int, project: ProjectUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_project = db.query(Project).filter(Project.id == id).first()
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
+    if db_project.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to modify this project")
     
     update_data = project.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -293,10 +317,12 @@ def update_project(id: int, project: ProjectUpdate, db: Session = Depends(get_db
     return db_project
 
 @router.delete("/{id}")
-def delete_project(id: int, db: Session = Depends(get_db)):
+def delete_project(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_project = db.query(Project).filter(Project.id == id).first()
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
+    if db_project.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized to delete this project")
     
     db.delete(db_project)
     db.commit()

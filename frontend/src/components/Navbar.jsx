@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FaBrain, FaBars, FaTimes, FaUser, FaSignOutAlt, FaUserCircle, FaQuestionCircle, FaGlobe, FaClipboardList, FaProjectDiagram } from 'react-icons/fa'
+import { FaBrain, FaBars, FaTimes, FaUser, FaSignOutAlt, FaUserCircle, FaQuestionCircle, FaGlobe, FaClipboardList, FaBook } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import { startTour } from './UserGuideTour'
 
@@ -145,8 +145,8 @@ function Navbar() {
                   </Link>
 
                   <Link to="/my-projects" className="dropdown-item" onClick={() => setProfileOpen(false)}>
-                    <FaProjectDiagram size={16} />
-                    <span>{t('nav.myProjects')}</span>
+                    <FaBook size={16} />
+                    <span>{t('nav.myPublications')}</span>
                   </Link>
 
                   {user?.role === 'admin' && (

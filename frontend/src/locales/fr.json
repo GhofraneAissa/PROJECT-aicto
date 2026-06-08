@@ -19,6 +19,7 @@
     "logoSubtitle": "Initiative IA Arabe",
     "takeTour": "Faire une visite guidée",
     "myProjects": "Mes Projets",
+    "myPublications": "Mes Publications",
     "moderation": "Modération",
     "language": "Langue"
   },
@@ -333,7 +334,21 @@
     "viewDetails": "Voir les Détails",
     "loadError": "Échec du chargement des projets",
     "userNotFound": "Utilisateur introuvable. Veuillez vous connecter.",
-    "loginRequired": "Veuillez vous connecter pour voir vos projets."
+    "loginRequired": "Veuillez vous connecter pour voir vos projets.",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet élément ?",
+    "deleted": "Supprimé avec succès",
+    "deleteFailed": "Échec de la suppression",
+    "editResource": "Modifier la ressource",
+    "editProject": "Modifier le projet",
+    "sector": "Secteur",
+    "technology": "Technologie",
+    "saving": "Enregistrement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "updated": "Mis à jour avec succès",
+    "updateFailed": "Échec de la mise à jour"
   },
   "resources": {
     "pageTitle": "Bibliothèque de Ressources",
@@ -386,7 +401,17 @@
     "categoryEthics": "Éthique",
     "categoryGovernance": "Gouvernance",
     "categoryResearch": "Recherche",
-    "categoryData": "Données"
+    "categoryData": "Données",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "editResource": "Modifier la ressource",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette ressource ?",
+    "deleted": "Supprimé avec succès",
+    "deleteFailed": "Échec de la suppression",
+    "saving": "Enregistrement...",
+    "save": "Enregistrer",
+    "updated": "Mis à jour avec succès",
+    "updateFailed": "Échec de la mise à jour"
   },
   "analytics": {
     "pageTitle": "Tableau de Bord Analytique",
