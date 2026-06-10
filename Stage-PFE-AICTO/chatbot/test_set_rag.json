@@ -1,0 +1,146 @@
+[
+  {
+    "query": "Innovative artificial intelligence solutions in Arab region",
+    "expected_ids": [
+      [
+        "stakeholder",
+        6
+      ],
+      [
+        "resource",
+        4
+      ],
+      [
+        "resource",
+        1
+      ],
+      [
+        "project",
+        5
+      ],
+      [
+        "stakeholder",
+        9
+      ],
+      [
+        "stakeholder",
+        2
+      ],
+      [
+        "project",
+        1
+      ],
+      [
+        "stakeholder",
+        1
+      ],
+      [
+        "stakeholder",
+        10
+      ],
+      [
+        "project",
+        3
+      ]
+    ],
+    "reference": "The SARAI database contains several AI projects, stakeholders, and resources in the Arab region: projects include AI Diagnostic System (Egypt), Adaptive Learning Platform (UAE), and Financial Fraud Detection (UAE). Key stakeholders include Dubai AI Center, Cairo University AI Lab, Qatar Computing Research Institute, Emirates AI Lab, and Alexandria University AI Center. Resources include the Arab Common AI Strategy 2023 and the Regional AI Maturity Assessment Report."
+  },
+  {
+    "query": "AI projects in UAE",
+    "expected_ids": [
+      [
+        "project",
+        5
+      ],
+      [
+        "project",
+        3
+      ]
+    ],
+    "reference": "There are 2 AI projects in the UAE: 1) Adaptive Learning Platform - an NLP-based education project by EduCorp (2024), and 2) Financial Fraud Detection - a Machine Learning project in Finance by FinTech Labs (2024)."
+  },
+  {
+    "query": "Arabic language technologies",
+    "expected_ids": [
+      [
+        "project",
+        6
+      ],
+      [
+        "resource",
+        3
+      ]
+    ],
+    "reference": "For Arabic language technologies, the database includes: Arabic Speech Recognition project (Qatar, Speech Recognition technology), and Arabic NLP Dataset v2.0 resource (Arabic language dataset)."
+  },
+  {
+    "query": "Banking and financial technology innovations",
+    "expected_ids": [
+      [
+        "project",
+        5
+      ],
+      [
+        "project",
+        12
+      ]
+    ],
+    "reference": "Financial technology projects in SARAI: Financial Fraud Detection (UAE, Machine Learning by FinTech Labs) and AI-Powered Financial Inclusion (Jordan, Machine Learning by Jordan AI Association)."
+  },
+  {
+    "query": "AI ethics and governance recommendations",
+    "expected_ids": [
+      [
+        "resource",
+        5
+      ],
+      [
+        "resource",
+        2
+      ],
+      [
+        "stakeholder",
+        12
+      ]
+    ],
+    "reference": "For AI ethics and governance: AI Ethics Guidelines Framework (White Paper), AI Governance Best Practices (White Paper), and UNESCO AI Ethics Committee as the key stakeholder in this domain."
+  },
+  {
+    "query": "AI research centers and laboratories",
+    "expected_ids": [
+      [
+        "stakeholder",
+        9
+      ],
+      [
+        "stakeholder",
+        6
+      ],
+      [
+        "stakeholder",
+        1
+      ]
+    ],
+    "reference": "AI research centers in SARAI: Dubai AI Center (UAE, Research), Qatar Computing Research Institute (Qatar, Research), and Emirates AI Lab (UAE, Research)."
+  },
+  {
+    "query": "Environmental monitoring and waste management systems",
+    "expected_ids": [
+      [
+        "project",
+        11
+      ]
+    ],
+    "reference": "For environmental monitoring, the database includes: Smart Waste Management project (Tunisia, IoT technology by Tunisian AI Hub, 2025). This is an environmental project using IoT for waste management."
+  },
+  {
+    "query": "Smart farming and crop irrigation technology",
+    "expected_ids": [
+      [
+        "project",
+        2
+      ]
+    ],
+    "reference": "For smart farming and irrigation: Smart Irrigation System (Morocco, Agriculture sector, Machine Learning technology by AgriTech Solutions, 2022). This project uses AI for agricultural irrigation optimization."
+  }
+]

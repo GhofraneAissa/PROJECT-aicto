@@ -1,0 +1,188 @@
+{
+  "model": "RAG Chatbot (Modele 3)",
+  "embedding_model": "BAAI/bge-small-en-v1.5",
+  "llm": {
+    "provider": "mock",
+    "model": "mistral:7b-instruct",
+    "temperature": 0.1,
+    "max_tokens": 512,
+    "num_ctx": 4096
+  },
+  "chroma_dir": "./chroma_db_rag",
+  "n_entities": 26,
+  "n_documents": 26,
+  "evaluation": {
+    "retrieval": [
+      {
+        "query": "Innovative artificial intelligence solutions in Arab re",
+        "precision": 0.6,
+        "recall": 0.3,
+        "f1": 0.4,
+        "mrr": 0.3333,
+        "ndcg": 0.4469,
+        "retrieved": 5,
+        "expected": 10,
+        "tp": 3,
+        "fp": 2,
+        "fn": 7
+      },
+      {
+        "query": "AI projects in UAE",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "mrr": 0.0,
+        "ndcg": 0.0,
+        "retrieved": 5,
+        "expected": 2,
+        "tp": 0,
+        "fp": 5,
+        "fn": 2
+      },
+      {
+        "query": "Arabic language technologies",
+        "precision": 0.4,
+        "recall": 1.0,
+        "f1": 0.5714,
+        "mrr": 1.0,
+        "ndcg": 1.0,
+        "retrieved": 5,
+        "expected": 2,
+        "tp": 2,
+        "fp": 3,
+        "fn": 0
+      },
+      {
+        "query": "Banking and financial technology innovations",
+        "precision": 0.4,
+        "recall": 1.0,
+        "f1": 0.5714,
+        "mrr": 1.0,
+        "ndcg": 1.0,
+        "retrieved": 5,
+        "expected": 2,
+        "tp": 2,
+        "fp": 3,
+        "fn": 0
+      },
+      {
+        "query": "AI ethics and governance recommendations",
+        "precision": 0.6,
+        "recall": 1.0,
+        "f1": 0.75,
+        "mrr": 1.0,
+        "ndcg": 1.0,
+        "retrieved": 5,
+        "expected": 3,
+        "tp": 3,
+        "fp": 2,
+        "fn": 0
+      },
+      {
+        "query": "AI research centers and laboratories",
+        "precision": 0.4,
+        "recall": 0.6667,
+        "f1": 0.5,
+        "mrr": 1.0,
+        "ndcg": 0.6714,
+        "retrieved": 5,
+        "expected": 3,
+        "tp": 2,
+        "fp": 3,
+        "fn": 1
+      },
+      {
+        "query": "Environmental monitoring and waste management systems",
+        "precision": 0.2,
+        "recall": 1.0,
+        "f1": 0.3333,
+        "mrr": 1.0,
+        "ndcg": 1.0,
+        "retrieved": 5,
+        "expected": 1,
+        "tp": 1,
+        "fp": 4,
+        "fn": 0
+      },
+      {
+        "query": "Smart farming and crop irrigation technology",
+        "precision": 0.2,
+        "recall": 1.0,
+        "f1": 0.3333,
+        "mrr": 1.0,
+        "ndcg": 1.0,
+        "retrieved": 5,
+        "expected": 1,
+        "tp": 1,
+        "fp": 4,
+        "fn": 0
+      }
+    ],
+    "generation": [
+      {
+        "query": "Innovative artificial intelligence solutions in Arab re",
+        "bleu": 0.1377,
+        "rouge_l": 0.24,
+        "sem_sim": 0.8367,
+        "time_ms": 19.051074981689453,
+        "n_sources": 3
+      },
+      {
+        "query": "AI projects in UAE",
+        "bleu": 0.1134,
+        "rouge_l": 0.1212,
+        "sem_sim": 0.7513,
+        "time_ms": 14.01519775390625,
+        "n_sources": 3
+      },
+      {
+        "query": "Arabic language technologies",
+        "bleu": 0.3529,
+        "rouge_l": 0.4068,
+        "sem_sim": 0.8223,
+        "time_ms": 17.147302627563477,
+        "n_sources": 3
+      },
+      {
+        "query": "Banking and financial technology innovations",
+        "bleu": 0.3125,
+        "rouge_l": 0.2414,
+        "sem_sim": 0.8607,
+        "time_ms": 16.705036163330078,
+        "n_sources": 3
+      },
+      {
+        "query": "AI ethics and governance recommendations",
+        "bleu": 0.4412,
+        "rouge_l": 0.4127,
+        "sem_sim": 0.8524,
+        "time_ms": 16.554594039916992,
+        "n_sources": 3
+      },
+      {
+        "query": "AI research centers and laboratories",
+        "bleu": 0.25,
+        "rouge_l": 0.2593,
+        "sem_sim": 0.8073,
+        "time_ms": 15.996456146240234,
+        "n_sources": 3
+      },
+      {
+        "query": "Environmental monitoring and waste management systems",
+        "bleu": 0.2187,
+        "rouge_l": 0.2333,
+        "sem_sim": 0.7517,
+        "time_ms": 14.591455459594727,
+        "n_sources": 3
+      },
+      {
+        "query": "Smart farming and crop irrigation technology",
+        "bleu": 0.1562,
+        "rouge_l": 0.1379,
+        "sem_sim": 0.7555,
+        "time_ms": 16.774415969848633,
+        "n_sources": 3
+      }
+    ]
+  }
+}

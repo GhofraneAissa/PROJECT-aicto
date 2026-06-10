@@ -1,0 +1,32 @@
+Request for Proposals (RFP)
+Development of a Regional AI Repository Platform
+1. Project Overview
+The SARAI: Stocktaking of Arab Regional AI Initiatives is an AICTO initiative aimed at mapping, documenting, and promoting the Artificial Intelligence ecosystem within the arab region. Inspired by the ITU Stocktaking model, this platform will serve as a central hub for sharing best practices, identifying stakeholders, and monitoring the progress of AI implementation in alignment with the Arab Common AI Strategy adopted in 2023. 
+2. Problem Statement
+Currently, regional AI initiatives are fragmented. Researchers, startups, and policymakers lack a unified "Single Point of Truth" to:
+Discover existing AI use cases.
+Access regional datasets or computing resources.
+Align local projects with international ethical and technical standards.
+Set a regional networking space
+3. Scope of Work
+The project involves the design, development, and documentation of a web-based repository.
+A. Core Functional Modules
+Stakeholder Directory: A categorized database of AI labs, startups, government agencies, and NGOs.
+Project Stocktaking Engine: A submission portal where users can register AI projects, including:
+Sector (Health, AgriTech, EduTech, etc.).
+AI Technology used (NLP, Computer Vision, Robotics).
+SDG Alignment.
+Interactive Knowledge Map: A geospatial visualization of AI activity across the region.
+Resource Library: A repository for policy documents, white papers, and open-source datasets.
+Analytics Dashboard: Real-time statistics on regional AI maturity and trends.
+B. Technical Requirements
+Frontend: Modern, responsive framework (e.g., React, Angular, or Vue.js).
+Backend: Scalable architecture (e.g., Python/FastAPI, Node.js) with a RESTful API.
+Database: Hybrid approach (PostgreSQL for structured data, MongoDB or Elasticsearch for project descriptions and search).
+Search Engine: Advanced filtering and full-text search capabilities.
+4. Technical Deliverables (PFE Requirements)
+As this is a graduation project, the following documentation is mandatory:
+Software Requirements Specification (SRS): Detailed functional and non-functional requirements.
+System Architecture Design: Including UML diagrams (Use Case, Sequence, Class) and ERD for the database.
+User Manual & API Documentation: (e.g., Swagger/OpenAPI).
+Final Thesis/Report: Documenting the development lifecycle, challenges faced, and technology choices.
