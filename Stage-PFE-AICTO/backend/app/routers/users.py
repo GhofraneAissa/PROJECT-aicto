@@ -41,7 +41,7 @@ if not SECRET_KEY or SECRET_KEY in ("super-secret-key-change-in-production", "ch
     logging.warning("[SECURITY] JWT_SECRET_KEY is not set or is using a default value! Set it in .env for production.")
     SECRET_KEY = SECRET_KEY or "insecure-dev-key-change-me"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 365 days
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 

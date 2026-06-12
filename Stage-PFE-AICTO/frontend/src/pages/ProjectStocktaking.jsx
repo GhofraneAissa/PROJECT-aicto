@@ -360,20 +360,25 @@ function ProjectStocktaking() {
           )}
 
           {showForm && user && (
-            <div className="modern-form-card animate-up">
-              <div className="form-header">
-                <div className="form-step-indicator">
-                  <span className="step-dot active"></span>
-                  <span className="step-line"></span>
-                  <span className="step-dot"></span>
-                  <span className="step-line"></span>
-                  <span className="step-dot"></span>
+            <div className="modal-overlay" onClick={() => setShowForm(false)}>
+              <div className="modal-content modal-project-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3><span className="text-gradient">{t('projects.shareInitiative')}</span></h3>
+                  <button className="close-btn" onClick={() => setShowForm(false)}><FaTimes /></button>
                 </div>
-                <h3><span className="text-gradient">{t('projects.shareInitiative')}</span></h3>
-                <p>{t('projects.shareInitiativeDesc')}</p>
-              </div>
 
-              <form onSubmit={handleSubmit} className="project-form">
+                <div className="form-header">
+                  <div className="form-step-indicator">
+                    <span className="step-dot active"></span>
+                    <span className="step-line"></span>
+                    <span className="step-dot"></span>
+                    <span className="step-line"></span>
+                    <span className="step-dot"></span>
+                  </div>
+                  <p>{t('projects.shareInitiativeDesc')}</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="modal-form">
                 <div className="form-section">
                   <div className="section-heading">
                     <span className="section-step">01</span>
@@ -587,11 +592,12 @@ function ProjectStocktaking() {
                   </div>
                 </div>
 
-                <div className="form-footer">
+                <div className="modal-footer">
                   <button type="button" className="cancel-btn" onClick={() => setShowForm(false)}>{t('projects.discard')}</button>
                   <button type="submit" className="submit-action-btn">{t('projects.submitInitiative')} <FaArrowRight /></button>
                 </div>
               </form>
+              </div>
             </div>
           )}
 
@@ -859,23 +865,33 @@ function ProjectStocktaking() {
           margin-top: 16px; background: none; border: none; color: var(--p-primary); font-weight: 700; font-size: 0.85rem; cursor: pointer; padding: 0;
         }
 
-        .modern-form-card {
-          background: #fff;
-          border-radius: 32px;
-          padding: 48px;
-          margin-bottom: 40px;
-          border: 1px solid #f1f5f9;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.05);
+        .modal-overlay {
+          position: fixed; inset: 0;
+          background: rgba(15, 23, 42, 0.5);
+          backdrop-filter: blur(4px);
+          display: flex; align-items: center; justify-content: center;
+          z-index: 2000; padding: 20px;
         }
+        .modal-content {
+          background: #fff; width: 100%; max-width: 800px;
+          border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+          overflow: hidden; animation: fadeUp 0.3s ease;
+          max-height: 90vh; overflow-y: auto;
+        }
+        .modal-project-content { max-width: 800px; }
+        .modal-header {
+          padding: 24px 32px; display: flex; justify-content: space-between;
+          align-items: center; border-bottom: 1px solid #f1f5f9;
+        }
+        .modal-header h3 { font-size: 1.25rem; font-weight: 800; margin: 0; }
+        .close-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--p-text-light); padding: 4px; }
+        .close-btn:hover { color: var(--p-secondary); }
 
         .form-header {
           text-align: center;
-          margin-bottom: 40px;
-          padding-bottom: 32px;
-          border-bottom: 1px solid #f1f5f9;
+          padding: 24px 32px 0;
         }
-        .form-header h3 { font-size: 1.75rem; font-weight: 800; margin-bottom: 8px; }
-        .form-header p { color: var(--p-text-light); font-size: 1rem; }
+        .form-header p { color: var(--p-text-light); font-size: 0.95rem; }
 
         .form-step-indicator {
           display: flex;
@@ -929,6 +945,7 @@ function ProjectStocktaking() {
         .section-heading h4 { font-size: 1.15rem; font-weight: 800; margin: 0 0 2px; }
         .section-heading p { font-size: 0.85rem; color: var(--p-text-light); margin: 0; }
 
+        .modal-form { padding: 24px 32px; display: flex; flex-direction: column; gap: 16px; }
         .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
         .field { display: flex; flex-direction: column; gap: 6px; }
         .field.full { grid-column: span 2; }
@@ -943,23 +960,23 @@ function ProjectStocktaking() {
           border-color: var(--p-primary); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
         }
 
-        .form-footer {
-          margin-top: 8px; padding-top: 24px;
+        .modal-footer {
+          padding: 16px 32px 24px;
           display: flex; justify-content: flex-end; gap: 12px;
+          background: #f8fafc;
         }
-
         .cancel-btn {
-          background: #f1f5f9; border: none; padding: 14px 28px; border-radius: 14px;
-          font-weight: 700; cursor: pointer; color: #64748b; transition: 0.2s; font-family: inherit;
+          background: #f8fafc; border: none; padding: 12px 24px;
+          border-radius: 12px; font-weight: 700; cursor: pointer; color: var(--p-text-light); font-family: inherit;
         }
-        .cancel-btn:hover { background: #e2e8f0; }
+        .cancel-btn:hover { background: #f1f5f9; }
         .submit-action-btn {
-          background: linear-gradient(135deg, #2563eb, #3b82f6);
-          color: #fff; border: none; padding: 14px 32px; border-radius: 14px;
-          font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px;
-          transition: 0.3s; font-family: inherit;
+          background: var(--p-primary); color: #fff; border: none;
+          padding: 12px 24px; border-radius: 12px; font-weight: 700;
+          cursor: pointer; display: flex; align-items: center; gap: 8px;
+          transition: 0.2s; font-family: inherit;
         }
-        .submit-action-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(37, 99, 235, 0.3); }
+        .submit-action-btn:hover { background: #1d4ed8; }
 
         .selected-count-badge {
           background: #eff6ff;
@@ -1304,15 +1321,18 @@ function ProjectStocktaking() {
           .filters-grid { grid-template-columns: 1fr; }
           .form-grid { grid-template-columns: 1fr; }
           .field.full { grid-column: span 1; }
-          .modern-form-card { padding: 32px 24px; }
+          .modal-content { max-width: 95vw; }
           .form-section { padding: 20px; }
           .step-line { width: 24px; }
         }
         @media (max-width: 600px) {
-          .modern-form-card { padding: 24px 16px; }
+          .modal-content { max-width: 100vw; border-radius: 16px; }
+          .modal-header { padding: 16px 20px; }
+          .form-header { padding: 16px 20px 0; }
+          .modal-form { padding: 16px 20px; }
+          .modal-footer { padding: 12px 20px 16px; flex-direction: column-reverse; }
+          .modal-footer button { width: 100%; justify-content: center; }
           .section-heading { flex-direction: column; align-items: flex-start; gap: 10px; }
-          .form-footer { flex-direction: column-reverse; }
-          .form-footer button { width: 100%; justify-content: center; }
           .form-step-indicator { display: none; }
         }
       `}</style>

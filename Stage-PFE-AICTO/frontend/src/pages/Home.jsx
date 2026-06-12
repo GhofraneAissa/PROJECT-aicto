@@ -17,6 +17,9 @@ function Home() {
   const [user, setUser] = useState(null)
   const [countries, setCountries] = useState([])
   const [sdgs, setSdgs] = useState([])
+  const [stakeholderCount, setStakeholderCount] = useState(0)
+  const [projectCount, setProjectCount] = useState(0)
+  const [resourceCount, setResourceCount] = useState(0)
   const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' })
   const [isVideoLoading, setIsVideoLoading] = useState(true)
   const videoRef = useRef(null)
@@ -40,6 +43,27 @@ function Home() {
       .then(res => res.json())
       .then(data => setSdgs(data))
       .catch(err => console.error('Error fetching SDGs:', err))
+  }, [])
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/stakeholders/stats/count`)
+      .then(res => res.json())
+      .then(data => setStakeholderCount(data.count))
+      .catch(err => console.error('Error fetching stakeholder count:', err))
+  }, [])
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/projects/stats/count`)
+      .then(res => res.json())
+      .then(data => setProjectCount(data.count))
+      .catch(err => console.error('Error fetching project count:', err))
+  }, [])
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/resources/stats/count`)
+      .then(res => res.json())
+      .then(data => setResourceCount(data.count))
+      .catch(err => console.error('Error fetching resource count:', err))
   }, [])
 
   const handleVideoCanPlay = () => {
@@ -139,10 +163,10 @@ function Home() {
   }
 
   const stats = [
-    { icon: <FaBuilding />, number: '150+', label: t('home.statsStakeholders'), color: '#2563eb' },
-    { icon: <FaProjectDiagram />, number: '320+', label: t('home.statsProjects'), color: '#059669' },
-    { icon: <FaGlobeAmericas />, number: '22', label: t('home.statsCountries'), color: '#7c3aed' },
-    { icon: <FaBook />, number: '500+', label: t('home.statsResources'), color: '#f59e0b' }
+    { icon: <FaBuilding />, number: stakeholderCount > 0 ? stakeholderCount + '+' : '0', label: t('home.statsStakeholders'), color: '#2563eb' },
+    { icon: <FaProjectDiagram />, number: projectCount > 0 ? projectCount + '+' : '0', label: t('home.statsProjects'), color: '#059669' },
+    { icon: <FaGlobeAmericas />, number: countries.length.toString(), label: t('home.statsCountries'), color: '#7c3aed' },
+    { icon: <FaBook />, number: resourceCount > 0 ? resourceCount + '+' : '0', label: t('home.statsResources'), color: '#f59e0b' }
   ]
 
   const features = [

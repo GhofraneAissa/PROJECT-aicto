@@ -85,13 +85,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
-from app.routers import stakeholders, projects, resources, analytics, countries, users, sdgs, search, admin, chat, contact, report
+from app.routers import stakeholders, projects, resources, analytics, countries, users, sdgs, search, admin, chat, contact, report, notifications
 import os
 import threading
 import time
 from datetime import datetime
 from app.services.pdf_report_service import generate_pdf_report
 from app.services.email_service import send_report_email
+from app.services.rag_service import ensure_index
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -108,6 +109,7 @@ from app.models.resource import Resource
 from app.models.country import Country
 from app.models.sdg import SDG
 from app.models.chat import ChatSession, ChatMessage
+from app.models.notification import Notification
 
 try:
     Base.metadata.create_all(bind=engine)
@@ -126,6 +128,25 @@ try:
             if col not in user_columns:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
                 logger.info(f"[DB] Added column {col} to users table")
+        # Fix notifications table columns
+        try:
+            notif_columns = [c["name"] for c in inspector.get_columns("notifications")]
+            # Drop legacy 'title' column if it exists (model uses 'message')
+            if "title" in notif_columns:
+                conn.execute(text("ALTER TABLE notifications DROP COLUMN title"))
+                logger.info("[DB] Dropped legacy column 'title' from notifications table")
+                notif_columns.remove("title")
+            # Drop CHECK constraint on type if it exists (model allows any string)
+            conn.execute(text("ALTER TABLE notifications DROP CONSTRAINT IF EXISTS chk_notification_type"))
+            logger.info("[DB] Dropped CHECK constraint chk_notification_type if it existed")
+            # Add missing columns
+            for col, col_type in [("related_project_id", "INTEGER"), ("user_id", "INTEGER"), ("type", "VARCHAR(50) DEFAULT 'project_submitted'"), ("is_read", "INTEGER DEFAULT 0")]:
+                if col not in notif_columns:
+                    nullable = "NULL" if col != "user_id" else "NOT NULL DEFAULT 0"
+                    conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {col} {col_type} {nullable}"))
+                    logger.info(f"[DB] Added column {col} to notifications table")
+        except Exception:
+            pass
         conn.commit()
 except Exception as e:
     logger.error(f"[DB] ERROR: {e}")
@@ -178,6 +199,7 @@ app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(contact.router, prefix="/api", tags=["Contact"])
 app.include_router(report.router, prefix="/api", tags=["Report"])
+app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 
 
 # ── Background scheduler: send report every day at 8:00 AM ──
@@ -232,6 +254,17 @@ def startup_event():
         seed_database()
     except Exception as e:
         logger.warning(f"[SEED] Could not seed demo data: {e}")
+
+    # Pre-initialize RAG service (loads embedding model + builds ChromaDB index)
+    try:
+        logger.info("[RAG] Pre-initializing RAG service at startup...")
+        from app.database import SessionLocal
+        rag_db = SessionLocal()
+        ensure_index(rag_db)
+        rag_db.close()
+        logger.info("[RAG] RAG service ready")
+    except Exception as e:
+        logger.warning(f"[RAG] Could not pre-initialize: {e}")
 
     logger.info("[SCHEDULER] Starting background report scheduler (every day at 8:00 AM)...")
     logger.info(f"[SCHEDULER] Will send daily report at {SEND_HOUR:02d}:{SEND_MINUTE:02d} UTC")

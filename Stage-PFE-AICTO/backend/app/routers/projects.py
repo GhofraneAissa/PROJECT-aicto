@@ -135,6 +135,22 @@ def submit_project(project_data: ProjectSubmit, db: Session = Depends(get_db)):
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
+
+    # Create notifications for all admin users
+    from app.models.notification import Notification
+    admin_users = db.query(User).filter(User.role == "admin").all()
+    org_name = user_org or "Unknown Organization"
+    for admin_user in admin_users:
+        notification = Notification(
+            user_id=admin_user.id,
+            type="project_submitted",
+            message=f"New project submitted: \"{project_data.title}\" by {org_name}",
+            related_project_id=db_project.id,
+            is_read=0,
+        )
+        db.add(notification)
+    db.commit()
+
     return db_project
 
 @router.get("/{id}", response_model=ProjectResponse)

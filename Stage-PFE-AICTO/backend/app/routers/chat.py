@@ -8,20 +8,18 @@ import logging
 from datetime import datetime
 import requests
 from abc import ABC, abstractmethod
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Header
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 from app.database import get_db
+from app.services import rag_service
 from app.models.project import Project
 from app.models.stakeholder import Stakeholder
 from app.models.resource import Resource
 from app.models.country import Country
 from app.models.chat import ChatSession, ChatMessage
 from app.models.user import User
-from app.routers.resources import get_current_user
 from app.schemas.chat import (
     ChatSessionCreate, ChatSessionResponse, ChatSessionListItem,
     ChatRequest, ChatResponse, ChatResult, ChatMessageSchema,
@@ -29,6 +27,25 @@ from app.schemas.chat import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def get_optional_user(authorization: str = Header(None), db: Session = Depends(get_db)):
+    if not authorization:
+        return None
+    try:
+        from jose import JWTError, jwt
+        from app.routers.users import SECRET_KEY, ALGORITHM
+        scheme, _, token = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            return None
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        return user
+    except Exception:
+        return None
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -58,10 +75,22 @@ SYSTEM_PROMPT = """You are SARAI Assistant for the Stocktaking of Arab Regional 
 3. Respond in the same language as the user (English, French, or Arabic).
 
 ### How to structure responses:
-- Start with the total count from the context.
-- List items exactly as shown in the context — do not embellish.
-- Use simple bullet points: **Title** (Country | Sector)
-- Be brief: 2-4 sentences maximum unless the user asks for details."""
+- Start with a brief introduction mentioning the total count.
+- List items in a clear, readable format with **Title** (Country | Sector).
+- Be concise: 2-4 sentences unless the user asks for details.
+- Always cite the source type next to each item (Project, Stakeholder, Resource)."""
+
+SYSTEM_PROMPT_FR = """Vous etes l'assistant SARAI pour le recensement des initiatives IA dans la region arabe.
+
+### REGLES CRITIQUES :
+1. **N'inventez JAMAIS de donnees.** Basez-vous uniquement sur le contexte fourni.
+2. Si le contexte est insuffisant, dites "Je n'ai pas trouve cette information dans la base de donnees."
+3. Repondez dans la meme langue que l'utilisateur.
+
+### Structure des reponses :
+- Commencez par une breve introduction avec le nombre total d'elements trouves.
+- Listez les elements avec **Titre** (Pays | Secteur)
+- Soyez concis (2-4 phrases)."""
 
 SENTENCE_SPLITTER = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s")
 
@@ -94,10 +123,6 @@ SECTOR_KEYWORDS = {
     "environment": {"environment", "climate", "water", "environmental", "green"},
     "transportation": {"transportation", "transport", "traffic", "logistics"},
 }
-
-_vectorizer = None
-_tfidf_matrix = None
-_corpus = None
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
 
@@ -228,74 +253,7 @@ def detect_sector_intent(query):
     return None
 
 
-# ── RAG corpus ──
-
-def build_corpus(db):
-    docs = []
-    projects = (
-        db.query(Project, Country.country)
-        .join(Country, Country.id == Project.country_id, isouter=True)
-        .filter(~Project.status.in_(["pending", "rejected"]))
-        .all()
-    )
-    for p, cname in projects:
-        text = (
-            f"Project: {p.title}. Organization: {p.organization}. "
-            f"Country: {cname or ''}. Sector: {p.sector}. Technology: {p.technology}. "
-            f"Description: {p.description or ''}. Status: {p.status or ''}. "
-            f"SDG: {p.sdg.title if p.sdg else ''}. Year: {p.year_of_implementation or ''}."
-        )
-        docs.append({
-            "text": text, "type": "project", "id": p.id,
-            "title": p.title, "country": cname or "", "sector": p.sector or "",
-        })
-    stakeholders = db.query(Stakeholder).all()
-    for s in stakeholders:
-        text = (
-            f"Stakeholder: {s.name}. Type: {s.type}. "
-            f"Country: {s.country or ''}. Category: {s.category or ''}. "
-            f"Description: {s.description or ''}. Email: {s.contact_email or ''}."
-        )
-        docs.append({
-            "text": text, "type": "stakeholder", "id": s.id,
-            "title": s.name, "country": s.country or "", "sector": s.type or "",
-        })
-    resources = db.query(Resource).all()
-    for r in resources:
-        text = (
-            f"Resource: {r.title}. Type: {r.type}. Category: {r.category}. "
-            f"Description: {r.description or ''}. Language: {r.language or ''}."
-        )
-        docs.append({
-            "text": text, "type": "resource", "id": r.id,
-            "title": r.title, "country": "", "sector": r.category or "",
-        })
-    return docs
-
-
-def get_index(db):
-    global _vectorizer, _tfidf_matrix, _corpus
-    if _corpus is None:
-        _corpus = build_corpus(db)
-        texts = [d["text"] for d in _corpus]
-        _vectorizer = TfidfVectorizer(stop_words="english", max_features=5000)
-        _tfidf_matrix = _vectorizer.fit_transform(texts)
-    return _corpus, _vectorizer, _tfidf_matrix
-
-
-def search_similar(query, db, top_k=6):
-    corpus, vec, mat = get_index(db)
-    q_vec = vec.transform([query])
-    scores = cosine_similarity(q_vec, mat)[0]
-    top_idx = scores.argsort()[-top_k:][::-1]
-    results = []
-    for idx in top_idx:
-        if scores[idx] < 0.02:
-            continue
-        item = dict(corpus[idx])
-        item["score"] = float(scores[idx])
-        results.append(item)
-    return results
+# ── RAG search (delegates to rag_service with BGE + ChromaDB) ──
 
 
 def format_context(results):
@@ -314,57 +272,58 @@ def make_url(item):
     return f"/resources?highlight={i}"
 
 
+def detect_language(query):
+    french_markers = {'quels','quelles','quel','quelle','projets','sante','tunisie','maroc','donne','montre'}
+    arabic_chars = set('ابتثجحخدذرزسشصضطظعغفقكلمنهويآأؤإئ')
+    tokens = set(re.split(r"[\s,;:!?()]+", query.lower().strip()))
+    if any(c in query for c in arabic_chars):
+        return 'ar'
+    if tokens & french_markers:
+        return 'fr'
+    return 'en'
+
+
 def build_template_reply(results, query):
+    lang = detect_language(query)
     if not results:
-        return (
-            "I couldn't find any information matching your question. "
-            "Try asking about specific projects, stakeholders, or resources in the Arab region."
-        )
+        msgs = {
+            'fr': "Je n'ai trouve aucun resultat correspondant a votre question dans la base SARAI. Essayez de demander des projets, parties prenantes ou ressources specifiques.",
+            'ar': "لم أجد أي نتائج تطابق سؤالك في قاعدة بيانات SARAI. حاول السؤال عن مشاريع أو جهات أو موارد محددة.",
+            'en': "I couldn't find any information matching your question in the SARAI database. Try asking about specific projects, stakeholders, or resources in the Arab region."
+        }
+        return msgs.get(lang, msgs['en'])
     types = {}
     for r in results:
         types.setdefault(r["type"], []).append(r)
     n = sum(len(v) for v in types.values())
-    parts = [f"I found {n} relevant {'item' if n == 1 else 'items'}:"]
-    for t, items in types.items():
-        parts.append(f"\n**{t.capitalize()}s:**")
-        for item in items[:4]:
-            parts.append(f"- {item['title']} ({item['country'] or 'N/A'} | {item['sector'] or 'N/A'})")
+    if lang == 'fr':
+        parts = [f"J'ai trouve {n} element{'s' if n > 1 else ''} pertinent{'s' if n > 1 else ''} dans la base SARAI :"]
+        for t, items in types.items():
+            label = {'project': 'Projets', 'stakeholder': 'Organisations', 'resource': 'Ressources'}.get(t, t)
+            parts.append(f"\n**{label} :**")
+            for item in items[:5]:
+                parts.append(f"- {item['title']} ({item['country'] or 'N/A'} | {item['sector'] or 'N/A'})")
+    elif lang == 'ar':
+        parts = [f"وجدت {n} نتيجة relevant في قاعدة بيانات SARAI:"]
+        for t, items in types.items():
+            label = {'project': 'المشاريع', 'stakeholder': 'الجهات', 'resource': 'الموارد'}.get(t, t)
+            parts.append(f"\n**{label}:**")
+            for item in items[:5]:
+                parts.append(f"- {item['title']} ({item['country'] or 'N/A'} | {item['sector'] or 'N/A'})")
+    else:
+        parts = [f"I found {n} relevant {'item' if n == 1 else 'items'} in the SARAI database:"]
+        for t, items in types.items():
+            parts.append(f"\n**{t.capitalize()}s:**")
+            for item in items[:5]:
+                parts.append(f"- {item['title']} ({item['country'] or 'N/A'} | {item['sector'] or 'N/A'})")
     return "\n".join(parts)
 
 
 def search_rag(query, db, etype=None, country=None, sector=None):
-    corpus, vec, mat = get_index(db)
-    if etype or country or sector:
-        filtered = corpus
-        if etype:
-            filtered = [d for d in filtered if d["type"] == etype]
-        if country:
-            filtered = [d for d in filtered if d["country"].lower() == country.lower()]
-        if sector:
-            filtered = [d for d in filtered if d["sector"] and sector.lower() in d["sector"].lower()]
-        texts = [d["text"] for d in filtered]
-        if not texts:
-            return []
-        q_vec = vec.transform([query])
-        f_mat = vec.transform(texts)
-        scores = cosine_similarity(q_vec, f_mat)[0]
-        top_k = min(15, len(filtered))
-        top_idx = scores.argsort()[-top_k:][::-1]
-        has_good_score = any(scores[idx] >= 0.02 for idx in top_idx)
-        if has_good_score:
-            results = []
-            for idx in top_idx:
-                if scores[idx] < 0.02:
-                    continue
-                item = dict(filtered[idx])
-                item["score"] = float(scores[idx])
-                results.append(item)
-            return results
-        return [dict(item) for item in filtered[:top_k]]
     try:
-        return search_similar(query, db, top_k=6)
+        return rag_service.search_rag(query, db, etype, country, sector)
     except Exception as e:
-        logger.error(f"Search error: {e}")
+        logger.error(f"RAG search error: {e}")
         return []
 
 
@@ -395,9 +354,10 @@ def encode_image(image_path):
 def create_session(
     data: ChatSessionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
-    session = ChatSession(title=data.title or "New Chat", user_id=current_user.id)
+    user_id = current_user.id if current_user else None
+    session = ChatSession(title=data.title or "New Chat", user_id=user_id)
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -407,8 +367,10 @@ def create_session(
 @router.get("/sessions", response_model=List[ChatSessionListItem])
 def list_sessions(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
+    if not current_user:
+        return []
     sessions = (
         db.query(ChatSession)
         .filter(ChatSession.user_id == current_user.id)
@@ -432,12 +394,12 @@ def list_sessions(
 def get_session(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    if session.user_id is not None and session.user_id != current_user.id:
+    if session.user_id is not None and current_user and session.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to view this session")
     return session
 
@@ -446,12 +408,12 @@ def get_session(
 def delete_session(
     session_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    if session.user_id is not None and session.user_id != current_user.id:
+    if session.user_id is not None and current_user and session.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to delete this session")
     db.delete(session)
     db.commit()
@@ -513,13 +475,13 @@ def chat_send(
     session_id: str,
     request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     start = time.time()
     session = db.query(ChatSession).filter(ChatSession.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    if session.user_id is not None and session.user_id != current_user.id:
+    if session.user_id is not None and current_user and session.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this session")
 
     query = request.message.strip()
@@ -545,15 +507,35 @@ def chat_send(
     save_message(db, session_id, "user", query, attachments)
 
     if is_greeting(query):
-        reply = (
-            "Hello! I am SARAI Assistant.\n\n"
-            "I can help you find AI projects, stakeholders, and resources in the Arab region. "
-            "Try asking:\n"
-            '- "AI projects in Tunisia"\n'
-            '- "Healthcare AI"\n'
-            '- "Stakeholders in Egypt"\n'
-            '- "Give me all resources"'
-        )
+        lang = detect_language(query)
+        if lang == 'fr':
+            reply = (
+                "Bonjour ! Je suis l'assistant SARAI.\n\n"
+                "Je peux vous aider a trouver des projets IA, des parties prenantes et des ressources "
+                "dans la region arabe. Essayez de demander :\n"
+                '- "Projets IA en Tunisie"\n'
+                '- "Sante IA"\n'
+                '- "Organisations en Egypte"\n'
+                '- "Donne-moi toutes les ressources"'
+            )
+        elif lang == 'ar':
+            reply = (
+                "مرحبا! أنا مساعد SARAI.\n\n"
+                "يمكنني مساعدتك في العثور على مشاريع الذكاء الاصطناعي والجهات والموارد في المنطقة العربية. جرب أن تسأل:\n"
+                '- "مشاريع الذكاء الاصطناعي في تونس"\n'
+                '- "الذكاء الاصطناعي في الصحة"\n'
+                '- "الجهات في مصر"'
+            )
+        else:
+            reply = (
+                "Hello! I am SARAI Assistant.\n\n"
+                "I can help you find AI projects, stakeholders, and resources in the Arab region. "
+                "Try asking:\n"
+                '- "AI projects in Tunisia"\n'
+                '- "Healthcare AI"\n'
+                '- "Stakeholders in Egypt"\n'
+                '- "Give me all resources"'
+            )
         save_message(db, session_id, "assistant", reply)
         elapsed = int((time.time() - start) * 1000)
         return ChatResponse(reply=reply, provider="template", time_ms=elapsed, session_id=session_id)
@@ -587,6 +569,9 @@ def chat_send(
     if doc_texts:
         doc_section = "\n\n### Uploaded Document Content\n" + "\n\n".join(doc_texts)
 
+    lang = detect_language(query)
+    active_system_prompt = SYSTEM_PROMPT_FR if lang == 'fr' else SYSTEM_PROMPT
+
     full_context = f"### Stats\n{stats}\n\n### Matching Items\n{context}{doc_section}"
 
     providers = build_provider_chain()
@@ -598,7 +583,7 @@ def chat_send(
             reply = build_template_reply(results, query)
             active_provider = name
             break
-        gen = provider.generate(SYSTEM_PROMPT, query, full_context, image_data)
+        gen = provider.generate(active_system_prompt, query, full_context, image_data)
         if gen:
             reply = gen
             active_provider = name
@@ -627,10 +612,11 @@ def chat_send(
 def chat_endpoint_legacy(
     request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     if not request.session_id:
-        session = ChatSession(title="New Chat", user_id=current_user.id)
+        user_id = current_user.id if current_user else None
+        session = ChatSession(title="New Chat", user_id=user_id)
         db.add(session)
         db.commit()
         db.refresh(session)

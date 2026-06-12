@@ -1,0 +1,54 @@
+# --- Environment ---
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# --- Python ---
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# --- Node ---
+node_modules/
+frontend/node_modules/
+
+# --- Build artifacts ---
+dist/
+frontend/dist/
+build/
+*.egg-info/
+
+# --- Database ---
+*.db
+*.sqlite
+backend/app.db
+sarai.db
+
+# --- Uploads (user-generated content) ---
+backend/uploads/
+
+# --- ChromaDB vector store ---
+backend/data/chromadb/
+chatbot/chroma_db_rag/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Jupyter notebooks (research artifacts) ---
+chatbot/*.ipynb
+chatbot/*.json
+chatbot/*.png
+
+# --- OS files ---
+Thumbs.db
+.DS_Store

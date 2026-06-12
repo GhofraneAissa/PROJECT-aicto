@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import {
   FaRobot, FaTimes, FaPaperPlane, FaSpinner, FaProjectDiagram,
   FaBuilding, FaBook, FaPlus, FaTrash, FaChevronDown, FaChevronUp,
-  FaFile, FaImage, FaPaperclip,
+  FaFile, FaImage, FaPaperclip, FaExclamationTriangle,
 } from 'react-icons/fa'
 import { API_BASE } from '../config'
 const API = API_BASE
@@ -19,6 +19,13 @@ function getToken() {
 function authHeaders() {
   const t = getToken()
   return t ? { 'Authorization': `Bearer ${t}` } : {}
+}
+
+const GREETING_RESPONSE = {
+  hi: "Hello! I am SARAI Assistant.\n\nI can help you find AI projects, stakeholders, and resources in the Arab region.\nTry asking:\n- \"AI projects in Tunisia\"\n- \"Healthcare AI\"\n- \"Stakeholders in Egypt\"\n- \"Give me all resources\"",
+  hello: "Hello! I am SARAI Assistant.\n\nI can help you find AI projects, stakeholders, and resources in the Arab region.\nTry asking:\n- \"AI projects in Tunisia\"\n- \"Healthcare AI\"\n- \"Stakeholders in Egypt\"\n- \"Give me all resources\"",
+  bonjour: "Bonjour ! Je suis l'assistant SARAI.\n\nJe peux vous aider a trouver des projets IA, des parties prenantes et des ressources dans la region arabe.\n\nEssayez de demander :\n- \"Projets IA en Tunisie\"\n- \"Sante IA\"\n- \"Organisations en Egypte\"",
+  salut: "Bonjour ! Je suis l'assistant SARAI.\n\nJe peux vous aider a trouver des projets IA, des parties prenantes et des ressources dans la region arabe.\n\nEssayez de demander :\n- \"Projets IA en Tunisie\"\n- \"Sante IA\"\n- \"Organisations en Egypte\"",
 }
 
 let sessionsCache = []
@@ -63,13 +70,19 @@ function ChatBot() {
     try {
       const r = await fetch(`${API}/api/chat/sessions/${sid}`, { headers: { ...authHeaders() } })
       const data = await r.json()
-      const msgs = (data.messages || []).map(m => ({
-        role: m.role,
-        content: m.content,
-        attachments: m.attachments ? JSON.parse(m.attachments) : null,
-        timeMs: null,
-        provider: null,
-      }))
+      const msgs = (data.messages || []).map(m => {
+        let parsedAttachments = null
+        if (m.attachments) {
+          try { parsedAttachments = JSON.parse(m.attachments) } catch { parsedAttachments = null }
+        }
+        return {
+          role: m.role,
+          content: m.content,
+          attachments: parsedAttachments,
+          timeMs: null,
+          provider: null,
+        }
+      })
       msgCache.current[sid] = msgs
       setMessages(msgs)
     } catch {
@@ -133,6 +146,16 @@ function ChatBot() {
     setMessages(prev => [...prev, { role: 'user', content: userMsg, attachments }])
     setLoading(true)
 
+    const isGreeting = /^(hi|hello|hey|salut|bonjour|hiii|helloo|salam)$/i.test(userMsg.trim())
+    if (isGreeting) {
+      const reply = GREETING_RESPONSE[userMsg.trim().toLowerCase()] || GREETING_RESPONSE.hello
+      const newMsg = { role: 'assistant', content: reply, provider: 'local', timeMs: 0, results: [] }
+      setMessages(prev => [...prev, newMsg])
+      msgCache.current[activeSid] = [...(msgCache.current[activeSid] || []), { role: 'user', content: userMsg, attachments }, newMsg]
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch(`${API}/api/chat/sessions/${activeSid}/messages`, {
         method: 'POST',
@@ -144,13 +167,20 @@ function ChatBot() {
           attachments,
         }),
       })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.detail || `Error ${res.status}`)
+      }
       const data = await res.json()
       const newMsg = { role: 'assistant', content: data.reply, provider: data.provider, timeMs: data.time_ms, results: data.results || [] }
       setMessages(prev => [...prev, newMsg])
       msgCache.current[activeSid] = [...(msgCache.current[activeSid] || []), { role: 'user', content: userMsg, attachments }, newMsg]
       await loadSessions()
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: t('chat.errorProcessing') }])
+    } catch (err) {
+      const errorMsg = err.message?.includes('401')
+        ? 'Please log in to use the AI chat feature, or try asking a simpler question.'
+        : (t('chat.errorProcessing') || 'Sorry, something went wrong. Please try again.')
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, provider: 'error', timeMs: 0, results: [] }])
     }
     setLoading(false)
   }

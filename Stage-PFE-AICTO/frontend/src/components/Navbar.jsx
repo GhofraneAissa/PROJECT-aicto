@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { FaBrain, FaBars, FaTimes, FaUser, FaSignOutAlt, FaUserCircle, FaQuestionCircle, FaGlobe, FaClipboardList, FaBook } from 'react-icons/fa'
+import { FaBrain, FaBars, FaTimes, FaUser, FaSignOutAlt, FaUserCircle, FaQuestionCircle, FaGlobe, FaClipboardList, FaBook, FaBell } from 'react-icons/fa'
+import { API_BASE } from '../config'
 import { useTranslation } from 'react-i18next'
 import { startTour } from './UserGuideTour'
 
@@ -12,6 +13,11 @@ function Navbar() {
   const [langOpen, setLangOpen] = useState(false)
   const [user, setUser] = useState(null)
   const [scrolled, setScrolled] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifDropdownRef = useRef(null)
+  const prevUnreadRef = useRef(0)
   const dropdownRef = useRef(null)
   const langDropdownRef = useRef(null)
   const navigate = useNavigate()
@@ -45,6 +51,83 @@ function Navbar() {
     }
   }, [])
 
+  const playNotificationSound = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = 800
+      osc.type = 'sine'
+      gain.gain.setValueAtTime(0.3, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.4)
+      setTimeout(() => {
+        const osc2 = ctx.createOscillator()
+        const gain2 = ctx.createGain()
+        osc2.connect(gain2)
+        gain2.connect(ctx.destination)
+        osc2.frequency.value = 1200
+        osc2.type = 'sine'
+        gain2.gain.setValueAtTime(0.3, ctx.currentTime)
+        gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+        osc2.start(ctx.currentTime)
+        osc2.stop(ctx.currentTime + 0.3)
+      }, 150)
+    } catch {}
+  }
+
+  const fetchNotifications = () => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    if (!token) return
+    fetch(`${API_BASE}/api/notifications/`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setNotifications(data))
+      .catch(() => {})
+    fetch(`${API_BASE}/api/notifications/unread-count`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : { count: 0 })
+      .then(data => {
+        if (data.count > prevUnreadRef.current) {
+          playNotificationSound()
+        }
+        prevUnreadRef.current = data.count
+        setUnreadCount(data.count)
+      })
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchNotifications()
+      const interval = setInterval(fetchNotifications, 15000)
+      return () => clearInterval(interval)
+    }
+  }, [user])
+
+  const handleMarkAsRead = async (id) => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    await fetch(`${API_BASE}/api/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    fetchNotifications()
+  }
+
+  const handleMarkAllAsRead = async () => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    await fetch(`${API_BASE}/api/notifications/read-all`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    fetchNotifications()
+  }
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -52,6 +135,9 @@ function Navbar() {
       }
       if (langDropdownRef.current && !langDropdownRef.current.contains(e.target)) {
         setLangOpen(false)
+      }
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target)) {
+        setNotifOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -181,6 +267,43 @@ function Navbar() {
             </a>
           )}
 
+          {isLoggedIn && user?.role === 'admin' && (
+            <div className="notif-dropdown" ref={notifDropdownRef}>
+              <button className="notif-btn" onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) fetchNotifications() }} aria-label="Notifications">
+                <FaBell />
+                {unreadCount > 0 && <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+              </button>
+              {notifOpen && (
+                <div className="notif-menu">
+                  <div className="notif-header">
+                    <h4>Notifications</h4>
+                    {unreadCount > 0 && <button className="notif-mark-all" onClick={handleMarkAllAsRead}>Mark all as read</button>}
+                  </div>
+                  <div className="notif-list">
+                    {notifications.length === 0 ? (
+                      <div className="notif-empty">No notifications</div>
+                    ) : (
+                      notifications.map(n => (
+                        <div key={n.id} className={`notif-item ${n.is_read ? '' : 'unread'}`} onClick={() => handleMarkAsRead(n.id)}>
+                          <div className="notif-dot"></div>
+                          <div className="notif-content">
+                            <p>{n.message}</p>
+                            <span className="notif-time">{new Date(n.created_at).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {notifications.length > 0 && (
+                    <div className="notif-footer">
+                      <a href="/admin" onClick={() => setNotifOpen(false)}>Go to Admin Panel</a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="lang-switcher" ref={langDropdownRef}>
             <button className="lang-btn" onClick={() => setLangOpen(!langOpen)} aria-label={t('nav.language')}>
               <FaGlobe size={14} /> {i18n.language.toUpperCase()}
@@ -226,6 +349,80 @@ function Navbar() {
       )}
 
       <style>{`
+        .notif-dropdown { position: relative; }
+        .notif-btn {
+          position: relative;
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 40px; height: 40px;
+          border-radius: 10px;
+          border: 1.5px solid var(--gray-200);
+          background: var(--white); color: var(--gray-600);
+          font-size: 1.1rem; cursor: pointer;
+          transition: var(--transition); font-family: inherit;
+        }
+        .notif-btn:hover { border-color: var(--primary-color); color: var(--primary-color); background: rgba(37,99,235,0.04); }
+        .notif-badge {
+          position: absolute; top: -4px; right: -4px;
+          min-width: 18px; height: 18px;
+          background: #ef4444; color: #fff;
+          font-size: 0.65rem; font-weight: 800;
+          border-radius: 10px; display: flex;
+          align-items: center; justify-content: center;
+          padding: 0 4px; border: 2px solid #fff;
+        }
+        .navbar-home .notif-btn { border-color: rgba(255,255,255,0.3); background: transparent; color: rgba(255,255,255,0.85); }
+        .navbar-home .notif-btn:hover { border-color: #fff; color: #fff; background: rgba(255,255,255,0.1); }
+        .notif-menu {
+          position: absolute; top: calc(100% + 12px); right: 0;
+          width: 360px; background: var(--white);
+          border-radius: 16px; box-shadow: var(--shadow-xl);
+          border: 1px solid var(--gray-100);
+          animation: dropdownFade 0.2s ease; z-index: 1001;
+          overflow: hidden;
+        }
+        .notif-header {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 16px; border-bottom: 1px solid var(--gray-100);
+        }
+        .notif-header h4 { margin: 0; font-size: 1rem; font-weight: 700; color: var(--gray-900); }
+        .notif-mark-all {
+          background: none; border: none; color: var(--primary-color);
+          font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit;
+        }
+        .notif-mark-all:hover { text-decoration: underline; }
+        .notif-list { max-height: 320px; overflow-y: auto; }
+        .notif-empty { padding: 32px; text-align: center; color: var(--gray-500); font-size: 0.9rem; }
+        .notif-item {
+          display: flex; align-items: flex-start; gap: 12px;
+          padding: 14px 16px; cursor: pointer;
+          transition: background 0.15s; border-bottom: 1px solid var(--gray-50);
+        }
+        .notif-item:hover { background: var(--gray-50); }
+        .notif-item.unread { background: #eff6ff; }
+        .notif-dot {
+          width: 8px; height: 8px; border-radius: 50%;
+          background: var(--primary-color); flex-shrink: 0;
+          margin-top: 6px; display: none;
+        }
+        .notif-item.unread .notif-dot { display: block; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-content p { margin: 0; font-size: 0.85rem; color: var(--gray-700); line-height: 1.4; }
+        .notif-item.unread .notif-content p { font-weight: 600; color: var(--gray-900); }
+        .notif-time { font-size: 0.7rem; color: var(--gray-400); margin-top: 4px; display: block; }
+        .notif-footer {
+          padding: 12px 16px; border-top: 1px solid var(--gray-100);
+          text-align: center;
+        }
+        .notif-footer a {
+          color: var(--primary-color); font-weight: 600; font-size: 0.85rem;
+          text-decoration: none;
+        }
+        .notif-footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+          .notif-menu { width: 300px; right: -8px; }
+        }
+
         .navbar {
           position: sticky;
           top: 0;

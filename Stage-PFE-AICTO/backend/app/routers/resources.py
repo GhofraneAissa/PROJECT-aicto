@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File,
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from jose import JWTError, jwt
 from app.database import get_db
 from app.models.resource import Resource
 from app.models.user import User
 from app.schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse
+from jose import JWTError, jwt
 from app.routers.users import SECRET_KEY, ALGORITHM
 
 RESOURCE_UPLOAD_DIR = os.path.join(
@@ -36,6 +36,7 @@ def get_current_user(authorization: str = Header(None), db: Session = Depends(ge
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
 @router.get("/", response_model=List[ResourceResponse])
 def get_resources(
@@ -76,7 +77,23 @@ def create_resource(resource: ResourceCreate, db: Session = Depends(get_db), cur
     db.add(db_resource)
     db.commit()
     db.refresh(db_resource)
+
+    # Create notifications for all admin users
+    from app.models.notification import Notification
+    user_name = current_user.organization_name or current_user.email or "Unknown"
+    admin_users = db.query(User).filter(User.role == "admin").all()
+    for admin_user in admin_users:
+        notification = Notification(
+            user_id=admin_user.id,
+            type="resource_added",
+            message=f"New resource added: \"{db_resource.title}\" by {user_name}",
+            is_read=0,
+        )
+        db.add(notification)
+    db.commit()
+
     return db_resource
+
 
 @router.post("/upload", response_model=ResourceResponse)
 async def upload_resource(
@@ -117,7 +134,23 @@ async def upload_resource(
     db.add(db_resource)
     db.commit()
     db.refresh(db_resource)
+
+    # Create notifications for all admin users
+    from app.models.notification import Notification
+    user_name = current_user.organization_name or current_user.email or "Unknown"
+    admin_users = db.query(User).filter(User.role == "admin").all()
+    for admin_user in admin_users:
+        notification = Notification(
+            user_id=admin_user.id,
+            type="resource_added",
+            message=f"New resource added: \"{db_resource.title}\" by {user_name}",
+            is_read=0,
+        )
+        db.add(notification)
+    db.commit()
+
     return db_resource
+
 
 @router.put("/{id}", response_model=ResourceResponse)
 def update_resource(id: int, resource: ResourceUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

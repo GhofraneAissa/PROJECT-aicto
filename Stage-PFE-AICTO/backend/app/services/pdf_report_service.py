@@ -1147,9 +1147,10 @@ def generate_impact_analysis(p, country, sdg_nums):
     sector = (p.sector or "").lower()
     tech = (p.technology or "").lower()
 
+    tech_label = p.technology or "l'IA"
     if "sante" in sector or "health" in sector or "medical" in tech or "health" in tech:
         lines.append(f"Ce projet contribue a l'amelioration des services de sante dans la region arabe. "
-                     f"En deployant des solutions basees sur {p.technology or 'l\'IA'}, il permet "
+                     f"En deployant des solutions basees sur {tech_label}, il permet "
                      f"d'accroitre l'acces aux soins, d'ameliorer la qualite des diagnostics et de reduire "
                      f"les couts operationnels des etablissements de sante.")
     elif "agriculture" in sector or "agri" in sector:
@@ -1169,8 +1170,9 @@ def generate_impact_analysis(p, country, sdg_nums):
                      f"L'IA est utilisee pour optimiser la consommation energetique, integrer les energies "
                      f"renouvelables et surveiller les impacts environnementaux.")
     else:
+        sector_label = p.sector or "d'activite"
         lines.append(f"Ce projet apporte une contribution significative au developpement de l'IA dans "
-                     f"le secteur {p.sector or 'd\'activite'} au {country}. Il renforce la position "
+                     f"le secteur {sector_label} au {country}. Il renforce la position "
                      f"du pays dans l'ecosysteme regional de l'IA et cree des retombees economiques "
                      f"et sociales mesurables.")
 
