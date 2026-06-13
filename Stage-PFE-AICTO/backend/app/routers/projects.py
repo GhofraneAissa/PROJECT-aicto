@@ -9,7 +9,13 @@ from app.models.project import Project, ProjectStakeholderAssociation
 from app.models.country import Country
 from app.models.stakeholder import Stakeholder
 from app.models.user import User
-from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse, ProjectDetailResponse, ProjectSubmit, StakeholderAssociationOut, ProjectPaginatedResponse
+from app.schemas.project import (
+    ProjectCreate, ProjectUpdate, ProjectResponse, ProjectDetailResponse,
+    ProjectSubmit, StakeholderAssociationOut, ProjectPaginatedResponse,
+    ExtractRequest, ExtractResponse, ExtractField
+)
+from app.services.url_extractor import fetch_url_content
+from app.services.ai_extractor import extract_project_info
 from app.routers.users import SECRET_KEY, ALGORITHM
 import json
 
@@ -152,6 +158,31 @@ def submit_project(project_data: ProjectSubmit, db: Session = Depends(get_db)):
     db.commit()
 
     return db_project
+
+
+@router.post("/extract-from-url", response_model=ExtractResponse)
+def extract_from_url(body: ExtractRequest, db: Session = Depends(get_db)):
+    url = body.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    content = fetch_url_content(url)
+    if not content:
+        return ExtractResponse(extracted=False, error="Could not fetch content from URL. Make sure the URL is publicly accessible.")
+
+    result = extract_project_info(content, user_country=body.user_country or "")
+    if not result.get("extracted"):
+        return ExtractResponse(extracted=False, error=result.get("error", "AI extraction failed"))
+
+    fields = {}
+    for key, val in result.get("fields", {}).items():
+        fields[key] = ExtractField(
+            value=val.get("value", "Non détecté"),
+            confidence=val.get("confidence", 0.0),
+        )
+
+    return ExtractResponse(extracted=True, fields=fields)
+
 
 @router.get("/{id}", response_model=ProjectResponse)
 def get_project(id: int, db: Session = Depends(get_db)):

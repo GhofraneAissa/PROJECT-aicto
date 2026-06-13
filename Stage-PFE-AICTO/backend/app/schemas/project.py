@@ -1,6 +1,22 @@
 from pydantic import BaseModel, field_validator
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+
+
+class ExtractRequest(BaseModel):
+    url: str
+    user_country: Optional[str] = None
+
+
+class ExtractField(BaseModel):
+    value: Any = "Non détecté"
+    confidence: float = 0.0
+
+
+class ExtractResponse(BaseModel):
+    extracted: bool
+    fields: Optional[Dict[str, ExtractField]] = None
+    error: Optional[str] = None
 
 class ProjectBase(BaseModel):
     title: str

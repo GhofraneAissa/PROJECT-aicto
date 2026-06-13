@@ -7,8 +7,8 @@ import { useTranslation } from 'react-i18next'
 
 import { API_BASE } from '../config'
 
-const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Transportation', 'Energy', 'Environment', 'Security']
-const technologies = ['NLP', 'Computer Vision', 'Robotics', 'Machine Learning', 'Deep Learning', 'Speech Recognition']
+const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Transportation', 'Energy', 'Environment', 'Security', 'Business Intelligence', 'Tourism', 'Data Science']
+const technologies = ['NLP', 'Computer Vision', 'Robotics', 'Machine Learning', 'Deep Learning', 'Speech Recognition', 'Business Intelligence', 'Data Engineering', 'Data Science', 'Generative AI', 'IoT']
 const arabCountries = [
   'Algeria', 'Bahrain', 'Comoros', 'Djibouti', 'Egypt', 'Iraq',
   'Jordan', 'Kuwait', 'Lebanon', 'Libya', 'Mauritania', 'Morocco',
@@ -44,7 +44,10 @@ const getSectorInfo = (sector) => {
     'Environment':  { class: 'env',    icon: <FaLeaf /> },
     'Security':     { class: 'security', icon: <FaShieldAlt /> },
     'SmartCities':  { class: 'fin', icon: <FaCity /> },
-    'Industry':     { class: 'trans', icon: <FaRocket /> }
+    'Industry':     { class: 'trans', icon: <FaRocket /> },
+    'Business Intelligence': { class: 'fin', icon: <FaCity /> },
+    'Tourism':     { class: 'trans', icon: <FaGlobeAmericas /> },
+    'Data Science': { class: 'edu', icon: <FaMicrochip /> }
   }
   return map[sector] || { class: 'default', icon: <FaMicrochip /> }
 }
@@ -73,6 +76,9 @@ function ProjectStocktaking() {
   const [filterSdg, setFilterSdg] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [stakeholderSearch, setStakeholderSearch] = useState('')
+  const [linkedinUrl, setLinkedinUrl] = useState('')
+  const [extracting, setExtracting] = useState(false)
+  const [extractedData, setExtractedData] = useState(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -137,6 +143,77 @@ function ProjectStocktaking() {
 
   const handleFileChange = (e) => {
     setFormData({ ...formData, files: Array.from(e.target.files) })
+  }
+
+  const extractFromUrl = async () => {
+    if (!linkedinUrl.trim()) return
+    setExtracting(true)
+    setExtractedData(null)
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user')
+    let user = null
+    try { user = JSON.parse(storedUser) } catch {}
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/extract-from-url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          url: linkedinUrl.trim(),
+          user_country: user?.country || '',
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast.error(err.detail || 'Extraction failed')
+        return
+      }
+      const data = await res.json()
+      if (!data.extracted) {
+        toast.error(data.error || 'Could not extract project info')
+        return
+      }
+      setExtractedData(data.fields)
+      const f = data.fields
+      const countryId = countries.find(
+        c => c.country.toLowerCase() === (f.country?.value || '').toLowerCase()
+      )?.id || ''
+      const sdgArr = Array.isArray(f.sdg_alignment?.value) ? f.sdg_alignment.value : []
+      const sdgId = sdgArr.length > 0
+        ? sdgList.find(s => s.goal_number === sdgArr[0])?.id || ''
+        : ''
+      setFormData(prev => ({
+        ...prev,
+        title: f.title?.value && f.title.value !== 'Non détecté' ? f.title.value : prev.title,
+        description: f.description?.value && f.description.value !== 'Non détecté' ? f.description.value : prev.description,
+        sector: f.primary_sector?.value && sectors.includes(f.primary_sector.value) ? f.primary_sector.value : prev.sector,
+        technology: f.core_ai_technology?.value && technologies.includes(f.core_ai_technology.value) ? f.core_ai_technology.value : prev.technology,
+        country_id: countryId || prev.country_id,
+        sdg_id: sdgId || prev.sdg_id,
+      }))
+      toast.success('Project info extracted successfully!')
+    } catch (err) {
+      toast.error('Extraction failed: ' + err.message)
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  const getConfidenceColor = (score) => {
+    if (score >= 0.7) return { bg: '#dcfce7', color: '#166534', text: 'High' }
+    if (score >= 0.4) return { bg: '#fef9c3', color: '#854d0e', text: 'Medium' }
+    return { bg: '#fee2e2', color: '#991b1b', text: 'Low' }
+  }
+
+  const isAutoFilled = (field) => {
+    return extractedData && extractedData[field]?.value && extractedData[field].value !== 'Non détecté'
+  }
+
+  const resetExtraction = () => {
+    setExtractedData(null)
+    setLinkedinUrl('')
   }
 
   const handleSubmit = async (e) => {
@@ -224,6 +301,8 @@ function ProjectStocktaking() {
       })
       setShowForm(false)
       setSelectedStakeholders([])
+      setExtractedData(null)
+      setLinkedinUrl('')
       setFormData({
         title: '', description: '', start_date: '', end_date: '', status: 'ongoing',
         sector: '', technology: '', sdg_id: '', country_id: '',
@@ -379,6 +458,37 @@ function ProjectStocktaking() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="modal-form">
+                <div className="extract-url-section">
+                  <div className="extract-url-row">
+                    <input
+                      type="url"
+                      className="extract-url-input"
+                      placeholder="Paste LinkedIn post URL to auto-extract project info..."
+                      value={linkedinUrl}
+                      onChange={e => setLinkedinUrl(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="extract-btn"
+                      onClick={extractFromUrl}
+                      disabled={extracting || !linkedinUrl.trim()}
+                    >
+                      {extracting ? <span className="extract-spinner"></span> : 'Extract'}
+                    </button>
+                    {extractedData && (
+                      <button type="button" className="extract-clear-btn" onClick={resetExtraction} title="Clear extraction">
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  {extractedData && (
+                    <div className="extract-summary">
+                      <span className="extract-badge success">AI extracted</span>
+                      <span className="extract-hint">Form fields have been pre-filled. Review and adjust below.</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="form-section">
                   <div className="section-heading">
                     <span className="section-step">01</span>
@@ -390,7 +500,13 @@ function ProjectStocktaking() {
                   <div className="form-grid">
                     <div className="field">
                       <label>{t('projects.projectTitle')} <span className="required-star">*</span></label>
-                      <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder={t('projects.titlePlaceholder')} />
+                      <div className="field-input-row">
+                        <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder={t('projects.titlePlaceholder')} />
+                        {isAutoFilled('title') && (() => {
+                          const c = getConfidenceColor(extractedData.title.confidence)
+                          return <span className="conf-badge" style={{ background: c.bg, color: c.color }} title={`Confidence: ${Math.round(extractedData.title.confidence * 100)}%`}>{c.text}</span>
+                        })()}
+                      </div>
                     </div>
                     <div className="field">
                       <label>{t('projects.startDate')}</label>
@@ -402,24 +518,42 @@ function ProjectStocktaking() {
                     </div>
                     <div className="field">
                       <label>{t('projects.targetCountry')}</label>
-                      <select name="country_id" value={formData.country_id} onChange={handleChange}>
-                        <option value="">{t('projects.selectCountry')}</option>
-                        {countries.map(c => <option key={c.id} value={c.id}>{c.country}</option>)}
-                      </select>
+                      <div className="field-input-row">
+                        <select name="country_id" value={formData.country_id} onChange={handleChange}>
+                          <option value="">{t('projects.selectCountry')}</option>
+                          {countries.map(c => <option key={c.id} value={c.id}>{c.country}</option>)}
+                        </select>
+                        {isAutoFilled('country') && (() => {
+                          const c = getConfidenceColor(extractedData.country.confidence)
+                          return <span className="conf-badge" style={{ background: c.bg, color: c.color }}>{c.text}</span>
+                        })()}
+                      </div>
                     </div>
                     <div className="field">
                       <label>{t('projects.primarySector')} <span className="required-star">*</span></label>
-                      <select name="sector" value={formData.sector} onChange={handleChange} required>
-                        <option value="">{t('projects.selectSector')}</option>
-                        {sectors.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      <div className="field-input-row">
+                        <select name="sector" value={formData.sector} onChange={handleChange} required>
+                          <option value="">{t('projects.selectSector')}</option>
+                          {sectors.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        {isAutoFilled('primary_sector') && (() => {
+                          const c = getConfidenceColor(extractedData.primary_sector.confidence)
+                          return <span className="conf-badge" style={{ background: c.bg, color: c.color }}>{c.text}</span>
+                        })()}
+                      </div>
                     </div>
                     <div className="field">
                       <label>{t('projects.coreTechnology')} <span className="required-star">*</span></label>
-                      <select name="technology" value={formData.technology} onChange={handleChange} required>
-                        <option value="">{t('projects.selectTechnology')}</option>
-                        {technologies.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
+                      <div className="field-input-row">
+                        <select name="technology" value={formData.technology} onChange={handleChange} required>
+                          <option value="">{t('projects.selectTechnology')}</option>
+                          {technologies.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {isAutoFilled('core_ai_technology') && (() => {
+                          const c = getConfidenceColor(extractedData.core_ai_technology.confidence)
+                          return <span className="conf-badge" style={{ background: c.bg, color: c.color }}>{c.text}</span>
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -435,15 +569,27 @@ function ProjectStocktaking() {
 
                   <div className="field full">
                     <label>{t('projects.projectDescription')} <span className="required-star">*</span></label>
-                    <textarea name="description" value={formData.description} onChange={handleChange} required rows="5" placeholder={t('projects.describeProject')}></textarea>
+                    <div className="field-input-row">
+                      <textarea name="description" value={formData.description} onChange={handleChange} required rows="5" placeholder={t('projects.describeProject')}></textarea>
+                      {isAutoFilled('description') && (() => {
+                        const c = getConfidenceColor(extractedData.description.confidence)
+                        return <span className="conf-badge" style={{ background: c.bg, color: c.color }}>{c.text}</span>
+                      })()}
+                    </div>
                   </div>
 
                   <div className="field full">
                     <label>{t('projects.sdgAlignment')}</label>
-                    <select name="sdg_id" value={formData.sdg_id} onChange={handleChange}>
-                      <option value="">{t('projects.selectSdg')}</option>
-                      {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
-                    </select>
+                    <div className="field-input-row">
+                      <select name="sdg_id" value={formData.sdg_id} onChange={handleChange}>
+                        <option value="">{t('projects.selectSdg')}</option>
+                        {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
+                      </select>
+                      {isAutoFilled('sdg_alignment') && (() => {
+                        const c = getConfidenceColor(extractedData.sdg_alignment.confidence)
+                        return <span className="conf-badge" style={{ background: c.bg, color: c.color }}>{c.text}</span>
+                      })()}
+                    </div>
                   </div>
                 </div>
 
@@ -1244,6 +1390,49 @@ function ProjectStocktaking() {
           font-weight: 700; cursor: pointer; font-family: inherit; transition: 0.2s;
         }
         .add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3); }
+
+        .field-input-row { display: flex; gap: 8px; align-items: flex-start; }
+        .field-input-row input, .field-input-row select, .field-input-row textarea { flex: 1; }
+        .conf-badge {
+          padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
+          text-transform: uppercase; white-space: nowrap; margin-top: 2px; flex-shrink: 0;
+        }
+        .extract-url-section {
+          background: linear-gradient(135deg, #f0f4ff, #e8f0fe);
+          border: 1.5px solid #bfdbfe;
+          border-radius: 16px;
+          padding: 16px 20px;
+          margin-bottom: 20px;
+        }
+        .extract-url-row { display: flex; gap: 8px; align-items: center; }
+        .extract-url-input {
+          flex: 1; padding: 12px 16px; border-radius: 12px; border: 2px solid #bfdbfe;
+          font-family: inherit; font-size: 0.9rem; outline: none; transition: 0.2s; background: #fff;
+        }
+        .extract-url-input:focus { border-color: var(--p-primary); box-shadow: 0 0 0 4px rgba(37,99,235,0.08); }
+        .extract-btn {
+          padding: 12px 20px; border-radius: 12px; border: none; background: var(--p-primary); color: #fff;
+          font-weight: 700; font-family: inherit; font-size: 0.85rem; cursor: pointer; transition: 0.2s; white-space: nowrap;
+        }
+        .extract-btn:hover { background: #1d4ed8; }
+        .extract-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .extract-clear-btn {
+          background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.1rem; padding: 8px;
+        }
+        .extract-clear-btn:hover { color: var(--p-secondary); }
+        .extract-spinner {
+          display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+          border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite;
+        }
+        .extract-summary {
+          display: flex; align-items: center; gap: 10px; margin-top: 10px; padding-top: 10px;
+          border-top: 1px solid #bfdbfe;
+        }
+        .extract-badge {
+          padding: 2px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+        }
+        .extract-badge.success { background: #dcfce7; color: #166534; }
+        .extract-hint { font-size: 0.8rem; color: #475569; }
 
         .field-hint { font-size: 0.85rem; color: var(--p-text-light); margin-bottom: 16px; margin-top: -8px; }
 
