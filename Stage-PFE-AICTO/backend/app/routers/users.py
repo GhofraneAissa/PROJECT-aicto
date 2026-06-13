@@ -171,6 +171,11 @@ def reset_password(token: str, request: ResetPasswordRequest, db: Session = Depe
     return {"message": "Password has been reset successfully."}
 
 
+@router.get("/me", response_model=UserResponse)
+def get_current_user_info(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()

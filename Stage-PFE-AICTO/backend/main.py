@@ -85,7 +85,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base
-from app.routers import stakeholders, projects, resources, analytics, countries, users, sdgs, search, admin, chat, contact, report, notifications
+from app.routers import stakeholders, projects, resources, analytics, countries, users, sdgs, search, admin, chat, contact, report, notifications, auth_oauth
 import os
 import threading
 import time
@@ -200,6 +200,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(contact.router, prefix="/api", tags=["Contact"])
 app.include_router(report.router, prefix="/api", tags=["Report"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(auth_oauth.router)
 
 
 # ── Background scheduler: send report every day at 8:00 AM ──
