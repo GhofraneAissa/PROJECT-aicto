@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { FaBrain, FaBars, FaTimes, FaUser, FaSignOutAlt, FaUserCircle, FaQuestionCircle, FaGlobe, FaClipboardList, FaBook, FaBell } from 'react-icons/fa'
+import { FaBars, FaTimes, FaUser, FaSignOutAlt, FaUserCircle, FaQuestionCircle, FaGlobe, FaClipboardList, FaBook, FaBell } from 'react-icons/fa'
 import { API_BASE } from '../config'
 import { useTranslation } from 'react-i18next'
 import { startTour } from './UserGuideTour'
@@ -175,9 +175,7 @@ function Navbar() {
     <nav className={`navbar ${isHome ? (scrolled ? 'navbar-scrolled' : 'navbar-home') : ''}`}>
       <div className="container navbar-content">
         <Link to="/" className="logo tour-target--logo">
-          <div className="logo-icon">
-            <FaBrain />
-          </div>
+          <img src="/images/SARAIlogo.png" alt="SARAI" className="logo-img" />
           <div className="logo-text">
             <span className="logo-main">SARAI</span>
             <span className="logo-sub">{t('nav.logoSubtitle')}</span>
@@ -424,8 +422,10 @@ function Navbar() {
         }
 
         .navbar {
-          position: sticky;
+          position: fixed;
           top: 0;
+          left: 0;
+          right: 0;
           z-index: 1000;
           background: #ffffff;
           border-bottom: 1px solid rgba(0, 0, 0, 0.08);
@@ -475,17 +475,10 @@ function Navbar() {
           align-items: center;
           gap: 12px;
         }
-        .logo-icon {
+        .logo-img {
           width: 48px;
           height: 48px;
-          background: var(--gradient-primary);
-          border-radius: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 1.5rem;
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+          object-fit: contain;
         }
         .logo-text {
           display: flex;

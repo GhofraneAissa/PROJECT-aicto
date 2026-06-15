@@ -566,14 +566,14 @@
       }, 'signup');
 
       if (result && result.ok) {
-        show('signup-alert', 'Account created! Please check your email to activate your account.', 'success');
+        show('signup-alert', 'Account created! Check your email for the activation code.', 'success');
         e.target.reset();
         citySel.innerHTML = '<option value="" disabled selected>Select city</option>';
         citySel.disabled = true;
         qs('pw-strength').querySelectorAll('.pw-strength-bar').forEach(b => { b.className = 'pw-strength-bar'; });
         qs('pw-label').textContent = '';
         document.querySelectorAll('.pw-req').forEach(r => r.classList.remove('met'));
-        setTimeout(() => showForm('signin-form'), 4000);
+        setTimeout(() => { window.location.href = 'activation.html'; }, 2000);
       }
       setLoading('signup-btn', false);
     });

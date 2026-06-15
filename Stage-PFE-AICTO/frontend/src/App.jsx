@@ -33,7 +33,7 @@ function App() {
   return (
     <div className="app">
       <Navbar />
-      <main style={{ minHeight: 'calc(100vh - 160px)' }}>
+      <main style={{ minHeight: 'calc(100vh - 160px)', paddingTop: '72px' }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/stakeholders" element={<StakeholderDirectory />} />

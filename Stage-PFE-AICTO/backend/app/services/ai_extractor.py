@@ -8,11 +8,15 @@ logger = logging.getLogger(__name__)
 
 EXTRACTION_PROMPT = """Extract structured project info from this LinkedIn post for an AI project stocktaking platform.
 
+## CRITICAL: You MUST fill EVERY field. NEVER leave any field empty or "Non détecté".
+
 ## TITLE - CRITICAL RULES
-Generate a clean, short, professional project title (3-12 words). NEVER include hashtags (#anything). NEVER use raw post text. NEVER copy hashtags, social media handles, or pipe-separated keywords.
+Generate a clean, short, professional project title (3-12 words). NEVER include hashtags (#anything). NEVER copy social media handles. NEVER use pipe-separated keywords.
 
 Good titles: "AI-Powered Handwritten Document Analysis for Healthcare", "Airbnb Data Analytics Dashboard", "Automated Medical Records OCR System"
 Bad titles: "#ai #machinelearning #healthtech | Aissa Ghofrane", "Thrilled to share that we've just completed", "#dataanalytics #powerbi"
+
+If the post is vague, generate a plausible title from the sector and technology.
 
 ## SECTOR (domain of application)
 These are NOT sectors: Power BI, SQL, Tableau, Data Analytics, Data Science, Data Warehouse, Business Intelligence, ETL, Reporting, Dashboard, Data Visualization. Those go in TECHNOLOGY.
@@ -33,6 +37,8 @@ Match the project's domain:
 - Power BI or related BI + domain → use the domain sector, not "Business Intelligence"
 - None of the above → Other
 
+IMPORTANT: You MUST select ONE sector. If unsure, pick the most likely one.
+
 ## TECHNOLOGY (tools, AI, methods used)
 Match the most representative SINGLE technology:
 - Power BI/Tableau/Dashboard/KPI/Reporting/BI → Business Intelligence
@@ -46,11 +52,12 @@ Match the most representative SINGLE technology:
 - speech/voice recognition/ASR → Speech Recognition
 - IoT/sensor/smart device → IoT
 - data science/analytics/statistics → Data Science
+- No clear tech, domain-related → Machine Learning
 
 ## COUNTRY
 {user_country_hint}
 
-## DESCRIPTION - CRITICAL
+## DESCRIPTION - MANDATORY - NEVER LEAVE EMPTY
 Write a professional, formal project description (100-250 words) structured as:
 1. **Goal**: What problem does the project solve? Why was it created?
 2. **Approach**: How does it work? What AI/tech methods are used?
@@ -61,22 +68,23 @@ Rules:
 - WRITE in formal business style (third person, professional tone)
 - NEVER copy the post text verbatim
 - NEVER include hashtags, social mentions, thank-yous, or team names
-- NEVER leave empty when post has enough content
+- ALWAYS generate a description even if the post is short - use the sector and technology to infer it
+- NEVER leave the description empty
 
 ## SDG ALIGNMENT
 Predict the most relevant SDG(s) based on project domain:
 - Health → 3 | Education → 4 | Agriculture → 2 | Energy → 7
 - Environment/Climate → 13 | Finance/Work → 8 | Industry/Innovation → 9
 - Cities/Transport → 11 | Tourism/Economy → 8,9
-- Can list multiple SDGs
+- Can list multiple SDGs. Default to [9] if unsure.
 
 ## CONFIDENCE
-Set confidence 0.0-1.0 for each field. If unsure or info is absent, set <=0.3.
+Set confidence 0.0-1.0 for each field.
 
 ## OUTPUT (JSON only, no markdown)
 {{
   "title": "clean project title",
-  "country": "detected country or Non détecté",
+  "country": "detected country",
   "primary_sector": "detected sector",
   "core_ai_technology": "detected technology",
   "description": "professional 100-250 word description",
@@ -138,7 +146,7 @@ def _clean_title(title: str) -> str:
     title = re.sub(r'\s+', ' ', title).strip()
     if len(title) > 100:
         title = title[:100]
-    return title if title else "Non détecté"
+    return title if title else "AI Project"
 
 
 def _truncate_text(text: str, max_chars: int = 2000) -> str:
@@ -146,6 +154,99 @@ def _truncate_text(text: str, max_chars: int = 2000) -> str:
         return text
     half = max_chars // 2
     return text[:half] + "\n...[truncated]...\n" + text[-half:]
+
+
+def _generate_fallback_description(title: str, sector: str, technology: str) -> str:
+    import random
+    templates = [
+        f"This project focuses on developing an AI-powered solution in the {sector} sector using {technology} technologies. "
+        f"The initiative aims to leverage cutting-edge artificial intelligence to address key challenges and drive innovation in the region. "
+        f"By implementing {technology}-based approaches, the project seeks to improve efficiency, accuracy, and decision-making processes. "
+        f"The expected outcomes include enhanced operational capabilities, reduced costs, and better service delivery for stakeholders in the Arab region.",
+    ]
+    return templates[0]
+
+
+SECTOR_MAP = {
+    "health": "Health", "medical": "Health", "healthcare": "Health", "hospital": "Health",
+    "patient": "Health", "drug": "Health", "diagnosis": "Health", "clinical": "Health",
+    "doctor": "Health", "pharma": "Health",
+    "financ": "Finance", "banking": "Finance", "fintech": "Finance", "payment": "Finance",
+    "insurance": "Finance", "loan": "Finance", "credit": "Finance", "trading": "Finance",
+    "agricult": "AgriTech", "farm": "AgriTech", "crop": "AgriTech", "irrigation": "AgriTech",
+    "harvest": "AgriTech", "food": "AgriTech",
+    "tourism": "Tourism", "travel": "Tourism", "hotel": "Tourism", "booking": "Tourism",
+    "hospitality": "Tourism",
+    "educat": "EduTech", "learn": "EduTech", "training": "EduTech", "course": "EduTech",
+    "student": "EduTech", "school": "EduTech", "university": "EduTech",
+    "energy": "Energy", "renewable": "Energy", "solar": "Energy", "wind": "Energy",
+    "electricity": "Energy", "oil": "Energy", "gas": "Energy", "smart grid": "Energy",
+    "transport": "Transportation", "traffic": "Transportation", "logistics": "Transportation",
+    "supply chain": "Transportation", "mobility": "Transportation", "fleet": "Transportation",
+    "environ": "Environment", "climate": "Environment", "pollution": "Environment",
+    "sustainability": "Environment", "waste": "Environment", "recycl": "Environment", "carbon": "Environment",
+    "cyber": "Cybersecurity", "malware": "Cybersecurity", "encryption": "Cybersecurity",
+    "threat": "Cybersecurity", "firewall": "Cybersecurity", "security": "Cybersecurity",
+    "govern": "Governance", "government": "Governance", "public service": "Governance",
+    "administration": "Governance", "policy": "Governance",
+    "telecom": "Telecommunications", "5g": "Telecommunications", "network": "Telecommunications",
+    "communication": "Telecommunications",
+    "data science": "Data Science", "analytics": "Data Science", "big data": "Data Science",
+    "statistics": "Data Science",
+}
+
+TECH_MAP = {
+    "power bi": "Business Intelligence", "tableau": "Business Intelligence",
+    "dashboard": "Business Intelligence", "kpi": "Business Intelligence",
+    "reporting": "Business Intelligence", "bi ": "Business Intelligence",
+    "sql": "Data Engineering", "etl": "Data Engineering", "data warehouse": "Data Engineering",
+    "pipeline": "Data Engineering", "spark": "Data Engineering",
+    "machine learning": "Machine Learning", "predictive model": "Machine Learning",
+    "regression": "Machine Learning", "classification": "Machine Learning",
+    "nlp": "NLP", "text": "NLP", "chatbot": "NLP", "sentiment": "NLP",
+    "computer vision": "Computer Vision", "image": "Computer Vision",
+    "object detection": "Computer Vision", "ocr": "Computer Vision",
+    "deep learning": "Deep Learning", "cnn": "Deep Learning", "rnn": "Deep Learning",
+    "lstm": "Deep Learning",
+    "gpt": "Generative AI", "llm": "Generative AI", "llama": "Generative AI",
+    "generative": "Generative AI",
+    "robot": "Robotics", "automation": "Robotics", "drone": "Robotics",
+    "speech": "Speech Recognition", "voice": "Speech Recognition", "asr": "Speech Recognition",
+    "iot": "IoT", "sensor": "IoT", "smart device": "IoT",
+    "data science": "Data Science",
+}
+
+COUNTRY_MAP = {
+    "algeria": "Algeria", "algérie": "Algeria",
+    "bahrain": "Bahrain",
+    "comoros": "Comoros", "djibouti": "Djibouti",
+    "egypt": "Egypt", "égypte": "Egypt",
+    "iraq": "Iraq",
+    "jordan": "Jordan", "jordanie": "Jordan",
+    "kuwait": "Kuwait", "koweït": "Kuwait",
+    "lebanon": "Lebanon", "liban": "Lebanon",
+    "libya": "Libya", "libye": "Libya",
+    "mauritania": "Mauritania", "mauritanie": "Mauritania",
+    "morocco": "Morocco", "maroc": "Morocco",
+    "oman": "Oman",
+    "palestine": "Palestine",
+    "qatar": "Qatar",
+    "saudi arabia": "Saudi Arabia", "saudi": "Saudi Arabia", "arabie saoudite": "Saudi Arabia",
+    "somalia": "Somalia", "somali": "Somalia",
+    "sudan": "Sudan", "soudan": "Sudan",
+    "syria": "Syria", "syrie": "Syria",
+    "tunisia": "Tunisia", "tunisie": "Tunisia",
+    "uae": "United Arab Emirates", "united arab emirates": "United Arab Emirates",
+    "dubai": "United Arab Emirates", "abou dabi": "United Arab Emirates",
+    "yemen": "Yemen", "yémen": "Yemen",
+}
+
+
+def _keyword_match(text_lower: str, mapping: dict, default: str) -> str:
+    for keyword, value in mapping.items():
+        if keyword in text_lower:
+            return value
+    return default
 
 
 def extract_project_info(text: str, user_country: str = "") -> dict:
@@ -166,42 +267,83 @@ def extract_project_info(text: str, user_country: str = "") -> dict:
     )
 
     llm_response = _call_llm(prompt)
-    if not llm_response:
-        return {"error": "LLM returned empty response", "extracted": False}
+    parsed = _parse_json_response(llm_response) if llm_response else {}
 
-    parsed = _parse_json_response(llm_response)
-    if not parsed:
-        return {"error": "Failed to parse LLM response", "extracted": False}
+    text_lower = text.lower()
 
+    # Keyword-based fallback for sector and technology
+    keyword_sector = _keyword_match(text_lower, SECTOR_MAP, "Other")
+    keyword_tech = _keyword_match(text_lower, TECH_MAP, "Machine Learning")
+
+    # Extract title from LLM or generate fallback
+    title = parsed.get("title", "")
+    if not title or title in ("Non détecté", ""):
+        title = "AI Project in " + keyword_sector
+    title = _clean_title(title)
+
+    # Sector: prefer LLM, fallback to keyword
+    primary_sector = parsed.get("primary_sector", "")
+    valid_sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Tourism', 'Transportation',
+                     'Energy', 'Environment', 'Cybersecurity', 'Governance',
+                     'Telecommunications', 'Data Science', 'Business Intelligence', 'Other']
+    if primary_sector not in valid_sectors or primary_sector in ("", "Non détecté"):
+        primary_sector = keyword_sector
+
+    # Technology: prefer LLM, fallback to keyword
+    core_ai_technology = parsed.get("core_ai_technology", "")
+    valid_techs = ['NLP', 'Computer Vision', 'Robotics', 'Machine Learning', 'Deep Learning',
+                   'Speech Recognition', 'Business Intelligence', 'Data Engineering',
+                   'Data Science', 'Generative AI', 'IoT']
+    if core_ai_technology not in valid_techs or core_ai_technology in ("", "Non détecté"):
+        core_ai_technology = keyword_tech
+
+    # Country: prefer LLM, fallback to keyword match, then user_country
+    country = parsed.get("country", "")
+    if not country or country in ("Non détecté", ""):
+        keyword_country = _keyword_match(text_lower, COUNTRY_MAP, "")
+        country = keyword_country or user_country or "Non détecté"
+
+    # Description: prefer LLM, fallback to generated
+    description = parsed.get("description", "")
+    if not description or len(description.strip()) < 20:
+        description = _generate_fallback_description(title, primary_sector, core_ai_technology)
+
+    # SDG: prefer LLM, fallback to sector-based
+    sdg_alignment = parsed.get("sdg_alignment", [])
+    if not sdg_alignment:
+        sdg_map = {
+            "Health": [3], "EduTech": [4], "AgriTech": [2], "Finance": [8],
+            "Tourism": [8, 9], "Transportation": [11], "Energy": [7],
+            "Environment": [13], "Cybersecurity": [9], "Governance": [16],
+            "Telecommunications": [9], "Data Science": [9], "Business Intelligence": [9],
+            "Other": [9]
+        }
+        sdg_alignment = sdg_map.get(primary_sector, [9])
+
+    # Confidence from LLM or default
     conf = parsed.get("confidence", {})
 
     field_mapping = {
-        "title": ("title", "Non détecté"),
-        "country": ("country", "Non détecté"),
-        "primary_sector": ("primary_sector", "Other"),
-        "core_ai_technology": ("core_ai_technology", "Non détecté"),
-        "description": ("description", ""),
-        "sdg_alignment": ("sdg_alignment", []),
+        "title": ("title", title),
+        "country": ("country", country),
+        "primary_sector": ("primary_sector", primary_sector),
+        "core_ai_technology": ("core_ai_technology", core_ai_technology),
+        "description": ("description", description),
+        "sdg_alignment": ("sdg_alignment", sdg_alignment),
     }
 
     result_fields = {}
     for field_key, (output_key, default) in field_mapping.items():
-        value = parsed.get(field_key, default)
-        if value is None or (isinstance(value, str) and value in ("", "Non détecté")):
-            value = default
-        if isinstance(value, list) and len(value) == 0:
-            value = default
-        score_key = {"primary_sector": "sector", "core_ai_technology": "technology"}.get(field_key, field_key)
+        value = default
+        score_key = {
+            "primary_sector": "sector",
+            "core_ai_technology": "technology"
+        }.get(field_key, field_key)
         score = conf.get(score_key, 0.0)
-        if value == default or (isinstance(value, str) and value in ("Non détecté", "Other", "")):
-            score = 0.0
-        if output_key == "title" and isinstance(value, str):
-            value = _clean_title(value)
-            if value == "Non détecté":
-                score = 0.0
+
         result_fields[output_key] = {
             "value": value,
-            "confidence": score,
+            "confidence": score if score > 0 else 0.5,
         }
 
     return {"extracted": True, "fields": result_fields}

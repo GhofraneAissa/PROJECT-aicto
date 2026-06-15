@@ -13,6 +13,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 import os
 from uuid import uuid4
+import random
 from app.services.email_service import send_reset_email, send_activation_email
 from app.limiter import limiter
 
@@ -71,6 +72,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
     auto_role = determine_role_from_email(user.email)
     activation_token = uuid4().hex
+    activation_code = str(random.randint(100000, 999999))
 
     db_user = User(
         organization_name=user.organization_name,
@@ -88,12 +90,13 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         role=auto_role,
         is_active=False,
         activation_token=activation_token,
+        activation_code=activation_code,
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
 
-    send_activation_email(db_user.email, db_user.organization_name, activation_token)
+    send_activation_email(db_user.email, db_user.organization_name, activation_token, activation_code)
 
     return db_user
 
@@ -109,6 +112,27 @@ def activate_user(token: str, db: Session = Depends(get_db)):
 
     user.is_active = True
     user.activation_token = None
+    db.commit()
+
+    return {"message": "Account activated successfully. You can now sign in."}
+
+
+@router.post("/activate-by-code")
+def activate_user_by_code(payload: dict, db: Session = Depends(get_db)):
+    code = payload.get("code", "").strip()
+    if not code or len(code) != 6 or not code.isdigit():
+        raise HTTPException(status_code=400, detail="Invalid activation code. Enter a 6-digit code.")
+
+    user = db.query(User).filter(User.activation_code == code).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid activation code.")
+
+    if user.is_active:
+        return {"message": "Account is already active."}
+
+    user.is_active = True
+    user.activation_token = None
+    user.activation_code = None
     db.commit()
 
     return {"message": "Account activated successfully. You can now sign in."}

@@ -527,6 +527,8 @@ function Home() {
         .hero-with-video {
           position: relative;
           overflow: hidden;
+          margin-top: -72px;
+          padding-top: 72px;
         }
         
         .hero-video-container {
@@ -1193,14 +1195,13 @@ function Home() {
           height: 88px;
           border-radius: 22px;
           overflow: hidden;
-          box-shadow: 0 4px 18px rgba(0,0,0,0.35);
-          transition: transform 0.25s ease, box-shadow 0.25s ease;
+          transition: transform 0.25s ease;
           flex-shrink: 0;
+          background: #f4f2f7;
         }
         
         .country-marquee-item:hover .country-marquee-flag {
           transform: translateY(-5px) scale(1.07);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         
         .country-marquee-fallback {

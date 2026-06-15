@@ -14,12 +14,13 @@ class ChatSession(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(String(36), unique=True, nullable=False, default=generate_uuid)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     title = Column(String(255), default="New Chat")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan", order_by="ChatMessage.created_at")
+    user = relationship("User", back_populates="chat_sessions")
 
 
 class ChatMessage(Base):

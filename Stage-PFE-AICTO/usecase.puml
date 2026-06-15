@@ -1,0 +1,92 @@
+@startuml SARAI_UseCase_Diagram
+skinparam packageStyle rectangle
+skinparam backgroundColor #FEFEFE
+skinparam actor {
+  BorderColor #333333
+  FontColor #333333
+}
+skinparam usecase {
+  BorderColor #555555
+  FontColor #333333
+}
+left to right direction
+
+' ===== ACTEURS AVEC HÉRITAGE =====
+actor Visiteur as V
+actor "Utilisateur\n(Organisation)" as U
+actor "Admin AICTO" as A
+
+V <|-- U : extends
+U <|-- A : extends
+
+' ===== CONSULTATION PUBLIQUE =====
+rectangle "Consultation publique" {
+  usecase "Consulter les projets\n( liste + d\u00e9tail )" as UC1
+  usecase "Consulter la carte\ninteractive" as UC2
+  usecase "Consulter l'annuaire\ndes parties prenantes" as UC3
+  usecase "Explorer les ODD" as UC4
+  usecase "Consulter la\nbiblioth\u00e8que de ressources" as UC5
+  usecase "Utiliser le chatbot\nRAG" as UC6
+}
+
+' ===== ANALYSE =====
+rectangle "Analyse" {
+  usecase "Voir le dashboard\nanalytique" as UC7
+}
+
+' ===== AUTHENTIFICATION =====
+rectangle "Authentification" {
+  usecase "S'inscrire" as UC8
+  usecase "Se connecter\n(email ou LinkedIn)" as UC9
+  usecase "Activer son compte" as UC10
+  usecase "R\u00e9initialiser\nle mot de passe" as UC11
+}
+
+' ===== GESTION DE PROJETS =====
+rectangle "Gestion de projets" {
+  usecase "Soumettre\nun projet" as UC12
+  usecase "Extraire depuis\nLinkedIn (IA)" as UC13
+  usecase "Modifier / supprimer\nses projets" as UC14
+  usecase "Associer des\nparties prenantes" as UC15
+}
+
+' ===== COMPTE UTILISATEUR =====
+rectangle "Compte utilisateur" {
+  usecase "Modifier\nson profil" as UC16
+  usecase "Voir ses\nnotifications" as UC17
+}
+
+' ===== ADMINISTRATION =====
+rectangle "Administration" {
+  usecase "Mod\u00e9rer les projets\n( approuver / rejeter )" as UC18
+  usecase "G\u00e9rer les\nutilisateurs" as UC19
+  usecase "G\u00e9n\u00e9rer le\nrapport PDF" as UC20
+}
+
+' ===== LIENS VISITEUR =====
+V --> UC1
+V --> UC2
+V --> UC3
+V --> UC4
+V --> UC5
+V --> UC6
+V --> UC7
+V --> UC8
+V --> UC9
+V --> UC10
+V --> UC11
+
+' ===== LIENS UTILISATEUR (hérite de Visiteur) =====
+U --> UC12
+U --> UC13
+U --> UC14
+U --> UC15
+U --> UC16
+U --> UC17
+
+' ===== LIENS ADMIN (hérite de Utilisateur) =====
+A --> UC18
+A --> UC19
+A --> UC20
+
+@enduml

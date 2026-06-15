@@ -34,6 +34,7 @@ class User(Base):
     is_approved = Column(Boolean, nullable=False, default=False)
     rejection_reason = Column(Text, nullable=True)
     activation_token = Column(String(100), nullable=True, unique=True, index=True)
+    activation_code = Column(String(6), nullable=True)
     reset_token = Column(String(100), nullable=True, unique=True, index=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -42,6 +43,7 @@ class User(Base):
 
     projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan", foreign_keys="Project.user_id")
     resources = relationship("Resource", back_populates="publisher", cascade="all, delete-orphan")
+    chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint(

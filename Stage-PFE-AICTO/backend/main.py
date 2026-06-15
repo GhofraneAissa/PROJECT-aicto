@@ -124,7 +124,7 @@ try:
                 logger.info(f"[DB] Added column {col} to projects table")
         # Add new columns to users table if missing (for org moderation)
         user_columns = [c["name"] for c in inspector.get_columns("users")]
-        for col, col_type in [("is_approved", "BOOLEAN DEFAULT false"), ("rejection_reason", "TEXT")]:
+        for col, col_type in [("is_approved", "BOOLEAN DEFAULT false"), ("rejection_reason", "TEXT"), ("activation_code", "VARCHAR(6)")]:
             if col not in user_columns:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
                 logger.info(f"[DB] Added column {col} to users table")
@@ -145,6 +145,23 @@ try:
                     nullable = "NULL" if col != "user_id" else "NOT NULL DEFAULT 0"
                     conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {col} {col_type} {nullable}"))
                     logger.info(f"[DB] Added column {col} to notifications table")
+        except Exception:
+            pass
+        # Fix chat_sessions FK to cascade on user delete
+        try:
+            from sqlalchemy import inspect as sa_inspect
+            fk_list = [fk for fk in sa_inspect(engine).get_foreign_keys("chat_sessions") if fk["constrained_columns"] == ["user_id"]]
+            if fk_list and "CASCADE" not in (fk_list[0].get("options", {}).get("ondelete", "") or ""):
+                db_type = engine.dialect.name
+                if db_type == "postgresql":
+                    fk_name = fk_list[0]["name"]
+                    conn.execute(text(f"ALTER TABLE chat_sessions DROP CONSTRAINT {fk_name}"))
+                    conn.execute(text(f"ALTER TABLE chat_sessions ADD CONSTRAINT {fk_name} FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"))
+                    logger.info("[DB] Updated chat_sessions FK to CASCADE on delete")
+                elif db_type == "sqlite":
+                    # SQLite cannot alter FK; delete orphaned sessions as cleanup
+                    conn.execute(text("DELETE FROM chat_sessions WHERE user_id IS NOT NULL AND user_id NOT IN (SELECT id FROM users)"))
+                    logger.info("[DB] Cleaned up orphaned chat_sessions")
         except Exception:
             pass
         conn.commit()

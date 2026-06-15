@@ -121,25 +121,28 @@ def send_reset_email(recipient_email: str, organization_name: str, token: str) -
         return False
 
 
-def send_activation_email(recipient_email: str, organization_name: str, token: str) -> bool:
+def send_activation_email(recipient_email: str, organization_name: str, token: str, code: str = "") -> bool:
     """
-    Send account activation email.
+    Send account activation email with both link and 6-digit code.
     Returns True if email was sent successfully, False otherwise.
     """
     if not all([SMTP_EMAIL, SMTP_PASSWORD]):
         logger.error("[EMAIL] ❌ SMTP credentials not configured!")
         logger.info(f"[EMAIL] Activation link (dev mode): {FRONTEND_URL}/activation.html?token={token}")
+        logger.info(f"[EMAIL] Activation code (dev mode): {code}")
         return False
 
     if SMTP_EMAIL == "ton.email@gmail.com" or SMTP_PASSWORD == "ton-app-password-gmail":
         logger.error("[EMAIL] ❌ Using placeholder SMTP credentials! Please update .env file with real credentials.")
         logger.info(f"[EMAIL] Activation link (dev mode): {FRONTEND_URL}/activation.html?token={token}")
+        logger.info(f"[EMAIL] Activation code (dev mode): {code}")
         return False
 
     activation_link = f"{FRONTEND_URL}/activation.html?token={token}"
 
     logger.info(f"[EMAIL] Sending activation email to {recipient_email}")
     logger.info(f"[EMAIL] Activation link: {activation_link}")
+    logger.info(f"[EMAIL] Activation code: {code}")
 
     html_body = f"""<!DOCTYPE html>
 <html>
@@ -153,7 +156,11 @@ def send_activation_email(recipient_email: str, organization_name: str, token: s
         .content {{ padding: 40px 30px; background: #ffffff; }}
         .button {{ display: inline-block; padding: 14px 32px; background: #059669; color: white !important;
                    text-decoration: none; border-radius: 8px; margin: 25px 0; font-weight: 600; }}
-        .button:hover {{ background: #047857; }}
+        .code-box {{ background: #f3f4f6; border: 2px dashed #059669; border-radius: 12px;
+                     padding: 20px; text-align: center; margin: 25px 0; }}
+        .code-box .code {{ font-size: 36px; font-weight: bold; letter-spacing: 8px;
+                          color: #059669; font-family: 'Courier New', monospace; }}
+        .code-box .hint {{ font-size: 14px; color: #6b7280; margin-top: 10px; }}
         .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }}
         .fallback {{ margin-top: 20px; padding: 15px; background: #f3f4f6; border-radius: 6px; font-size: 13px; word-break: break-all; }}
     </style>
@@ -165,9 +172,17 @@ def send_activation_email(recipient_email: str, organization_name: str, token: s
         </div>
         <div class="content">
             <h2 style="margin-top: 0;">Welcome {organization_name}!</h2>
-            <p>Thank you for registering. Please activate your account by clicking the button below:</p>
+            <p>Thank you for registering. Please activate your account using one of the methods below:</p>
+
             <a href="{activation_link}" class="button">Activate Account</a>
             <p><strong>This link expires in 24 hours.</strong></p>
+
+            <div class="code-box">
+                <p style="margin: 0 0 10px; font-size: 14px;">Or enter this code on the application:</p>
+                <div class="code">{code}</div>
+                <p class="hint">Open the app and enter this 6-digit code to activate your account.</p>
+            </div>
+
             <p>If you didn't create this account, you can safely ignore this email.</p>
             <div class="fallback">
                 <strong>Can't click the button?</strong> Copy and paste this link:<br>

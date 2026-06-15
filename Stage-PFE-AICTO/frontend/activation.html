@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Regional AI Repository · Activate Account</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .code-input-group { display: flex; gap: 8px; justify-content: center; margin: 1.5rem 0; }
+    .code-digit { width: 48px; height: 56px; text-align: center; font-size: 24px; font-weight: 700;
+                  border: 2px solid #d1d5db; border-radius: 10px; outline: none;
+                  transition: border-color 0.2s; font-family: 'Courier New', monospace; }
+    .code-digit:focus { border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,0.15); }
+    .code-digit.filled { border-color: #059669; background: #f0fdf4; }
+    .switch-mode { text-align: center; margin-top: 1rem; }
+    .switch-mode a { color: #059669; cursor: pointer; text-decoration: none; font-size: 14px; }
+    .switch-mode a:hover { text-decoration: underline; }
+    .activation-success { text-align: center; padding: 2rem 0; }
+    .activation-success .icon { font-size: 48px; margin-bottom: 1rem; }
+  </style>
 </head>
 <body>
   <div class="auth-container">
@@ -20,18 +33,40 @@
         <div id="activation-form" class="auth-form active">
           <div class="form-header">
             <h1>Account Activation</h1>
-            <p id="activation-status">Activating your account...</p>
+            <p id="activation-status">Check your email for the activation code.</p>
           </div>
           <div id="activation-alert" class="alert" style="display:none"></div>
 
           <div class="form-body" id="activation-body">
-            <div style="text-align:center;padding:2rem 0">
+            <div id="code-entry">
+              <p style="text-align:center;color:#6b7280;margin-bottom:0.5rem">
+                Enter the 6-digit code sent to your email
+              </p>
+              <div class="code-input-group" id="code-inputs">
+                <input class="code-digit" maxlength="1" data-index="0" type="text" inputmode="numeric" pattern="[0-9]">
+                <input class="code-digit" maxlength="1" data-index="1" type="text" inputmode="numeric" pattern="[0-9]">
+                <input class="code-digit" maxlength="1" data-index="2" type="text" inputmode="numeric" pattern="[0-9]">
+                <input class="code-digit" maxlength="1" data-index="3" type="text" inputmode="numeric" pattern="[0-9]">
+                <input class="code-digit" maxlength="1" data-index="4" type="text" inputmode="numeric" pattern="[0-9]">
+                <input class="code-digit" maxlength="1" data-index="5" type="text" inputmode="numeric" pattern="[0-9]">
+              </div>
+              <button id="activate-code-btn" class="btn btn-primary btn-full" onclick="activateByCode()" disabled>
+                Activate Account
+              </button>
+            </div>
+            <div id="token-activating" style="display:none;text-align:center;padding:1rem 0">
               <div class="btn-loader" style="display:block;margin:0 auto;width:40px;height:40px;border-width:3px"></div>
+              <p style="margin-top:1rem;color:#6b7280">Activating your account...</p>
             </div>
           </div>
 
+          <div class="switch-mode">
+            <a id="switch-activation-mode" onclick="toggleActivationMode()">
+              Or click the link from your email
+            </a>
+          </div>
           <div class="form-divider"><span>or</span></div>
-          <p class="form-footer" id="activation-footer"><a href="auth.html">Back to Sign In</a></p>
+          <p class="form-footer"><a href="auth.html">Back to Sign In</a></p>
         </div>
       </div>
     </div>
@@ -71,6 +106,8 @@
 
   <script>
     const API_BASE = "http://127.0.0.1:8000";
+    let codeValue = "";
+    let useTokenMode = false;
 
     function showAlert(elementId, message, type) {
       const alert = document.getElementById(elementId);
@@ -81,14 +118,121 @@
       }
     }
 
-    async function activateAccount() {
+    function hideAlert() {
+      const alert = document.getElementById('activation-alert');
+      if (alert) alert.style.display = 'none';
+    }
+
+    // Auto-focus next digit
+    document.addEventListener('DOMContentLoaded', function() {
+      const inputs = document.querySelectorAll('.code-digit');
+      inputs.forEach((input, idx) => {
+        input.addEventListener('input', function(e) {
+          const val = e.target.value.replace(/[^0-9]/g, '');
+          this.value = val;
+          if (val && val.length === 1) {
+            this.classList.add('filled');
+            if (idx < 5) inputs[idx + 1].focus();
+          } else {
+            this.classList.remove('filled');
+          }
+          updateCode();
+        });
+        input.addEventListener('keydown', function(e) {
+          if (e.key === 'Backspace' && !this.value && idx > 0) {
+            inputs[idx - 1].focus();
+            inputs[idx - 1].value = '';
+            inputs[idx - 1].classList.remove('filled');
+            updateCode();
+          }
+          if (e.key === 'Enter' && codeValue.length === 6) {
+            activateByCode();
+          }
+        });
+        input.addEventListener('focus', function() { this.select(); });
+      });
+      // Focus first input
+      setTimeout(() => inputs[0].focus(), 100);
+    });
+
+    function updateCode() {
+      const inputs = document.querySelectorAll('.code-digit');
+      codeValue = Array.from(inputs).map(i => i.value).join('');
+      document.getElementById('activate-code-btn').disabled = codeValue.length !== 6;
+    }
+
+    function toggleActivationMode() {
+      useTokenMode = !useTokenMode;
+      const link = document.getElementById('switch-activation-mode');
+      const codeEntry = document.getElementById('code-entry');
+      const tokenArea = document.getElementById('token-activating');
+
+      if (useTokenMode) {
+        codeEntry.style.display = 'none';
+        tokenArea.style.display = 'block';
+        link.textContent = 'Or enter the activation code from your email';
+        activateByToken();
+      } else {
+        codeEntry.style.display = 'block';
+        tokenArea.style.display = 'none';
+        link.textContent = 'Or click the link from your email';
+      }
+    }
+
+    async function activateByCode() {
+      if (codeValue.length !== 6) return;
+      hideAlert();
+      document.getElementById('activation-status').textContent = 'Activating...';
+      document.getElementById('activate-code-btn').disabled = true;
+      document.getElementById('activate-code-btn').textContent = 'Activating...';
+
+      try {
+        const response = await fetch(API_BASE + '/api/users/activate-by-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          mode: 'cors',
+          body: JSON.stringify({ code: codeValue }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('activation-status').textContent = 'Account Activated!';
+          showAlert('activation-alert', data.message || 'Account activated successfully.', 'success');
+          document.getElementById('activation-body').innerHTML = `
+            <div class="activation-success">
+              <div class="icon">🎉</div>
+              <h3 style="margin:0 0 0.5rem">Account Activated!</h3>
+              <p style="color:#6b7280;margin-bottom:1.5rem">You can now sign in to access your organization dashboard.</p>
+              <a href="auth.html" class="btn btn-primary btn-full">Sign In Now</a>
+            </div>
+          `;
+        } else {
+          document.getElementById('activation-status').textContent = 'Activation Failed';
+          showAlert('activation-alert', data.detail || 'Invalid code. Please check and try again.', 'error');
+          document.getElementById('activate-code-btn').disabled = false;
+          document.getElementById('activate-code-btn').textContent = 'Activate Account';
+          // Clear inputs
+          document.querySelectorAll('.code-digit').forEach(i => { i.value = ''; i.classList.remove('filled'); });
+          codeValue = '';
+          document.querySelector('.code-digit').focus();
+        }
+      } catch (err) {
+        document.getElementById('activation-status').textContent = 'Connection Error';
+        showAlert('activation-alert', 'Cannot reach backend. Make sure it is running on port 8000.', 'error');
+        document.getElementById('activate-code-btn').disabled = false;
+        document.getElementById('activate-code-btn').textContent = 'Activate Account';
+      }
+    }
+
+    async function activateByToken() {
       const params = new URLSearchParams(window.location.search);
       const token = params.get('token');
 
       if (!token) {
-        document.getElementById('activation-status').textContent = 'Invalid activation link';
-        showAlert('activation-alert', 'No activation token found. Please check your activation link.', 'error');
-        document.getElementById('activation-body').innerHTML = '<p style="text-align:center;color:#6b7280">The activation link is invalid or missing a token.</p>';
+        document.getElementById('activation-status').textContent = 'No token found';
+        showAlert('activation-alert', 'No activation token in URL. Enter the code from your email instead.', 'warning');
+        toggleActivationMode();
         return;
       }
 
@@ -106,30 +250,40 @@
 
         if (response.ok) {
           document.getElementById('activation-status').textContent = 'Account Activated!';
-          showAlert('activation-alert', data.message || 'Account activated successfully. You can now sign in.', 'success');
+          showAlert('activation-alert', data.message || 'Account activated successfully.', 'success');
           document.getElementById('activation-body').innerHTML = `
-            <p style="text-align:center;color:#6b7280;margin-bottom:1.5rem">Your account has been activated. You can now sign in to access your organization dashboard.</p>
-            <a href="auth.html" class="btn btn-primary btn-full">Sign In Now</a>
+            <div class="activation-success">
+              <div class="icon">🎉</div>
+              <h3 style="margin:0 0 0.5rem">Account Activated!</h3>
+              <p style="color:#6b7280;margin-bottom:1.5rem">You can now sign in.</p>
+              <a href="auth.html" class="btn btn-primary btn-full">Sign In Now</a>
+            </div>
           `;
         } else {
           document.getElementById('activation-status').textContent = 'Activation Failed';
-          const msg = typeof data.detail === 'string' ? data.detail : 'Activation failed. The link may be invalid or expired.';
-          showAlert('activation-alert', msg, 'error');
+          showAlert('activation-alert', data.detail || 'Invalid or expired link.', 'error');
           document.getElementById('activation-body').innerHTML = `
-            <p style="text-align:center;color:#6b7280;margin-bottom:1.5rem">Please try signing up again or contact support.</p>
+            <p style="text-align:center;color:#6b7280;margin-bottom:1rem">Try entering the code from your email instead.</p>
             <a href="auth.html" class="btn btn-primary btn-full">Go to Sign In</a>
           `;
         }
       } catch (err) {
         document.getElementById('activation-status').textContent = 'Connection Error';
-        showAlert('activation-alert', 'Cannot reach backend server. Make sure it is running on port 8000.', 'error');
-        document.getElementById('activation-body').innerHTML = `
-          <p style="text-align:center;color:#6b7280">Please try again later.</p>
-        `;
+        showAlert('activation-alert', 'Cannot reach backend. Make sure it is running on port 8000.', 'error');
       }
     }
 
-    activateAccount();
+    // On page load: if token in URL, prefer link mode, else show code entry
+    (function init() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('token')) {
+        useTokenMode = true;
+        document.getElementById('code-entry').style.display = 'none';
+        document.getElementById('token-activating').style.display = 'block';
+        document.getElementById('switch-activation-mode').textContent = 'Or enter the activation code from your email';
+        activateByToken();
+      }
+    })();
   </script>
 </body>
 </html>

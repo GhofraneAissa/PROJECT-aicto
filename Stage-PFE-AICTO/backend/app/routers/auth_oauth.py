@@ -80,14 +80,13 @@ def linkedin_callback(code: str, state: str, db: Session = Depends(get_db)):
         user.last_login = datetime.now(timezone.utc)
         db.commit()
     else:
-        role = determine_role_from_email(linkedin_email)
         user = User(
             organization_name=linkedin_name or linkedin_email.split("@")[0],
             organization_type="NGO",
             email=linkedin_email,
             password_hash=hash_password(secrets.token_urlsafe(32)),
             logo=linkedin_picture or None,
-            role=role,
+            role=determine_role_from_email(linkedin_email),
             is_active=True,
             is_approved=True,
         )

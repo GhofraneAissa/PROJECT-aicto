@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 import { API_BASE } from '../config'
 
-const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Transportation', 'Energy', 'Environment', 'Security', 'Business Intelligence', 'Tourism', 'Data Science']
+const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Tourism', 'Transportation', 'Energy', 'Environment', 'Cybersecurity', 'Governance', 'Telecommunications', 'Data Science', 'Business Intelligence', 'Other']
 const technologies = ['NLP', 'Computer Vision', 'Robotics', 'Machine Learning', 'Deep Learning', 'Speech Recognition', 'Business Intelligence', 'Data Engineering', 'Data Science', 'Generative AI', 'IoT']
 const arabCountries = [
   'Algeria', 'Bahrain', 'Comoros', 'Djibouti', 'Egypt', 'Iraq',
@@ -42,12 +42,16 @@ const getSectorInfo = (sector) => {
     'Transportation': { class: 'trans',  icon: <FaRocket /> },
     'Energy':       { class: 'energy', icon: <FaLightbulb /> },
     'Environment':  { class: 'env',    icon: <FaLeaf /> },
+    'Cybersecurity':{ class: 'security',icon: <FaShieldAlt /> },
     'Security':     { class: 'security', icon: <FaShieldAlt /> },
+    'Governance':   { class: 'gov',   icon: <FaCity /> },
+    'Telecommunications': { class: 'telecom', icon: <FaRocket /> },
     'SmartCities':  { class: 'fin', icon: <FaCity /> },
     'Industry':     { class: 'trans', icon: <FaRocket /> },
     'Business Intelligence': { class: 'fin', icon: <FaCity /> },
     'Tourism':     { class: 'trans', icon: <FaGlobeAmericas /> },
-    'Data Science': { class: 'edu', icon: <FaMicrochip /> }
+    'Data Science': { class: 'edu', icon: <FaMicrochip /> },
+    'Other':       { class: 'default', icon: <FaMicrochip /> }
   }
   return map[sector] || { class: 'default', icon: <FaMicrochip /> }
 }
