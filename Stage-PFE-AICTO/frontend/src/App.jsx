@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -19,13 +19,7 @@ import SearchResults from './pages/SearchResults'
 import AdminDashboard from './pages/AdminDashboard'
 import MyProjects from './pages/MyProjects'
 import ChatBot from './components/ChatBot'
-import { AuthProvider, useAuth } from './context/AuthContext'
-
-function AdminRoute({ children }) {
-  const { isAdmin, isLoggedIn } = useAuth()
-  if (!isLoggedIn || !isAdmin) return <Navigate to="/" replace />
-  return children
-}
+import { AuthProvider } from './context/AuthContext'
 
 function App() {
   const { i18n } = useTranslation()
@@ -54,7 +48,7 @@ function App() {
             <Route path="/my-projects" element={<MyProjects />} />
             <Route path="/sdgs" element={<SDGs />} />
             <Route path="/search" element={<SearchResults />} />
-            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin" element={<AdminDashboard />} />
           </Routes>
         </main>
         <ChatBot />
