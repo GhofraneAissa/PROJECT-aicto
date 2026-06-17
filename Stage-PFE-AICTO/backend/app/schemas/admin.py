@@ -33,11 +33,11 @@ class AdminStats(BaseModel):
     rejected: int
 
 class AdminApproveRequest(BaseModel):
-    admin_id: int
+    admin_id: int = 0
 
 class AdminRejectRequest(BaseModel):
-    reason: str
-    admin_id: int
+    reason: str = ""
+    admin_id: int = 0
 
 # --- Organization moderation schemas ---
 

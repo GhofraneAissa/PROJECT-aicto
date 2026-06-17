@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -19,6 +19,13 @@ import SearchResults from './pages/SearchResults'
 import AdminDashboard from './pages/AdminDashboard'
 import MyProjects from './pages/MyProjects'
 import ChatBot from './components/ChatBot'
+import { AuthProvider, useAuth } from './context/AuthContext'
+
+function AdminRoute({ children }) {
+  const { isAdmin, isLoggedIn } = useAuth()
+  if (!isLoggedIn || !isAdmin) return <Navigate to="/" replace />
+  return children
+}
 
 function App() {
   const { i18n } = useTranslation()
@@ -31,29 +38,31 @@ function App() {
   }, [i18n, i18n.language])
 
   return (
-    <div className="app">
-      <Navbar />
-      <main style={{ minHeight: 'calc(100vh - 160px)', paddingTop: '72px' }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/stakeholders" element={<StakeholderDirectory />} />
-          <Route path="/projects" element={<ProjectStocktaking />} />
-          <Route path="/projects/:id" element={<ProjectDetails />} />
-          <Route path="/map" element={<KnowledgeMap />} />
-          <Route path="/resources" element={<ResourceLibrary />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/my-projects" element={<MyProjects />} />
-          <Route path="/sdgs" element={<SDGs />} />
-          <Route path="/search" element={<SearchResults />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </main>
-      <ChatBot />
-      <Footer />
-      <UserGuideTour />
-      <ToastContainer position="bottom-right" theme="light" />
-    </div>
+    <AuthProvider>
+      <div className="app">
+        <Navbar />
+        <main style={{ minHeight: 'calc(100vh - 160px)', paddingTop: '72px' }}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/stakeholders" element={<StakeholderDirectory />} />
+            <Route path="/projects" element={<ProjectStocktaking />} />
+            <Route path="/projects/:id" element={<ProjectDetails />} />
+            <Route path="/map" element={<KnowledgeMap />} />
+            <Route path="/resources" element={<ResourceLibrary />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/my-projects" element={<MyProjects />} />
+            <Route path="/sdgs" element={<SDGs />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          </Routes>
+        </main>
+        <ChatBot />
+        <Footer />
+        <UserGuideTour />
+        <ToastContainer position="bottom-right" theme="light" />
+      </div>
+    </AuthProvider>
   )
 }
 

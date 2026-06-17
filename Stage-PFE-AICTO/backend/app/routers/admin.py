@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
@@ -9,7 +9,7 @@ import os
 from app.database import get_db
 from app.models.project import Project
 from app.models.user import User
-from app.schemas.admin import AdminPendingProject, AdminStats, AdminProjectDocument, AdminProjectCountry, AdminProjectOwner, AdminApproveRequest, AdminRejectRequest, AdminPendingOrganization, AdminOrgStats
+from app.schemas.admin import AdminPendingProject, AdminStats, AdminProjectDocument, AdminProjectCountry, AdminProjectOwner, AdminPendingOrganization, AdminOrgStats
 from app.services.email_service import send_rejection_email, send_org_rejection_email
 
 router = APIRouter()
@@ -169,27 +169,27 @@ def approve_organization(user_id: int, db: Session = Depends(get_db), admin: Use
     return {"message": "Organization approved successfully"}
 
 @router.put("/orgs/{user_id}/reject")
-def reject_organization(user_id: int, body: AdminRejectRequest, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
-    if not body.reason or not body.reason.strip():
+def reject_organization(user_id: int, reason: str = Body("", embed=True), db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    if not reason or not reason.strip():
         raise HTTPException(status_code=400, detail="Rejection reason is required")
     org = db.query(User).filter(User.id == user_id, User.role == "organization").first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
     org.is_approved = False
-    org.rejection_reason = body.reason.strip()
+    org.rejection_reason = reason.strip()
     db.commit()
 
     if org.email:
         send_org_rejection_email(
             recipient_email=org.email,
             organization_name=org.organization_name or "User",
-            reason=body.reason.strip()
+            reason=reason.strip()
         )
 
     return {"message": "Organization rejected"}
 
 @router.put("/projects/{project_id}/approve")
-def approve_project(project_id: int, body: AdminApproveRequest, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def approve_project(project_id: int, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -200,14 +200,14 @@ def approve_project(project_id: int, body: AdminApproveRequest, db: Session = De
     return {"message": "Project approved successfully"}
 
 @router.put("/projects/{project_id}/reject")
-def reject_project(project_id: int, body: AdminRejectRequest, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
-    if not body.reason or not body.reason.strip():
+def reject_project(project_id: int, reason: str = Body("", embed=True), db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+    if not reason or not reason.strip():
         raise HTTPException(status_code=400, detail="Rejection reason is required")
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     project.status = "rejected"
-    project.rejection_reason = body.reason.strip()
+    project.rejection_reason = reason.strip()
     project.moderated_by = admin.id
     project.moderated_at = datetime.now(timezone.utc)
     db.commit()
@@ -217,7 +217,7 @@ def reject_project(project_id: int, body: AdminRejectRequest, db: Session = Depe
             recipient_email=project.owner.email,
             organization_name=project.owner.organization_name or "User",
             project_title=project.title,
-            reason=body.reason.strip()
+            reason=reason.strip()
         )
 
     return {"message": "Project rejected"}

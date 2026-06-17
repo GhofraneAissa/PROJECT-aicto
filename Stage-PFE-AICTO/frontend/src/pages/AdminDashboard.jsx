@@ -1,790 +1,733 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FaClipboardList, FaCheckCircle, FaTimesCircle, FaEye, FaSignOutAlt, FaGlobeAmericas, FaLayerGroup, FaMicrochip, FaCalendarAlt, FaBuilding, FaUsers, FaUserShield, FaEnvelope, FaPhone, FaGlobe, FaMapMarkerAlt, FaStar, FaIndustry, FaExclamationTriangle } from 'react-icons/fa'
 import { toast } from 'react-toastify'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
+  AreaChart, Area, ComposedChart
+} from 'recharts'
+import {
+  FaUsers, FaUserCheck, FaUserPlus, FaPercentage, FaProjectDiagram,
+  FaClock, FaCheckCircle, FaTimesCircle, FaFlag, FaFileExport,
+  FaDownload, FaFileExcel, FaFileCsv, FaFilePdf, FaSyncAlt,
+  FaClipboardList, FaBuilding, FaGlobeAmericas, FaEnvelope,
+  FaSearch, FaCheck, FaBan, FaEye, FaChartLine, FaChartBar,
+  FaChartPie, FaCalendarAlt, FaArrowUp, FaArrowDown, FaStar,
+  FaUserShield, FaChartArea, FaFilter
+} from 'react-icons/fa'
 import { API_BASE } from '../config'
 
-function AdminDashboard() {
+const C = {
+  primary:   '#185FA5',
+  secondary: '#534AB7',
+  success:   '#0F6E56',
+  warning:   '#854F0B',
+  danger:    '#993C1D',
+  info:      '#1D9E75',
+  chart: ['#378ADD','#7F77DD','#1D9E75','#EF9F27','#D85A30','#D4537E','#888780','#97C459','#BA7517'],
+}
+
+const adminTabs = [
+  { id: 1, labelKey: 'Overview', icon: FaChartLine },
+  { id: 2, labelKey: 'Management', icon: FaUsers },
+]
+
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload) return null
+  return (
+    <div style={{ background: 'rgba(15,23,42,0.92)', borderRadius: 8, padding: '8px 12px', color: '#fff', border: '0.5px solid rgba(255,255,255,0.1)', fontSize: 11 }}>
+      <p style={{ fontWeight: 500, marginBottom: 4, opacity: .6, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.4px' }}>{label}</p>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0' }}>
+          <span style={{ width: 7, height: 7, borderRadius: 2, background: p.color, flexShrink: 0 }} />
+          <span style={{ color: p.color }}>{p.name}:</span>
+          <strong>{p.value}</strong>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function KpiCard({ label, value, icon: Icon, color, delta, deltaUp }) {
+  return (
+    <div style={{
+      background: 'var(--at-card)', border: '0.5px solid var(--at-border)',
+      borderRadius: 12, padding: 14, position: 'relative', overflow: 'hidden',
+      transition: 'border-color .2s, transform .2s'
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.transform = 'translateY(-1px)' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--at-border)'; e.currentTarget.style.transform = 'translateY(0)' }}
+    >
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: color, borderRadius: '12px 12px 0 0' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}18`, color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+          <Icon />
+        </div>
+        {delta !== undefined && (
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 500,
+            padding: '2px 6px', borderRadius: 20,
+            color: deltaUp ? C.success : C.danger,
+            background: deltaUp ? '#E1F5EE' : '#FAECE7'
+          }}>
+            {deltaUp ? <FaArrowUp style={{ fontSize: 8 }} /> : <FaArrowDown style={{ fontSize: 8 }} />}
+            {delta}
+          </span>
+        )}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, marginBottom: 3, fontVariantNumeric: 'tabular-nums' }}>{value ?? 0}</div>
+      <div style={{ fontSize: 11, color: 'var(--at-muted)', textTransform: 'uppercase', letterSpacing: '.3px' }}>{label}</div>
+    </div>
+  )
+}
+
+function Card({ children, span, style = {} }) {
+  return (
+    <div style={{
+      background: 'var(--at-card)', border: '0.5px solid var(--at-border)',
+      borderRadius: 12, padding: 14, overflow: 'hidden',
+      gridColumn: span ? `span ${span}` : undefined,
+      display: 'flex', flexDirection: 'column',
+      ...style
+    }}>
+      {children}
+    </div>
+  )
+}
+
+function CardHeader({ icon: Icon, iconBg, iconColor, title, sub, badge }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 24, height: 24, borderRadius: 6, background: iconBg || '#E6F1FB', color: iconColor || C.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+          <Icon />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 500 }}>{title}</div>
+          {sub && <div style={{ fontSize: 10, color: 'var(--at-muted)', marginTop: 1 }}>{sub}</div>}
+        </div>
+      </div>
+      {badge && (
+        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: 'var(--at-surface)', color: 'var(--at-muted)' }}>{badge}</span>
+      )}
+    </div>
+  )
+}
+
+function AdminDashboard({ token: propToken }) {
   const { t } = useTranslation()
-  const [token, setToken] = useState(localStorage.getItem('access_token'))
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
-  const [pendingProjects, setPendingProjects] = useState([])
-  const [stats, setStats] = useState(null)
+  const [token, setTokenState] = useState(propToken || localStorage.getItem('access_token'))
+  const [activeTab, setActiveTab] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [overview, setOverview] = useState(null)
+  const [userMgmt, setUserMgmt] = useState(null)
+  const [moderation, setModeration] = useState(null)
+  const [signups, setSignups] = useState([])
+  const [latestRegs, setLatestRegs] = useState([])
+  const [platformStats, setPlatformStats] = useState(null)
+  const [orgStatus, setOrgStatus] = useState([])
+  const [notifications, setNotifications] = useState(null)
+  const [lastLogins, setLastLogins] = useState([])
+  const [downloadsTimeline, setDownloadsTimeline] = useState([])
   const [actionLoading, setActionLoading] = useState(null)
-  
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectProjectId, setRejectProjectId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
-  const [rejectType, setRejectType] = useState('project')
-  const [activeTab, setActiveTab] = useState('projects')
-  const [pendingOrgs, setPendingOrgs] = useState([])
-  const [approvedOrgs, setApprovedOrgs] = useState([])
-  const [rejectedOrgs, setRejectedOrgs] = useState([])
-  const [orgsLoading, setOrgsLoading] = useState(false)
-  const [orgStats, setOrgStats] = useState(null)
-  const [orgFilter, setOrgFilter] = useState('pending')
-  const [orgActionLoading, setOrgActionLoading] = useState(null)
+
+  const authHeaders = useCallback(() => ({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  }), [token])
 
   useEffect(() => {
-    if (token) {
-      fetchPendingProjects()
-      fetchStats()
-      fetchOrgStats()
-      fetchPendingOrgs()
-    }
+    const stored = localStorage.getItem('access_token')
+    if (!token && stored) setTokenState(stored)
   }, [token])
 
   useEffect(() => {
-    if (token && activeTab === 'organizations') {
-      fetchOrgStats()
-      if (orgFilter === 'pending') fetchPendingOrgs()
-      else if (orgFilter === 'approved') fetchApprovedOrgs()
-      else fetchRejectedOrgs()
-    }
-  }, [token, activeTab, orgFilter])
-
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    setLoginError('')
-    try {
-      const res = await fetch(`${API_BASE}/api/users/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || t('admin.login.loginFailed'))
-      if (data.user.role !== 'admin') throw new Error(t('admin.login.accessDenied'))
-      
-      localStorage.setItem('access_token', data.access_token)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      setToken(data.access_token)
-    } catch (err) {
-      setLoginError(err.message)
-    }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('user')
-    setToken(null)
-  }
-
-  const fetchPendingProjects = async () => {
-    try {
+    if (!token) { setLoading(false); return }
+    const fetchAll = async () => {
       setLoading(true)
-      const res = await fetch(`${API_BASE}/api/admin/projects/pending`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setPendingProjects(data)
+      const base = `${API_BASE}/api/analytics/admin`
+      const h = authHeaders()
+      const safe = async (url, fallback) => {
+        try {
+          const res = await fetch(url, { headers: { 'Authorization': h['Authorization'] } })
+          if (!res.ok) return fallback
+          return await res.json()
+        } catch { return fallback }
       }
-    } catch (err) {
-      console.error('Error fetching pending projects:', err)
-    } finally {
+      const [ov, um, mod, su, lr, ps, ost, notif, ll, dt] = await Promise.all([
+        safe(`${base}/overview`, null),
+        safe(`${base}/user-management`, null),
+        safe(`${base}/moderation`, null),
+        safe(`${base}/user-signups`, []),
+        safe(`${base}/latest-registrations`, []),
+        safe(`${base}/platform-stats`, null),
+        safe(`${base}/org-status`, []),
+        safe(`${base}/notifications`, null),
+        safe(`${base}/last-logins`, []),
+        safe(`${base}/downloads-timeline`, []),
+      ])
+      if (ov) setOverview(ov)
+      if (um) setUserMgmt(um)
+      if (mod) setModeration(mod)
+      if (su) setSignups(su)
+      if (lr) setLatestRegs(lr)
+      if (ps) setPlatformStats(ps)
+      if (ost) setOrgStatus(ost)
+      if (notif) setNotifications(notif)
+      if (ll) setLastLogins(ll)
+      if (dt) setDownloadsTimeline(dt)
       setLoading(false)
     }
-  }
+    fetchAll()
+  }, [token, authHeaders])
 
-  const fetchStats = async () => {
+  const handleApprove = async (id) => {
+    setActionLoading(id)
     try {
-      const res = await fetch(`${API_BASE}/api/admin/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetch(`${API_BASE}/api/admin/projects/${id}/approve`, {
+        method: 'PUT', headers: authHeaders()
       })
-      if (res.ok) {
-        const data = await res.json()
-        setStats(data)
-      }
-    } catch (err) {
-      console.error('Error fetching stats:', err)
+      if (!res.ok) throw new Error('Failed to approve')
+      toast.success('Project approved')
+      const mod = await (await fetch(`${API_BASE}/api/analytics/admin/moderation`, { headers: authHeaders() })).json()
+      if (mod) setModeration(mod)
+    } catch (e) {
+      toast.error(e.message)
     }
+    setActionLoading(null)
   }
 
-  const handleApprove = async (projectId) => {
-    setActionLoading(projectId)
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/projects/${projectId}/approve`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ admin_id: 1 })
-      })
-      if (res.ok) {
-        toast.success(t('admin.projects.approvedToast'))
-        fetchPendingProjects()
-        fetchStats()
-      } else {
-        const errData = await res.json()
-        toast.error(t('admin.projects.approveFailed', { message: errData.detail || t('admin.unknownError') }))
-      }
-    } catch (err) {
-      console.error(`Error approving project:`, err)
-      toast.error(t('admin.projects.networkError', { message: err.message }))
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  const openRejectModal = (id, type = 'project') => {
-    setRejectProjectId(id)
-    setRejectType(type)
-    setShowRejectModal(true)
-    setRejectReason('')
-  }
-
-  const fetchOrgStats = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/orgs/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setOrgStats(data)
-      }
-    } catch (err) {
-      console.error('Error fetching org stats:', err)
-    }
-  }
-
-  const fetchPendingOrgs = async () => {
-    try {
-      setOrgsLoading(true)
-      const res = await fetch(`${API_BASE}/api/admin/orgs/pending`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (res.ok) setPendingOrgs(await res.json())
-    } catch (err) {
-      console.error('Error fetching pending orgs:', err)
-    } finally {
-      setOrgsLoading(false)
-    }
-  }
-
-  const fetchApprovedOrgs = async () => {
-    try {
-      setOrgsLoading(true)
-      const res = await fetch(`${API_BASE}/api/admin/orgs/approved`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (res.ok) setApprovedOrgs(await res.json())
-    } catch (err) {
-      console.error('Error fetching approved orgs:', err)
-    } finally {
-      setOrgsLoading(false)
-    }
-  }
-
-  const fetchRejectedOrgs = async () => {
-    try {
-      setOrgsLoading(true)
-      const res = await fetch(`${API_BASE}/api/admin/orgs/rejected`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      if (res.ok) setRejectedOrgs(await res.json())
-    } catch (err) {
-      console.error('Error fetching rejected orgs:', err)
-    } finally {
-      setOrgsLoading(false)
-    }
-  }
-
-  const handleOrgApprove = async (orgId) => {
-    setOrgActionLoading(orgId)
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/orgs/${orgId}/approve`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ admin_id: 1 })
-      })
-      if (res.ok) {
-        toast.success(t('admin.organizations.approvedToast'))
-        fetchPendingOrgs()
-        fetchOrgStats()
-      } else {
-        const errData = await res.json()
-        toast.error(t('admin.organizations.approveFailed', { message: errData.detail || t('admin.unknownError') }))
-      }
-    } catch (err) {
-      console.error('Error approving org:', err)
-      toast.error(t('admin.organizations.networkError', { message: err.message }))
-    } finally {
-      setOrgActionLoading(null)
-    }
-  }
-
+  const openReject = (id) => { setRejectProjectId(id); setRejectReason(''); setShowRejectModal(true) }
   const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      toast.warning(t('admin.rejectModal.reasonRequired'))
-      return
-    }
+    if (!rejectReason.trim()) { toast.error('Please provide a reason'); return }
     setActionLoading(rejectProjectId)
     try {
-      const endpoint = rejectType === 'project'
-        ? `${API_BASE}/api/admin/projects/${rejectProjectId}/reject`
-        : `${API_BASE}/api/admin/orgs/${rejectProjectId}/reject`
-      const res = await fetch(endpoint, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reason: rejectReason, admin_id: 1 })
+      const res = await fetch(`${API_BASE}/api/admin/projects/${rejectProjectId}/reject`, {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({ reason: rejectReason }),
       })
-      if (res.ok) {
-        toast.info(rejectType === 'project' ? t('admin.rejectModal.rejectedProject') : t('admin.rejectModal.rejectedOrg'))
-        setShowRejectModal(false)
-        if (rejectType === 'project') {
-          fetchPendingProjects()
-          fetchStats()
-        } else {
-          fetchPendingOrgs()
-          fetchOrgStats()
-        }
-      } else {
-        const errData = await res.json()
-        toast.error(t('admin.rejectModal.rejectFailed', { message: errData.detail || t('admin.unknownError') }))
-      }
-    } catch (err) {
-      console.error(`Error rejecting project:`, err)
-      toast.error(t('admin.rejectModal.networkError', { message: err.message }))
-    } finally {
-      setActionLoading(null)
+      if (!res.ok) throw new Error('Failed to reject')
+      toast.success('Project rejected')
+      setShowRejectModal(false)
+      const mod = await (await fetch(`${API_BASE}/api/analytics/admin/moderation`, { headers: authHeaders() })).json()
+      if (mod) setModeration(mod)
+    } catch (e) {
+      toast.error(e.message)
     }
+    setActionLoading(null)
   }
+
+  const formatLastLogin = useCallback((dateStr) => {
+    if (!dateStr) return 'N/A'
+    const d = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now - d
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHrs = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHrs < 24) return `${diffHrs}h ago`
+    if (diffDays < 7) return `${diffDays}d ago`
+    return d.toLocaleDateString()
+  }, [])
+
+  const signupChart = useMemo(() =>
+    signups.map(s => ({
+      label: `${s.year}-${String(s.month).padStart(2, '0')}`,
+      count: s.count,
+      cumulative: s.cumulative,
+    })), [signups])
+
+  const statusData = useMemo(() => overview ? [
+    { name: 'Approved', value: overview.approved_projects, color: C.success },
+    { name: 'Pending', value: overview.pending_projects, color: C.warning },
+    { name: 'Rejected', value: overview.rejected_projects, color: C.danger },
+  ].filter(d => d.value > 0) : [], [overview])
+
+  const subTrends = useMemo(() => (moderation?.submissionTrends || []).map(s => ({
+    label: `${s.year}-${String(s.month).padStart(2, '0')}`,
+    count: s.count,
+  })), [moderation])
+
+  const topOrgs = useMemo(() => (userMgmt?.mostActiveUsers || []).slice(0, 10), [userMgmt])
+
+  const userStatusData = useMemo(() => userMgmt ? [
+    { name: 'Active', value: userMgmt.accountStatus?.find?.(s => s.status === 'active')?.count || 0, color: C.success },
+    { name: 'Inactive', value: userMgmt.accountStatus?.find?.(s => s.status === 'inactive')?.count || 0, color: C.danger },
+  ].filter(d => d.value > 0) : [], [userMgmt])
+
+  const validationData = useMemo(() => overview ? [
+    { name: 'Submitted', value: overview.total_projects || 0, color: C.primary },
+    { name: 'Approved', value: overview.approved_projects || 0, color: C.success },
+    { name: 'Rejected', value: overview.rejected_projects || 0, color: C.danger },
+  ] : [], [overview])
+
+  const topResourcesData = useMemo(() => (platformStats?.topResources || []).slice(0, 10), [platformStats])
+
+  const usersByRoleData = useMemo(() => userMgmt?.usersByRole || [], [userMgmt])
+
+  const orgStatusWithColors = useMemo(() =>
+    orgStatus.map(s => ({
+      ...s,
+      color: s.status === 'Approved' ? '#10b981' : s.status === 'Pending' ? '#f59e0b' : '#ef4444',
+    })), [orgStatus])
+
+  const downloadsTimelineData = useMemo(() =>
+    downloadsTimeline.map(d => ({
+      label: `${d.year}-${String(d.month).padStart(2, '0')}`,
+      count: d.count,
+    })), [downloadsTimeline])
+
+  const overviewKpis = useMemo(() => overview ? [
+    { label: 'Registered Users', value: overview.total_users, icon: FaUsers, color: C.primary, delta: null },
+    { label: 'Approved Orgs', value: orgStatus.find(s => s.status === 'Approved')?.count || 0, icon: FaBuilding, color: C.success, delta: null },
+    { label: 'Pending Orgs', value: orgStatus.find(s => s.status === 'Pending')?.count || 0, icon: FaClock, color: C.warning, delta: null },
+    { label: 'Activated Accounts', value: overview.active_users ?? 0, icon: FaUserCheck, color: C.info, delta: null },
+    { label: 'Pending Projects', value: overview.pending_projects, icon: FaProjectDiagram, color: C.warning, delta: null },
+    { label: 'Rejected Projects', value: overview.rejected_projects, icon: FaTimesCircle, color: C.danger, delta: null },
+    { label: 'Approval Rate', value: `${overview.approval_rate}%`, icon: FaPercentage, color: C.info, delta: null },
+    { label: 'Total Downloads', value: overview.total_downloads ?? 0, icon: FaDownload, color: C.secondary, delta: null },
+    { label: 'Unread Notifications', value: notifications?.unread_count ?? 0, icon: FaEnvelope, color: C.chart[5], delta: null },
+    { label: 'Last Login', value: lastLogins?.[0]?.last_login ? formatLastLogin(lastLogins[0].last_login) : 'N/A', icon: FaCalendarAlt, color: C.chart[7], delta: null },
+  ] : [], [overview, orgStatus, notifications, lastLogins, formatLastLogin])
+
+  const moderationKpis = useMemo(() => overview ? [
+    { label: 'Pending Reviews', value: overview.pending_projects, icon: FaClock, color: C.warning, delta: null },
+    { label: 'Approved Today', value: overview.approved_today ?? 0, icon: FaCheckCircle, color: C.success, delta: null },
+    { label: 'Rejected Today', value: overview.rejected_today ?? 0, icon: FaTimesCircle, color: C.danger, delta: null },
+    { label: 'Avg Review Time', value: `${overview.average_review_hours ?? 0}h`, icon: FaClock, color: C.info, delta: null },
+  ] : [], [overview])
 
   if (!token) {
     return (
-      <div className="admin-login-page">
-        <div className="admin-login-container">
-          <div className="admin-login-header">
-            <h1>{t('admin.login.title')}</h1>
-            <p>{t('admin.login.subtitle')}</p>
-          </div>
-          <form onSubmit={handleLogin} className="admin-login-form">
-            {loginError && <div className="login-error">{loginError}</div>}
-            <div className="form-group">
-              <label>{t('admin.login.email')}</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('admin.login.emailPlaceholder')} required />
-            </div>
-            <div className="form-group">
-              <label>{t('admin.login.password')}</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('admin.login.passwordPlaceholder')} required />
-            </div>
-            <button type="submit" className="btn-login">{t('admin.login.submitBtn')}</button>
-          </form>
-        </div>
-        <style>{styles}</style>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'var(--at-bg)' }}>
+        <FaUserShield style={{ fontSize: 48, color: C.danger }} />
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Admin Access Required</h2>
+        <p style={{ color: 'var(--at-muted)', fontSize: 13 }}>Please log in with an admin account to access the Admin Dashboard.</p>
+        <a href="/auth.html" style={{ padding: '10px 24px', background: C.primary, color: '#fff', borderRadius: 8, textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>Sign In</a>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, background: 'var(--at-bg)' }}>
+        <div style={{ width: 40, height: 40, border: '3px solid var(--at-border)', borderTopColor: C.primary, borderRadius: '50%', animation: 'at-spin .8s linear infinite' }} />
+        <p style={{ color: 'var(--at-muted)', fontSize: 13, fontWeight: 500 }}>Loading admin dashboard...</p>
       </div>
     )
   }
 
   return (
-    <div className="admin-dashboard">
-      <header className="dashboard-header">
-        <div className="container header-content">
-          <div className="header-title">
-            <h1>{t('admin.header.title')} <span className="text-primary">{t('admin.header.titleHighlight')}</span></h1>
-            <p>{t('admin.header.welcome')}</p>
-          </div>
-          <button className="btn-logout-top" onClick={handleLogout}>
-            <FaSignOutAlt /> {t('admin.header.signOut')}
+    <div style={{ fontFamily: 'Inter, -apple-system, sans-serif', background: 'var(--at-bg)', minHeight: '60vh', color: 'var(--at-text)' }}>
+      <style>{ADMIN_CSS}</style>
+
+      <div style={{ background: 'var(--at-card)', borderBottom: '0.5px solid var(--at-border)', padding: '0 20px', display: 'flex', gap: 2, position: 'sticky', top: 0, zIndex: 90 }}>
+        {adminTabs.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '10px 14px', border: 'none', background: 'transparent', cursor: 'pointer',
+            fontFamily: 'inherit', fontSize: 12, fontWeight: activeTab === tab.id ? 600 : 400,
+            color: activeTab === tab.id ? C.primary : 'var(--at-muted)',
+            borderBottom: activeTab === tab.id ? `2px solid ${C.primary}` : '2px solid transparent',
+            transition: 'color .15s'
+          }}>
+            <tab.icon style={{ fontSize: 11 }} />
+            {tab.labelKey}
           </button>
-        </div>
-      </header>
+        ))}
+      </div>
 
-      <main className="dashboard-main">
-        <div className="container">
-          <div className="admin-tabs">
-            <button className={`admin-tab ${activeTab === 'projects' ? 'active' : ''}`} onClick={() => setActiveTab('projects')}>
-              <FaClipboardList /> {t('admin.tabs.projects')}
-            </button>
-            <button className={`admin-tab ${activeTab === 'organizations' ? 'active' : ''}`} onClick={() => setActiveTab('organizations')}>
-              <FaUsers /> {t('admin.tabs.organizations')}
-            </button>
-          </div>
-
-          {activeTab === 'projects' && (
-            <>
-              <div className="stats-bar">
-                <div className="stat-item">
-                  <div className="stat-icon pending"><FaClipboardList /></div>
-                  <div className="stat-data">
-                    <span className="stat-val">{stats?.pending || 0}</span>
-                    <span className="stat-lab">{t('admin.stats.pending')}</span>
-                  </div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-icon approved"><FaCheckCircle /></div>
-                  <div className="stat-data">
-                    <span className="stat-val">{stats?.approved || 0}</span>
-                    <span className="stat-lab">{t('admin.stats.approved')}</span>
-                  </div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-icon rejected"><FaTimesCircle /></div>
-                  <div className="stat-data">
-                    <span className="stat-val">{stats?.rejected || 0}</span>
-                    <span className="stat-lab">{t('admin.stats.rejected')}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="content-section">
-                <div className="section-header">
-                  <h2>{t('admin.projects.sectionTitle')}</h2>
-                  <span className="count-badge">{t('admin.projects.countLabel', { count: pendingProjects.length })}</span>
-                </div>
-
-                {loading ? (
-                  <div className="dashboard-loader">
-                    <div className="spinner"></div>
-                    <p>{t('admin.projects.loading')}</p>
-                  </div>
-                ) : pendingProjects.length === 0 ? (
-                  <div className="empty-dashboard">
-                    <div className="empty-icon">🛡️</div>
-                    <h3>{t('admin.projects.emptyTitle')}</h3>
-                    <p>{t('admin.projects.emptyDesc')}</p>
-                  </div>
-                ) : (
-                  <div className="pending-grid">
-                    {pendingProjects.map((project) => (
-                      <div key={project.id} className="moderation-card animate-up">
-                        <div className="card-top">
-                          <div className="card-info">
-                            <div className="card-header-main">
-                              <h3>{project.title}</h3>
-                              <div className="status-label">{t('admin.projects.pendingReview')}</div>
-                            </div>
-                            <div className="card-meta">
-                              <span className="meta-tag"><FaGlobeAmericas /> {project.country?.name || t('admin.projects.unknownCountry')}</span>
-                              <span className="meta-tag"><FaLayerGroup /> {project.sector}</span>
-                              <span className="meta-tag"><FaMicrochip /> {project.ai_technology}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="project-body">
-                          <p className="project-preview">{project.description}</p>
-                          
-                          <div className="submission-details">
-                            <div className="detail-item">
-                              <FaBuilding className="detail-icon" />
-                              <div className="detail-content">
-                                <span className="detail-label">{t('admin.projects.submittedBy')}</span>
-                                <span className="detail-value">{project.owner?.organization_name || project.owner?.email || t('admin.projects.unknownUser')}</span>
-                              </div>
-                            </div>
-                            <div className="detail-item">
-                              <FaCalendarAlt className="detail-icon" />
-                              <div className="detail-content">
-                                <span className="detail-label">{t('admin.projects.submissionDate')}</span>
-                                <span className="detail-value">{new Date(project.submitted_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                              </div>
-                            </div>
-                            {project.website && (
-                              <div className="detail-item">
-                                <FaEye className="detail-icon" />
-                                <div className="detail-content">
-                                  <span className="detail-label">{t('admin.projects.website')}</span>
-                                  <span className="detail-value">
-                                    <a href={project.website} target="_blank" rel="noopener noreferrer" className="project-link">
-                                      {t('admin.projects.visitProjectSite')}
-                                    </a>
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            {project.documents && project.documents.length > 0 && (
-                              <div className="detail-item">
-                                <FaClipboardList className="detail-icon" />
-                                <div className="detail-content">
-                                  <span className="detail-label">{t('admin.projects.attachments', { count: project.documents.length })}</span>
-                                  <div className="admin-files-list">
-                                    {project.documents.map((doc, idx) => (
-                                      <a 
-                                        key={idx} 
-                                        href={`${API_BASE}${doc.file_url}`} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
-                                        className="admin-file-link"
-                                      >
-                                        {doc.original_filename}
-                                      </a>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="card-footer">
-                          <div className="card-actions">
-                            <button 
-                              className="btn-action-reject" 
-                              onClick={() => openRejectModal(project.id, 'project')}
-                              disabled={actionLoading === project.id}
-                            >
-                              {t('admin.projects.rejectBtn')}
-                            </button>
-                            <button 
-                              className="btn-action-approve" 
-                              onClick={() => handleApprove(project.id)}
-                              disabled={actionLoading === project.id}
-                            >
-                              {actionLoading === project.id ? t('admin.projects.processing') : t('admin.projects.approveBtn')}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {activeTab === 'organizations' && (
-            <>
-              <div className="stats-bar">
-                <div className="stat-item">
-                  <div className="stat-icon pending"><FaUsers /></div>
-                  <div className="stat-data">
-                    <span className="stat-val">{orgStats?.pending_approval || 0}</span>
-                    <span className="stat-lab">{t('admin.stats.pending')}</span>
-                  </div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-icon approved"><FaCheckCircle /></div>
-                  <div className="stat-data">
-                    <span className="stat-val">{orgStats?.approved || 0}</span>
-                    <span className="stat-lab">{t('admin.stats.approved')}</span>
-                  </div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-icon rejected"><FaTimesCircle /></div>
-                  <div className="stat-data">
-                    <span className="stat-val">{orgStats?.rejected || 0}</span>
-                    <span className="stat-lab">{t('admin.stats.rejected')}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="content-section">
-                <div className="section-header">
-                  <div className="filter-tabs">
-                    <button className={`filter-tab ${orgFilter === 'pending' ? 'active' : ''}`} onClick={() => setOrgFilter('pending')}>
-                      {t('admin.organizations.filterPending')}
-                    </button>
-                    <button className={`filter-tab ${orgFilter === 'approved' ? 'active' : ''}`} onClick={() => setOrgFilter('approved')}>
-                      {t('admin.organizations.filterApproved')}
-                    </button>
-                    <button className={`filter-tab ${orgFilter === 'rejected' ? 'active' : ''}`} onClick={() => setOrgFilter('rejected')}>
-                      {t('admin.organizations.filterRejected')}
-                    </button>
-                  </div>
-                  <span className="count-badge">
-                    {t('admin.organizations.countLabel', { count: orgFilter === 'pending' ? pendingOrgs.length : orgFilter === 'approved' ? approvedOrgs.length : rejectedOrgs.length })}
-                  </span>
-                </div>
-
-                {orgsLoading ? (
-                  <div className="dashboard-loader">
-                    <div className="spinner"></div>
-                    <p>{t('admin.organizations.loading')}</p>
-                  </div>
-                ) : orgFilter === 'pending' && pendingOrgs.length === 0 ? (
-                  <div className="empty-dashboard">
-                    <div className="empty-icon">🛡️</div>
-                    <h3>{t('admin.organizations.emptyPendingTitle')}</h3>
-                    <p>{t('admin.organizations.emptyPendingDesc')}</p>
-                  </div>
-                ) : orgFilter === 'approved' && approvedOrgs.length === 0 ? (
-                  <div className="empty-dashboard">
-                    <div className="empty-icon">📋</div>
-                    <h3>{t('admin.organizations.emptyApprovedTitle')}</h3>
-                    <p>{t('admin.organizations.emptyApprovedDesc')}</p>
-                  </div>
-                ) : orgFilter === 'rejected' && rejectedOrgs.length === 0 ? (
-                  <div className="empty-dashboard">
-                    <div className="empty-icon">📋</div>
-                    <h3>{t('admin.organizations.emptyRejectedTitle')}</h3>
-                    <p>{t('admin.organizations.emptyRejectedDesc')}</p>
-                  </div>
-                ) : (
-                  <div className="pending-grid">
-                    {(orgFilter === 'pending' ? pendingOrgs : orgFilter === 'approved' ? approvedOrgs : rejectedOrgs).map((org) => (
-                      <div key={org.id} className="moderation-card animate-up">
-                        <div className="card-top">
-                          <div className="card-info">
-                            <div className="card-header-main">
-                              <div className="org-header-title">
-                                {org.logo ? <img src={org.logo} alt="" className="org-avatar-sm" /> : <div className="org-avatar-sm org-avatar-placeholder-sm"><FaBuilding /></div>}
-                                <h3>{org.organization_name}</h3>
-                              </div>
-                              <div className={`status-label ${orgFilter === 'approved' ? 'status-approved' : orgFilter === 'rejected' ? 'status-rejected' : ''}`}>
-                                {orgFilter === 'pending' ? t('admin.organizations.pendingReview') : orgFilter === 'approved' ? t('admin.organizations.approved') : t('admin.organizations.rejected')}
-                              </div>
-                            </div>
-                            <div className="card-meta">
-                              <span className="meta-tag"><FaUserShield /> {org.organization_type}</span>
-                              {org.country && <span className="meta-tag"><FaGlobeAmericas /> {org.country}</span>}
-                              {org.sector && <span className="meta-tag"><FaIndustry /> {org.sector}</span>}
-                              {org.city && <span className="meta-tag"><FaMapMarkerAlt /> {org.city}</span>}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="project-body">
-                          {org.description && <p className="project-preview">{org.description}</p>}
-
-                          <div className="submission-details">
-                            <div className="detail-item">
-                              <FaEnvelope className="detail-icon" />
-                              <div className="detail-content">
-                                <span className="detail-label">{t('admin.organizations.email')}</span>
-                                <span className="detail-value">{org.email}</span>
-                              </div>
-                            </div>
-                            {org.phone && (
-                              <div className="detail-item">
-                                <FaPhone className="detail-icon" />
-                                <div className="detail-content">
-                                  <span className="detail-label">{t('admin.organizations.phone')}</span>
-                                  <span className="detail-value">{org.phone}</span>
-                                </div>
-                              </div>
-                            )}
-                            {org.website && (
-                              <div className="detail-item">
-                                <FaGlobe className="detail-icon" />
-                                <div className="detail-content">
-                                  <span className="detail-label">{t('admin.organizations.website')}</span>
-                                  <span className="detail-value">
-                                    <a href={org.website} target="_blank" rel="noopener noreferrer" className="project-link">{org.website}</a>
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                            {org.created_at && (
-                              <div className="detail-item">
-                                <FaCalendarAlt className="detail-icon" />
-                                <div className="detail-content">
-                                  <span className="detail-label">{t('admin.organizations.registered')}</span>
-                                  <span className="detail-value">{new Date(org.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                </div>
-                              </div>
-                            )}
-                            {org.rejection_reason && (
-                              <div className="detail-item">
-                                <FaExclamationTriangle className="detail-icon" style={{ color: '#ef4444' }} />
-                                <div className="detail-content">
-                                  <span className="detail-label">{t('admin.organizations.rejectionReason')}</span>
-                                  <span className="detail-value" style={{ color: '#ef4444' }}>{org.rejection_reason}</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {orgFilter === 'pending' && (
-                          <div className="card-footer">
-                            <div className="card-actions">
-                              <button 
-                                className="btn-action-reject" 
-                                onClick={() => openRejectModal(org.id, 'org')}
-                                disabled={orgActionLoading === org.id}
-                              >
-                                {t('admin.organizations.rejectBtn')}
-                              </button>
-                              <button 
-                                className="btn-action-approve" 
-                                onClick={() => handleOrgApprove(org.id)}
-                                disabled={orgActionLoading === org.id}
-                              >
-                                {orgActionLoading === org.id ? t('admin.organizations.processing') : t('admin.organizations.approveBtn')}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </main>
+      <div style={{ maxWidth: 1440, margin: '0 auto', padding: '16px 20px 40px' }}>
+        {activeTab === 1 && renderOverview()}
+        {activeTab === 2 && renderManagement()}
+      </div>
 
       {showRejectModal && (
-        <div className="modal-backdrop">
-          <div className="modal-content animate-up">
-            <div className="modal-header">
-              <h3>{rejectType === 'project' ? t('admin.rejectModal.titleProject') : t('admin.rejectModal.titleOrg')}</h3>
-              <button className="close-btn" onClick={() => setShowRejectModal(false)}><FaTimesCircle /></button>
-            </div>
-            <div className="modal-body">
-              <p>{rejectType === 'project' ? t('admin.rejectModal.bodyProject') : t('admin.rejectModal.bodyOrg')}</p>
-              <textarea 
-                value={rejectReason} 
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder={rejectType === 'project' 
-                  ? t('admin.rejectModal.placeholderProject')
-                  : t('admin.rejectModal.placeholderOrg')}
-                rows="5"
-              ></textarea>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setShowRejectModal(false)}>{t('admin.rejectModal.cancel')}</button>
-              <button 
-                className="btn-danger" 
-                onClick={handleReject}
-                disabled={!rejectReason.trim() || actionLoading}
-              >
-                {t('admin.rejectModal.confirm')}
-              </button>
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+          onClick={() => setShowRejectModal(false)}
+        >
+          <div style={{
+            background: 'var(--at-card)', borderRadius: 14, padding: 20, width: 400,
+            border: '0.5px solid var(--at-border)', boxShadow: '0 16px 48px rgba(0,0,0,0.15)'
+          }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 12px' }}>Reject Project</h3>
+            <textarea
+              value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+              placeholder="Reason for rejection..."
+              rows={4}
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: '0.5px solid var(--at-border)', resize: 'vertical', fontFamily: 'inherit', fontSize: 12, background: 'var(--at-surface)', color: 'var(--at-text)' }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button onClick={() => setShowRejectModal(false)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '0.5px solid var(--at-border)', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, color: 'var(--at-muted)' }}>Cancel</button>
+              <button onClick={handleReject}
+                style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: C.danger, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 500 }}>Reject</button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   )
+
+  function renderOverview() {
+    return (
+      <>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 14 }}>
+          {overviewKpis.map((k, i) => <KpiCard key={i} {...k} />)}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+          <Card span={2}>
+            <CardHeader icon={FaChartLine} title="User Registration Evolution" sub="Monthly user signups" iconBg="#E6F1FB" iconColor={C.primary} />
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={signupChart} margin={{ top: 6, right: 6, left: 0, bottom: 6 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" vertical={false} />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 9 }} angle={-30} textAnchor="end" interval={1} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="count" stroke={C.primary} strokeWidth={2.5} dot={{ fill: C.primary, r: 3 }} name="Users" />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card span={2}>
+            <CardHeader icon={FaChartArea} title="Project Submission Evolution" sub="Monthly project submissions" iconBg="#E1F5EE" iconColor={C.success} />
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={subTrends} margin={{ top: 6, right: 6, left: 0, bottom: 6 }}>
+                <defs>
+                  <linearGradient id="admin-grad-sub" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={C.primary} stopOpacity={0.18} />
+                    <stop offset="95%" stopColor={C.primary} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" vertical={false} />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 9 }} angle={-30} textAnchor="end" interval={1} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="count" stroke={C.primary} strokeWidth={2} fill="url(#admin-grad-sub)" name="Submissions" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card span={2}>
+            <CardHeader icon={FaFlag} title="Validation Workflow" sub="Submitted \u2192 Approved \u2192 Rejected" iconBg="#FAEEDA" iconColor={C.warning} />
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={validationData} margin={{ top: 6, right: 6, left: 0, bottom: 6 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="value" name="Projects" radius={[5, 5, 0, 0]} barSize={50}>
+                  {validationData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Bar>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card>
+            <CardHeader icon={FaBuilding} title="Organization Status" sub="Org approval breakdown" iconBg="#EEEDFE" iconColor={C.secondary} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={orgStatusWithColors} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                    paddingAngle={3} dataKey="count" nameKey="status" stroke="none">
+                    {orgStatusWithColors.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader icon={FaUsers} title="Users by Type" sub="Role distribution" iconBg="#FAEEDA" iconColor={C.warning} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={usersByRoleData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                    paddingAngle={3} dataKey="count" nameKey="role" stroke="none">
+                    {usersByRoleData.map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card span={2}>
+            <CardHeader icon={FaStar} title="Top Organizations" sub="Most active organizations" iconBg="#FAEEDA" iconColor={C.warning} />
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={topOrgs} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" horizontal={false} />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <YAxis type="category" dataKey="organization_name" axisLine={false} tickLine={false} tick={{ fill: '#555', fontSize: 9 }} width={100} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="project_count" fill={C.secondary} radius={[0, 5, 5, 0]} barSize={16} name="Projects" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card span={2}>
+            <CardHeader icon={FaDownload} title="Most Downloaded Resources" sub="Top resources by downloads" iconBg="#E1F5EE" iconColor={C.success} />
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={topResourcesData} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" horizontal={false} />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <YAxis type="category" dataKey="title" axisLine={false} tickLine={false} tick={{ fill: '#555', fontSize: 9 }} width={120} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="downloads" fill={C.info} radius={[0, 5, 5, 0]} barSize={16} name="Downloads" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card span={4}>
+            <CardHeader icon={FaGlobeAmericas} title="Activity by Country" sub="User distribution by country" iconBg="#EEEDFE" iconColor={C.secondary} />
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={userMgmt?.usersByCountry || []} margin={{ top: 6, right: 6, left: 0, bottom: 6 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" vertical={false} />
+                <XAxis dataKey="country" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 9 }} angle={-30} textAnchor="end" />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" fill={C.primary} radius={[3, 3, 0, 0]} barSize={20} name="Users" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+      </>
+    )
+  }
+
+  function renderManagement() {
+    return (
+      <>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 14 }}>
+          {moderationKpis.map((k, i) => <KpiCard key={i} {...k} />)}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+          <Card span={2}>
+            <CardHeader icon={FaGlobeAmericas} title="Users by Country" sub="Geographic distribution" iconBg="#EEEDFE" iconColor={C.secondary} />
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={userMgmt?.usersByCountry || []} margin={{ top: 6, right: 6, left: 0, bottom: 6 }} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" horizontal={false} />
+                <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <YAxis type="category" dataKey="country" axisLine={false} tickLine={false} tick={{ fill: '#555', fontSize: 10 }} width={90} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" radius={[0, 3, 3, 0]} barSize={16}>
+                  {(userMgmt?.usersByCountry || []).map((entry, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card>
+            <CardHeader icon={FaUserCheck} title="Account Status" sub="Active vs Inactive" iconBg="#E1F5EE" iconColor={C.success} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={userStatusData} cx="50%" cy="50%" innerRadius={40} outerRadius={65}
+                    paddingAngle={3} dataKey="value" nameKey="name" stroke="none">
+                    {userStatusData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader icon={FaBuilding} title="Users by Role" sub="Role distribution" iconBg="#FAEEDA" iconColor={C.warning} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={userMgmt?.usersByRole || []} cx="50%" cy="50%" innerRadius={40} outerRadius={65}
+                    paddingAngle={3} dataKey="count" nameKey="role" stroke="none">
+                    {(userMgmt?.usersByRole || []).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card span={2}>
+            <CardHeader icon={FaClock} title="Pending Queue" sub={`${moderation?.pendingQueue?.length || 0} projects awaiting review`} iconBg="#FAEEDA" iconColor={C.warning} />
+            <div style={{ maxHeight: 260, overflowY: 'auto', flex: 1 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    {['Title', 'Organization', 'Sector', 'Actions'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--at-muted)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.4px', borderBottom: '0.5px solid var(--at-border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(moderation?.pendingQueue || []).map(p => (
+                    <tr key={p.id} style={{ borderBottom: '0.5px solid var(--at-border)' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: 500 }}>{p.title}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--at-muted)' }}>{p.organization}</td>
+                      <td style={{ padding: '6px 8px' }}><span style={{ background: 'var(--at-surface)', color: 'var(--at-muted)', padding: '2px 7px', borderRadius: 20, fontSize: 10 }}>{p.sector}</span></td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <button onClick={() => handleApprove(p.id)} disabled={actionLoading === p.id}
+                          style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: C.success, color: '#fff', cursor: 'pointer', fontSize: 10, marginRight: 4 }}>
+                          <FaCheck style={{ fontSize: 9 }} />
+                        </button>
+                        <button onClick={() => openReject(p.id)} disabled={actionLoading === p.id}
+                          style={{ padding: '4px 8px', borderRadius: 6, border: 'none', background: C.danger, color: '#fff', cursor: 'pointer', fontSize: 10 }}>
+                          <FaBan style={{ fontSize: 9 }} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!moderation?.pendingQueue || moderation.pendingQueue.length === 0) && (
+                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: 'var(--at-muted)', fontSize: 12 }}>No pending projects</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader icon={FaCheckCircle} title="Recently Approved" sub="Last 20 approved" iconBg="#E1F5EE" iconColor={C.success} />
+            <div style={{ maxHeight: 200, overflowY: 'auto', flex: 1 }}>
+              {(moderation?.recentlyApproved || []).slice(0, 6).map(p => (
+                <div key={p.id} style={{ padding: '5px 0', borderBottom: '0.5px solid var(--at-border)', fontSize: 11 }}>
+                  <strong>{p.title}</strong>
+                  <div style={{ color: 'var(--at-muted)', fontSize: 10 }}>{p.organization} · {p.moderated_at?.split('T')[0]}</div>
+                </div>
+              ))}
+              {!(moderation?.recentlyApproved || []).length && (
+                <p style={{ textAlign: 'center', padding: 16, color: 'var(--at-muted)', fontSize: 12 }}>No approved projects</p>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader icon={FaTimesCircle} title="Recently Rejected" sub="Last 20 rejected" iconBg="#FAECE7" iconColor={C.danger} />
+            <div style={{ maxHeight: 200, overflowY: 'auto', flex: 1 }}>
+              {(moderation?.recentlyRejected || []).slice(0, 6).map(p => (
+                <div key={p.id} style={{ padding: '5px 0', borderBottom: '0.5px solid var(--at-border)', fontSize: 11 }}>
+                  <strong>{p.title}</strong>
+                  <div style={{ color: C.danger, fontSize: 10 }}>{p.rejection_reason}</div>
+                  <div style={{ color: 'var(--at-muted)', fontSize: 10 }}>{p.moderated_at?.split('T')[0]}</div>
+                </div>
+              ))}
+              {!(moderation?.recentlyRejected || []).length && (
+                <p style={{ textAlign: 'center', padding: 16, color: 'var(--at-muted)', fontSize: 12 }}>No rejected projects</p>
+              )}
+            </div>
+          </Card>
+
+          <Card span={2}>
+            <CardHeader icon={FaUserPlus} title="Latest Registrations" sub="Most recent user signups" iconBg="#E6F1FB" iconColor={C.primary} badge={`${(latestRegs || []).length} users`} />
+            <div style={{ maxHeight: 260, overflowY: 'auto', flex: 1 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    {['Organization', 'Email', 'Role', 'Status', 'Date'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--at-muted)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.4px', borderBottom: '0.5px solid var(--at-border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(latestRegs || []).slice(0, 8).map(u => (
+                    <tr key={u.id} style={{ borderBottom: '0.5px solid var(--at-border)' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: 500 }}>{u.organization_name}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--at-muted)' }}>{u.email}</td>
+                      <td style={{ padding: '6px 8px' }}><span style={{ background: 'var(--at-surface)', color: 'var(--at-muted)', padding: '2px 7px', borderRadius: 20, fontSize: 10 }}>{u.role}</span></td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <span style={{ color: u.is_active ? C.success : C.danger, fontSize: 10, fontWeight: 500 }}>{u.is_active ? 'Active' : 'Inactive'}</span>
+                      </td>
+                      <td style={{ padding: '6px 8px', color: 'var(--at-muted)', fontSize: 10 }}>{u.created_at?.split('T')[0]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card span={2}>
+            <CardHeader icon={FaStar} title="Most Active Users" sub="Users with most projects" iconBg="#FAEEDA" iconColor={C.warning} />
+            <div style={{ maxHeight: 260, overflowY: 'auto', flex: 1 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <thead>
+                  <tr>
+                    {['Organization', 'Email', 'Country', 'Projects'].map(h => (
+                      <th key={h} style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--at-muted)', fontWeight: 500, fontSize: 10, textTransform: 'uppercase', letterSpacing: '.4px', borderBottom: '0.5px solid var(--at-border)' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(userMgmt?.mostActiveUsers || []).slice(0, 8).map((u, i) => (
+                    <tr key={u.id || i} style={{ borderBottom: '0.5px solid var(--at-border)' }}>
+                      <td style={{ padding: '6px 8px', fontWeight: 500 }}>{u.organization_name}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--at-muted)' }}>{u.email}</td>
+                      <td style={{ padding: '6px 8px', color: 'var(--at-muted)' }}>{u.country}</td>
+                      <td style={{ padding: '6px 8px', fontWeight: 600 }}>{u.project_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card span={4}>
+            <CardHeader icon={FaChartBar} title="Submission Trends" sub="Monthly project submissions" iconBg="#E6F1FB" iconColor={C.primary} badge={`${subTrends.reduce((a, b) => a + b.count, 0)} total`} />
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={subTrends} margin={{ top: 6, right: 6, left: 0, bottom: 6 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" vertical={false} />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 9 }} angle={-30} textAnchor="end" interval={1} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#888', fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" fill={C.primary} radius={[3, 3, 0, 0]} barSize={16} name="Submissions" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+      </>
+    )
+  }
 }
 
-const styles = `
-  .admin-dashboard { background: #f1f5f9; min-height: 100vh; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #1e293b; }
-  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-  
-  .dashboard-header { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 20px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-  .header-content { display: flex; justify-content: space-between; align-items: center; }
-  .header-title h1 { font-size: 1.5rem; font-weight: 700; margin: 0; color: #0f172a; }
-  .header-title p { color: #64748b; margin: 2px 0 0 0; font-size: 0.875rem; }
-  .text-primary { color: #3b82f6; }
-  .btn-logout-top { background: #fee2e2; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; color: #ef4444; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.2s; font-size: 0.875rem; }
-  .btn-logout-top:hover { background: #fecaca; }
+const ADMIN_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-  .dashboard-main { padding: 32px 0 64px; }
-  .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 32px; }
-  .stat-item { background: #fff; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-  .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
-  .stat-icon.pending { background: #fff7ed; color: #f59e0b; }
-  .stat-icon.approved { background: #f0fdf4; color: #10b981; }
-  .stat-icon.rejected { background: #fef2f2; color: #ef4444; }
-  .stat-val { display: block; font-size: 1.5rem; font-weight: 700; line-height: 1; color: #0f172a; }
-  .stat-lab { font-size: 0.75rem; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 4px; letter-spacing: 0.025em; }
-
-  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
-  .section-header h2 { font-size: 1.25rem; font-weight: 700; margin: 0; color: #0f172a; }
-  .count-badge { background: #3b82f6; color: #fff; padding: 2px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
-
-  .pending-grid { display: flex; flex-direction: column; gap: 20px; }
-  .moderation-card { background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; }
-  .moderation-card:hover { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-  
-  .card-top { margin-bottom: 16px; }
-  .card-header-main { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-  .card-header-main h3 { font-size: 1.25rem; font-weight: 700; margin: 0; color: #0f172a; }
-  
-  .card-meta { display: flex; gap: 12px; flex-wrap: wrap; }
-  .meta-tag { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #475569; font-weight: 600; background: #f8fafc; padding: 4px 10px; border-radius: 6px; border: 1px solid #f1f5f9; }
-  .meta-tag svg { color: #3b82f6; }
-  
-  .status-label { background: #fff7ed; color: #c2410c; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid #ffedd5; }
-  
-  .project-body { margin-bottom: 24px; }
-  .project-preview { color: #475569; line-height: 1.6; margin-bottom: 20px; font-size: 0.9375rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  
-  .submission-details { background: #f8fafc; border-radius: 12px; padding: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; border: 1px solid #f1f5f9; }
-  .detail-item { display: flex; align-items: flex-start; gap: 12px; }
-  .detail-icon { color: #64748b; font-size: 1rem; margin-top: 2px; }
-  .detail-content { display: flex; flex-direction: column; }
-  .detail-label { font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; }
-  .detail-value { font-size: 0.875rem; color: #1e293b; font-weight: 600; }
-  .project-link { color: #3b82f6; text-decoration: none; border-bottom: 1px solid transparent; transition: 0.2s; }
-  .project-link:hover { border-bottom-color: #3b82f6; }
-  
-  .admin-files-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-  .admin-file-link { font-size: 0.8125rem; color: #3b82f6; text-decoration: none; font-weight: 500; }
-  .admin-file-link:hover { text-decoration: underline; }
-
-  .card-footer { display: flex; justify-content: flex-end; padding-top: 20px; border-top: 1px solid #f1f5f9; }
-  .card-actions { display: flex; gap: 12px; }
-  .btn-action-reject { background: #fff; border: 1px solid #e2e8f0; color: #64748b; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.875rem; }
-  .btn-action-reject:hover { background: #f1f5f9; color: #ef4444; border-color: #fca5a5; }
-  .btn-action-approve { background: #0f172a; border: none; color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.875rem; }
-  .btn-action-approve:hover { background: #334155; transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .modal-content { background: #fff; width: 100%; max-width: 500px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; }
-  .modal-header { padding: 24px 24px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
-  .modal-header h3 { font-size: 1.25rem; font-weight: 700; margin: 0; color: #0f172a; }
-  .close-btn { background: none; border: none; font-size: 1.25rem; color: #cbd5e1; cursor: pointer; transition: 0.2s; }
-  .close-btn:hover { color: #64748b; }
-  .modal-body { padding: 24px; }
-  .modal-body p { color: #64748b; font-size: 0.9375rem; line-height: 1.5; margin-bottom: 16px; }
-  .modal-body textarea { width: 100%; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; font-family: inherit; font-size: 0.9375rem; outline: none; transition: 0.2s; resize: none; }
-  .modal-body textarea:focus { border-color: #3b82f6; }
-  .modal-footer { padding: 16px 24px 24px; display: flex; gap: 12px; justify-content: flex-end; }
-  .btn-secondary { background: #fff; border: 1px solid #e2e8f0; color: #64748b; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.875rem; }
-  .btn-danger { background: #ef4444; border: none; color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.875rem; }
-  .btn-danger:hover { background: #dc2626; }
-
-  .admin-login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8fafc; padding: 20px; }
-  .admin-login-container { background: #fff; padding: 40px; border-radius: 20px; width: 100%; max-width: 400px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-  .admin-login-header { text-align: center; margin-bottom: 32px; }
-  .admin-login-header h1 { font-size: 1.75rem; font-weight: 800; color: #0f172a; margin-bottom: 8px; }
-  .admin-login-header p { color: #64748b; font-size: 0.875rem; }
-  .admin-login-form .form-group { margin-bottom: 20px; }
-  .admin-login-form label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: #475569; }
-  .admin-login-form input { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9375rem; outline: none; transition: 0.2s; box-sizing: border-box; }
-  .admin-login-form input:focus { border-color: #3b82f6; }
-  .btn-login { width: 100%; background: #0f172a; color: #fff; border: none; padding: 12px; border-radius: 10px; font-size: 0.9375rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
-  .btn-login:hover { background: #334155; }
-  .login-error { background: #fef2f2; color: #ef4444; padding: 10px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8125rem; font-weight: 600; text-align: center; border: 1px solid #fee2e2; }
-
-  .admin-tabs { display: flex; gap: 0; margin-bottom: 24px; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
-  .admin-tab { flex: 1; padding: 14px 24px; border: none; background: #fff; font-size: 0.875rem; font-weight: 600; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; font-family: inherit; border-bottom: 2px solid transparent; }
-  .admin-tab:hover { background: #f8fafc; color: #1e293b; }
-  .admin-tab.active { background: #f8fafc; color: #3b82f6; border-bottom-color: #3b82f6; }
-
-  .filter-tabs { display: flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 8px; }
-  .filter-tab { padding: 6px 14px; border: none; background: transparent; font-size: 0.8rem; font-weight: 600; color: #64748b; cursor: pointer; border-radius: 6px; transition: 0.2s; font-family: inherit; }
-  .filter-tab:hover { color: #1e293b; }
-  .filter-tab.active { background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-
-  .org-header-title { display: flex; align-items: center; gap: 12px; }
-  .org-avatar-sm { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-  .org-avatar-placeholder-sm { background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 1rem; }
-
-  .status-label.status-approved { background: #f0fdf4; color: #10b981; border-color: #bbf7d0; }
-  .status-label.status-rejected { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
-
-  .spinner { width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .dashboard-loader { text-align: center; padding: 48px 0; color: #64748b; font-size: 0.875rem; }
-  .empty-dashboard { text-align: center; padding: 64px 0; background: #fff; border-radius: 16px; border: 1px dashed #e2e8f0; }
-  .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-  .animate-up { animation: fadeUp 0.3s ease-out both; }
-
-  @media (max-width: 640px) {
-    .stats-bar { grid-template-columns: 1fr; }
-    .card-actions { width: 100%; }
-    .card-actions button { flex: 1; }
-    .submission-details { grid-template-columns: 1fr; }
+  :root {
+    --at-bg:      #f4f6f9;
+    --at-card:    #ffffff;
+    --at-surface: #f1f5f9;
+    --at-border:  rgba(15,23,42,0.1);
+    --at-text:    #0f172a;
+    --at-muted:   #64748b;
   }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --at-bg:      #0f172a;
+      --at-card:    #1e293b;
+      --at-surface: #334155;
+      --at-border:  rgba(255,255,255,0.08);
+      --at-text:    #f1f5f9;
+      --at-muted:   #94a3b8;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  @keyframes at-spin { to { transform: rotate(360deg); } }
 `
 
-export default AdminDashboard
+export default memo(AdminDashboard)
