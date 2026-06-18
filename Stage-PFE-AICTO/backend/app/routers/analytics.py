@@ -1,10 +1,8 @@
 import re
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, HTTPException, Header
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case, extract
-from jose import JWTError, jwt
-import os
 from app.database import get_db
 from app.models.stakeholder import Stakeholder
 from app.models.project import Project
@@ -437,7 +435,7 @@ def get_duration_vs_sdg(filters: AnalyticsFilters = Depends(), db: Session = Dep
         ~func.lower(Project.status).in_(["pending", "rejected"])
     )
     result = []
-    for p in projects_list:
+    for p in base.all():
         duration = (p.end_date - p.start_date).days
         result.append({
             "project_id": p.id,
@@ -460,7 +458,7 @@ def get_projects_active_timeline(filters: AnalyticsFilters = Depends(), db: Sess
         ~func.lower(Project.status).in_(["pending", "rejected"])
     ).order_by(Project.start_date).all()
     result = []
-    for p in projects_list:
+    for p in base:
         country_name = p.country.country if p.country else None
         result.append({
             "id": p.id,
@@ -655,30 +653,7 @@ def get_map_data(db: Session = Depends(get_db)):
 
 # ───────────────── Admin Dashboard ─────────────────
 
-SECRET_KEY_ADMIN = os.getenv("JWT_SECRET_KEY", "default-secret-change-in-production")
-ALGORITHM_ADMIN = "HS256"
-
-
-def get_admin_user(authorization: str = Header(None), db: Session = Depends(get_db)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    token = parts[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY_ADMIN, algorithms=[ALGORITHM_ADMIN])
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Access denied: Admin only")
-    return user
+from app.core.auth import get_admin_user
 
 
 @router.get("/admin/overview")

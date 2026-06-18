@@ -298,7 +298,7 @@ function Home() {
                 </button>
               )}
               <button type="submit" className="search-btn">
-                {searchLoading ? <FaSpinner className="spin" /> : 'Explore'}
+                {searchLoading ? <FaSpinner className="spin" /> : t('home.explore')}
               </button>
             </form>
             {showDropdown && (
@@ -406,7 +406,7 @@ function Home() {
               <div key={index} className="country-marquee-item" title={country.country}>
                 <div className="country-marquee-flag">
                   {country.icon_url ? (
-                    <img src={country.icon_url} alt={`${country.country} flag`} />
+                    <img src={country.icon_url} alt={t('home.countryFlag', { country: country.country })} />
                   ) : (
                     <div className="country-marquee-fallback">{country.country?.charAt(0) || '?'}</div>
                   )}

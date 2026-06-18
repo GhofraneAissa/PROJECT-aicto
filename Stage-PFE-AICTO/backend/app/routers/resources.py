@@ -1,6 +1,6 @@
 import os
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -8,8 +8,7 @@ from app.database import get_db
 from app.models.resource import Resource
 from app.models.user import User
 from app.schemas.resource import ResourceCreate, ResourceUpdate, ResourceResponse
-from jose import JWTError, jwt
-from app.routers.users import SECRET_KEY, ALGORITHM
+from app.core.auth import get_current_user
 
 RESOURCE_UPLOAD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
@@ -17,25 +16,6 @@ RESOURCE_UPLOAD_DIR = os.path.join(
 )
 
 router = APIRouter()
-
-
-def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not token:
-            raise HTTPException(status_code=401, detail="Invalid authorization header")
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user = db.query(User).filter(User.id == int(user_id)).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        return user
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 @router.get("/", response_model=List[ResourceResponse])
@@ -63,6 +43,8 @@ def get_resources(
         query = query.filter(Resource.user_id == user_id)
     
     return query.offset(skip).limit(limit).all()
+
+
 
 @router.get("/{id}", response_model=ResourceResponse)
 def get_resource(id: int, db: Session = Depends(get_db)):

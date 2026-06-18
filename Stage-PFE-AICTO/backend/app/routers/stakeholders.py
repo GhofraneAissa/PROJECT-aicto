@@ -30,6 +30,10 @@ def get_stakeholders(
     
     return query.offset(skip).limit(limit).all()
 
+@router.get("/stats/count")
+def get_stakeholder_count(db: Session = Depends(get_db)):
+    return {"count": db.query(Stakeholder).count()}
+
 @router.get("/{id}", response_model=StakeholderResponse)
 def get_stakeholder(id: int, db: Session = Depends(get_db)):
     stakeholder = db.query(Stakeholder).filter(Stakeholder.id == id).first()
@@ -68,7 +72,3 @@ def delete_stakeholder(id: int, db: Session = Depends(get_db)):
     db.delete(db_stakeholder)
     db.commit()
     return {"message": "Stakeholder deleted successfully"}
-
-@router.get("/stats/count")
-def get_stakeholder_count(db: Session = Depends(get_db)):
-    return {"count": db.query(Stakeholder).count()}

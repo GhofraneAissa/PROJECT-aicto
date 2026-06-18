@@ -96,9 +96,9 @@ function ResourceLibrary() {
     if (!file) return
     setSelectedFile(file)
     const bytes = file.size
-    if (bytes < 1024) setFileSizeDisplay(`${bytes} B`)
-    else if (bytes < 1024 * 1024) setFileSizeDisplay(`${(bytes / 1024).toFixed(1)} KB`)
-    else setFileSizeDisplay(`${(bytes / (1024 * 1024)).toFixed(1)} MB`)
+    if (bytes < 1024) setFileSizeDisplay(t('resources.fileSizeB', { size: bytes }))
+    else if (bytes < 1024 * 1024) setFileSizeDisplay(t('resources.fileSizeKb', { size: (bytes / 1024).toFixed(1) }))
+    else setFileSizeDisplay(t('resources.fileSizeMb', { size: (bytes / (1024 * 1024)).toFixed(1) }))
   }
 
   const handleDownload = async (resource) => {
@@ -284,8 +284,8 @@ function ResourceLibrary() {
                       </div>
                     </div>
                     <div className="resource-meta">
-                      <span><strong>{t('resources.language')}:</strong> {r.language || '-'}</span>
-                      <span><strong>{t('resources.size')}:</strong> {r.file_size || '-'}</span>
+                      <span><strong>{t('resources.language')}:</strong> {r.language || t('common.notAvailable')}</span>
+                      <span><strong>{t('resources.size')}:</strong> {r.file_size || t('common.notAvailable')}</span>
                       <span className="dl-count"><FaDownload /> {r.downloads || 0} {t('resources.downloads')}</span>
                     </div>
                     {r.description && <p className="resource-desc">{r.description}</p>}

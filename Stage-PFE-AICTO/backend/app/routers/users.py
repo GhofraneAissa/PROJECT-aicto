@@ -1,48 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.models.project import Project
 from app.models.country import Country
+from app.models.stakeholder import Stakeholder
 from app.schemas.user import (
     UserCreate, UserUpdate, UserResponse, UserLogin, LoginResponse,
     ForgotPasswordRequest, ResetPasswordRequest, determine_role_from_email
 )
 from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
-from jose import JWTError, jwt
-import os
+from jose import jwt
 from uuid import uuid4
 import random
 from app.services.email_service import send_reset_email, send_activation_email
 from app.limiter import limiter
-
-def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    token = parts[1]
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token payload")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-    user = db.query(User).filter(User.id == int(user_id)).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
-if not SECRET_KEY or SECRET_KEY in ("super-secret-key-change-in-production", "change-this-to-a-secure-random-string"):
-    import logging
-    logging.warning("[SECURITY] JWT_SECRET_KEY is not set or is using a default value! Set it in .env for production.")
-    SECRET_KEY = SECRET_KEY or "insecure-dev-key-change-me"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 365 days
+from app.core.auth import get_current_user
+from app.core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
@@ -226,6 +201,20 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
         setattr(user, key, value)
 
     user.updated_at = datetime.now(timezone.utc)
+
+    if user.is_approved:
+        stakeholder = db.query(Stakeholder).filter(
+            (Stakeholder.name == user.organization_name) | (Stakeholder.contact_email == user.email)
+        ).first()
+        if stakeholder:
+            stakeholder.name = user.organization_name
+            stakeholder.type = user.organization_type
+            stakeholder.category = user.sector
+            stakeholder.country = user.country
+            stakeholder.website = user.website
+            stakeholder.description = user.description
+            stakeholder.contact_email = user.email
+
     db.commit()
     db.refresh(user)
     return user
@@ -241,6 +230,29 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
     db.delete(user)
     db.commit()
 
+
+@router.get("/{user_id}/stakeholder")
+def get_user_stakeholder(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not user.stakeholder_id:
+        return {"stakeholder": None}
+    s = db.query(Stakeholder).filter(Stakeholder.id == user.stakeholder_id).first()
+    if not s:
+        return {"stakeholder": None}
+    return {
+        "stakeholder": {
+            "id": s.id,
+            "name": s.name,
+            "type": s.type,
+            "category": s.category,
+            "country": s.country,
+            "website": s.website,
+            "description": s.description,
+            "contact_email": s.contact_email,
+        }
+    }
 
 @router.get("/{user_id}/projects")
 def get_user_projects(user_id: int, db: Session = Depends(get_db)):

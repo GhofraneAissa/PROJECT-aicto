@@ -9,6 +9,7 @@ import os
 from app.database import get_db
 from app.models.project import Project
 from app.models.user import User
+from app.models.stakeholder import Stakeholder
 from app.schemas.admin import AdminPendingProject, AdminStats, AdminProjectDocument, AdminProjectCountry, AdminProjectOwner, AdminPendingOrganization, AdminOrgStats
 from app.services.email_service import send_rejection_email, send_org_rejection_email
 
@@ -163,8 +164,31 @@ def approve_organization(user_id: int, db: Session = Depends(get_db), admin: Use
     org = db.query(User).filter(User.id == user_id, User.role == "organization").first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
+
+    was_already_approved = org.is_approved
     org.is_approved = True
     org.rejection_reason = None
+
+    if not was_already_approved and org.is_active:
+        existing = db.query(Stakeholder).filter(
+            (Stakeholder.name == org.organization_name) | (Stakeholder.contact_email == org.email)
+        ).first()
+        if existing:
+            org.stakeholder_id = existing.id
+        else:
+            stakeholder = Stakeholder(
+                name=org.organization_name,
+                type=org.organization_type,
+                category=org.sector,
+                country=org.country,
+                website=org.website,
+                description=org.description,
+                contact_email=org.email,
+            )
+            db.add(stakeholder)
+            db.flush()
+            org.stakeholder_id = stakeholder.id
+
     db.commit()
     return {"message": "Organization approved successfully"}
 

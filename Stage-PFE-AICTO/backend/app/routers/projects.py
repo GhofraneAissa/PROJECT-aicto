@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 import os
-from jose import JWTError, jwt
 from fastapi.responses import FileResponse
 from app.database import get_db
 from app.models.project import Project, ProjectStakeholderAssociation
@@ -16,34 +15,15 @@ from app.schemas.project import (
 )
 from app.services.url_extractor import fetch_url_content
 from app.services.ai_extractor import extract_project_info
-from app.routers.users import SECRET_KEY, ALGORITHM
+from app.core.auth import get_current_user
 import json
 
 router = APIRouter()
 
-
-def get_current_user(authorization: str = Header(None), db: Session = Depends(get_db)):
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    try:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not token:
-            raise HTTPException(status_code=401, detail="Invalid authorization header")
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        user = db.query(User).filter(User.id == int(user_id)).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        return user
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
 @router.get("/", response_model=ProjectPaginatedResponse)
 def get_projects(
     page: int = Query(1, ge=1),
-    page_size: int = Query(15, ge=1, le=100),
+    page_size: int = Query(15, ge=1, le=10000),
     search: str = None,
     sector: str = None,
     technology: str = None,
@@ -142,6 +122,20 @@ def submit_project(project_data: ProjectSubmit, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_project)
 
+    # Auto-link user's stakeholder as Owner
+    if user and user.stakeholder_id:
+        existing_link = db.query(ProjectStakeholderAssociation).filter(
+            ProjectStakeholderAssociation.project_id == db_project.id,
+            ProjectStakeholderAssociation.stakeholder_id == user.stakeholder_id
+        ).first()
+        if not existing_link:
+            assoc = ProjectStakeholderAssociation(
+                project_id=db_project.id,
+                stakeholder_id=user.stakeholder_id,
+                role="Owner"
+            )
+            db.add(assoc)
+
     # Create notifications for all admin users
     from app.models.notification import Notification
     admin_users = db.query(User).filter(User.role == "admin").all()
@@ -182,6 +176,47 @@ def extract_from_url(body: ExtractRequest, db: Session = Depends(get_db)):
         )
 
     return ExtractResponse(extracted=True, fields=fields)
+
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "project_documents")
+
+
+@router.get("/stats/count")
+def get_project_count(db: Session = Depends(get_db)):
+    return {"count": db.query(Project).filter(~Project.status.in_(["pending", "rejected"])).count()}
+
+
+@router.get("/stats/by-sector")
+def get_projects_by_sector(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    results = db.query(Project.sector, func.count(Project.id)).filter(~Project.status.in_(["pending", "rejected"])).group_by(Project.sector).all()
+    return [{"sector": r[0], "count": r[1]} for r in results]
+
+
+@router.get("/stats/by-technology")
+def get_projects_by_technology(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    results = db.query(Project.technology, func.count(Project.id)).filter(~Project.status.in_(["pending", "rejected"])).group_by(Project.technology).all()
+    return [{"technology": r[0], "count": r[1]} for r in results]
+
+
+@router.get("/stats/by-country")
+def get_projects_by_country(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    results = db.query(
+        Country.country,
+        Country.region,
+        func.count(Project.id)
+    ).join(Project, Project.country_id == Country.id).filter(~Project.status.in_(["pending", "rejected"])).group_by(Country.country, Country.region).all()
+    return [{"country": r[0], "region": r[1], "count": r[2]} for r in results]
+
+
+@router.get("/download/{filename}")
+def download_project_document(filename: str):
+    path = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path, filename=filename)
 
 
 @router.get("/{id}", response_model=ProjectResponse)
@@ -343,6 +378,22 @@ async def upload_project_documents(project_id: int, files: List[UploadFile] = Fi
 def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     db_project = Project(**project.model_dump())
     db.add(db_project)
+    db.flush()
+
+    user = db.query(User).filter(User.id == project.user_id).first()
+    if user and user.stakeholder_id:
+        existing_link = db.query(ProjectStakeholderAssociation).filter(
+            ProjectStakeholderAssociation.project_id == db_project.id,
+            ProjectStakeholderAssociation.stakeholder_id == user.stakeholder_id
+        ).first()
+        if not existing_link:
+            assoc = ProjectStakeholderAssociation(
+                project_id=db_project.id,
+                stakeholder_id=user.stakeholder_id,
+                role="Owner"
+            )
+            db.add(assoc)
+
     db.commit()
     db.refresh(db_project)
     return db_project
@@ -375,59 +426,4 @@ def delete_project(id: int, db: Session = Depends(get_db), current_user: User = 
     db.commit()
     return {"message": "Project deleted successfully"}
 
-@router.get("/stats/count")
-def get_project_count(db: Session = Depends(get_db)):
-    return {"count": db.query(Project).filter(~Project.status.in_(["pending", "rejected"])).count()}
 
-@router.get("/stats/by-sector")
-def get_projects_by_sector(db: Session = Depends(get_db)):
-    from sqlalchemy import func
-    results = db.query(Project.sector, func.count(Project.id)).filter(~Project.status.in_(["pending", "rejected"])).group_by(Project.sector).all()
-    return [{"sector": r[0], "count": r[1]} for r in results]
-
-@router.get("/stats/by-technology")
-def get_projects_by_technology(db: Session = Depends(get_db)):
-    from sqlalchemy import func
-    results = db.query(Project.technology, func.count(Project.id)).filter(~Project.status.in_(["pending", "rejected"])).group_by(Project.technology).all()
-    return [{"technology": r[0], "count": r[1]} for r in results]
-
-@router.get("/stats/by-country")
-def get_projects_by_country(db: Session = Depends(get_db)):
-    from sqlalchemy import func
-    results = db.query(
-        Country.country,
-        Country.region,
-        func.count(Project.id)
-    ).join(Project, Project.country_id == Country.id).filter(~Project.status.in_(["pending", "rejected"])).group_by(Country.country, Country.region).all()
-    return [{"country": r[0], "region": r[1], "count": r[2]} for r in results]
-
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "project_documents")
-
-@router.post("/upload-documents")
-async def upload_project_documents(files: List[UploadFile] = File(...)):
-    import uuid
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    uploaded = []
-    allowed_exts = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".txt", ".png", ".jpg", ".jpeg", ".gif", ".zip"}
-    for f in files:
-        ext = os.path.splitext(f.filename)[1].lower()
-        if ext not in allowed_exts:
-            continue
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        path = os.path.join(UPLOAD_DIR, unique_name)
-        content = await f.read()
-        with open(path, "wb") as out:
-            out.write(content)
-        uploaded.append({
-            "original_name": f.filename,
-            "stored_name": unique_name,
-            "path": f"/api/projects/download/{unique_name}"
-        })
-    return {"files": uploaded}
-
-@router.get("/download/{filename}")
-def download_project_document(filename: str):
-    path = os.path.join(UPLOAD_DIR, filename)
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path, filename=filename)

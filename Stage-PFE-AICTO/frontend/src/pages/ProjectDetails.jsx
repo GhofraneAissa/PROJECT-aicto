@@ -1,25 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FaArrowLeft, FaGlobeAmericas, FaHeart, FaCity, FaRocket, FaLeaf, FaShieldAlt, FaMicrochip, FaCalendarAlt, FaExternalLinkAlt, FaBuilding, FaUserTie, FaFlag, FaProjectDiagram, FaDownload } from 'react-icons/fa'
+import {
+  FaArrowLeft, FaGlobeAmericas, FaHeart, FaCity, FaRocket,
+  FaLeaf, FaShieldAlt, FaMicrochip, FaCalendarAlt,
+  FaExternalLinkAlt, FaBuilding, FaUserTie, FaFlag,
+  FaProjectDiagram, FaDownload, FaUsers, FaClock,
+  FaMapMarkerAlt, FaLink, FaFileAlt, FaCheckCircle,
+  FaTimesCircle, FaHourglassHalf, FaTag, FaLayerGroup,
+  FaShareAlt, FaBookmark, FaEye, FaThumbsUp, FaChartPie,
+  FaGraduationCap, FaBriefcase, FaHandshake, FaLightbulb
+} from 'react-icons/fa'
 
 import { API_BASE } from '../config'
 
 const getSectorInfo = (sector) => {
   const map = {
-    'Health':       { class: 'health', icon: <FaHeart /> },
-    'Education':    { class: 'edu',    icon: <FaRocket /> },
-    'Agriculture':  { class: 'agri',   icon: <FaGlobeAmericas /> },
-    'Finance':      { class: 'fin',    icon: <FaCity /> },
-    'Transportation': { class: 'trans',  icon: <FaRocket /> },
-    'Energy':       { class: 'energy', icon: <FaRocket /> },
-    'Environment':  { class: 'env',    icon: <FaLeaf /> },
-    'Security':     { class: 'security', icon: <FaShieldAlt /> },
-    'GovTech':      { class: 'fin',    icon: <FaCity /> },
-    'Smart Cities': { class: 'fin',    icon: <FaCity /> },
-    'Climate':      { class: 'env',    icon: <FaLeaf /> }
+    'Health': { color: '#EF4444', bg: '#FEF2F2', icon: <FaHeart />, label: 'Healthcare' },
+    'Education': { color: '#3B82F6', bg: '#EFF6FF', icon: <FaGraduationCap />, label: 'Education' },
+    'Agriculture': { color: '#10B981', bg: '#ECFDF5', icon: <FaLeaf />, label: 'Agriculture' },
+    'Finance': { color: '#8B5CF6', bg: '#F5F3FF', icon: <FaBriefcase />, label: 'Finance' },
+    'Transportation': { color: '#F97316', bg: '#FFF7ED', icon: <FaRocket />, label: 'Transport' },
+    'Energy': { color: '#F59E0B', bg: '#FFFBEB', icon: <FaLightbulb />, label: 'Energy' },
+    'Environment': { color: '#22C55E', bg: '#F0FDF4', icon: <FaLeaf />, label: 'Environment' },
+    'Security': { color: '#475569', bg: '#F8FAFC', icon: <FaShieldAlt />, label: 'Security' },
+    'GovTech': { color: '#8B5CF6', bg: '#F5F3FF', icon: <FaCity />, label: 'GovTech' },
+    'Smart Cities': { color: '#06B6D4', bg: '#ECFEFF', icon: <FaCity />, label: 'Smart Cities' },
+    'Climate': { color: '#22C55E', bg: '#F0FDF4', icon: <FaLeaf />, label: 'Climate' }
   }
-  return map[sector] || { class: 'default', icon: <FaProjectDiagram /> }
+  return map[sector] || { color: '#64748B', bg: '#F1F5F9', icon: <FaProjectDiagram />, label: sector }
+}
+
+const getStatusConfig = (status) => {
+  const map = {
+    'approved': { color: '#10B981', bg: '#ECFDF5', icon: <FaCheckCircle />, label: 'Approved' },
+    'active': { color: '#10B981', bg: '#ECFDF5', icon: <FaCheckCircle />, label: 'Active' },
+    'pending': { color: '#F59E0B', bg: '#FFFBEB', icon: <FaHourglassHalf />, label: 'Pending' },
+    'rejected': { color: '#EF4444', bg: '#FEF2F2', icon: <FaTimesCircle />, label: 'Rejected' },
+    'draft': { color: '#64748B', bg: '#F1F5F9', icon: <FaFileAlt />, label: 'Draft' },
+    'completed': { color: '#10B981', bg: '#ECFDF5', icon: <FaCheckCircle />, label: 'Completed' },
+    'ongoing': { color: '#3B82F6', bg: '#EFF6FF', icon: <FaClock />, label: 'Ongoing' }
+  }
+  return map[status] || map.draft
 }
 
 function ProjectDetails() {
@@ -29,10 +51,26 @@ function ProjectDetails() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isBookmarked, setIsBookmarked] = useState(false)
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return t('projects.ongoing')
-    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    if (!dateStr) return t('projectDetails.ongoing')
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  const calculateDuration = (start, end) => {
+    if (!start) return null
+    const startDate = new Date(start)
+    const endDate = end ? new Date(end) : new Date()
+    const diffTime = Math.abs(endDate - startDate)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    if (diffDays < 30) return `${diffDays} days`
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months`
+    return `${Math.floor(diffDays / 365)} years`
   }
 
   useEffect(() => {
@@ -53,76 +91,82 @@ function ProjectDetails() {
     }
   }
 
-  if (loading) return (
-    <div className="modern-project-details">
-      <section className="details-hero">
-        <div className="animated-blobs">
-          <div className="blob blob-1"></div>
-          <div className="blob blob-2"></div>
-        </div>
-        <div className="container hero-container">
-          <div className="hero-content">
-            <div className="hero-badge"><FaProjectDiagram /><span>{t('projectDetails.pageTitle')}</span></div>
-          </div>
-        </div>
-      </section>
-      <section className="details-body">
-        <div className="container" style={{ textAlign: 'center', padding: '80px 24px' }}>
-          <div className="spinner"></div>
-          <p style={{ color: 'var(--p-text-light)', marginTop: 16 }}>{t('projectDetails.loading')}</p>
-        </div>
-      </section>
-    </div>
-  )
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: data?.title,
+        text: `Check out this project: ${data?.title}`,
+        url: window.location.href
+      })
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      alert(t('projectDetails.linkCopied'))
+    }
+  }
 
-  if (error || !data) return (
-    <div className="modern-project-details">
-      <section className="details-hero">
-        <div className="animated-blobs">
-          <div className="blob blob-1"></div>
-          <div className="blob blob-2"></div>
-        </div>
-        <div className="container hero-container">
-          <div className="hero-content">
-            <div className="hero-badge"><FaProjectDiagram /><span>{t('projectDetails.pageTitle')}</span></div>
-          </div>
-        </div>
-      </section>
-      <section className="details-body">
-        <div className="container" style={{ textAlign: 'center', padding: '80px 24px' }}>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 12 }}>{t('projectDetails.notFound')}</h2>
-          <p style={{ color: 'var(--p-text-light)', marginBottom: 24 }}>{error || t('projectDetails.notFoundDesc')}</p>
-          <button onClick={() => navigate('/projects')} className="action-btn">{t('projectDetails.backToProjects')}</button>
-        </div>
-      </section>
-    </div>
-  )
+  if (loading) return <LoadingState t={t} />
+  if (error || !data) return <ErrorState error={error} navigate={navigate} t={t} />
 
   const project = data
   const stakeholders = data.stakeholders || []
   const sectorInfo = getSectorInfo(project.sector)
+  const statusConfig = getStatusConfig(project.status)
+  const duration = calculateDuration(project.start_date, project.end_date)
 
   return (
     <div className="modern-project-details">
       <section className="details-hero">
-        <div className="animated-blobs">
-          <div className="blob blob-1"></div>
-          <div className="blob blob-2"></div>
-        </div>
+        <div className="hero-pattern" />
+        <div className="hero-gradient" />
         <div className="container hero-container">
-          <div className="hero-content animate-up">
-            <div className="hero-badge">
-              <FaProjectDiagram />
-              <span>{t('projectDetails.pageTitle')}</span>
+          <div className="hero-content">
+            <div className="hero-top">
+              <button onClick={() => navigate(-1)} className="back-btn">
+                <FaArrowLeft /> {t('projectDetails.back')}
+              </button>
+              <div className="hero-actions">
+                <button className="hero-action-btn" onClick={handleShare}>
+                  <FaShareAlt /> {t('projectDetails.share')}
+                </button>
+                <button
+                  className={`hero-action-btn ${isBookmarked ? 'active' : ''}`}
+                  onClick={() => setIsBookmarked(!isBookmarked)}
+                >
+                  <FaBookmark /> {isBookmarked ? t('projectDetails.saved') : t('projectDetails.save')}
+                </button>
+              </div>
             </div>
+
+            <div className="hero-badges">
+              <span className="hero-badge sector" style={{ background: sectorInfo.bg, color: sectorInfo.color }}>
+                {sectorInfo.icon} {sectorInfo.label}
+              </span>
+              <span className="hero-badge status" style={{ background: statusConfig.bg, color: statusConfig.color }}>
+                {statusConfig.icon} {statusConfig.label}
+              </span>
+            </div>
+
             <h1>{project.title}</h1>
-            <div className="hero-meta">
-              <span className="hero-meta-item">
-                <FaGlobeAmericas /> {project.country_name || t('projectDetails.regional')}
-              </span>
-              <span className="hero-meta-item">
-                <FaCalendarAlt /> {formatDate(project.start_date)} — {formatDate(project.end_date)}
-              </span>
+
+            <div className="hero-meta-grid">
+              <div className="hero-meta-item">
+                <FaGlobeAmericas className="meta-icon" />
+                <span>{project.country_name || t('projectDetails.regional')}</span>
+              </div>
+              <div className="hero-meta-item">
+                <FaBuilding className="meta-icon" />
+                <span>{project.organization || t('projectDetails.n/a')}</span>
+              </div>
+              <div className="hero-meta-item">
+                <FaCalendarAlt className="meta-icon" />
+                <span>{formatDate(project.start_date)} — {formatDate(project.end_date)}</span>
+              </div>
+              {duration && (
+                <div className="hero-meta-item">
+                  <FaClock className="meta-icon" />
+                  <span>{duration}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -130,483 +174,784 @@ function ProjectDetails() {
 
       <section className="details-body">
         <div className="container">
-          <div className="body-top animate-up delay-1">
-            <button onClick={() => navigate(-1)} className="back-link">
-              <FaArrowLeft /> {t('projectDetails.back')}
-            </button>
-            <div className="top-badges">
-              <span className={`sector-badge ${sectorInfo.class}`}>
-                {sectorInfo.icon} {project.sector}
-              </span>
-              <span className={`status-badge ${project.status}`}>
-                {project.status}
-              </span>
-            </div>
-          </div>
-
-          <div className="info-cards-grid animate-up delay-1">
-            <div className="info-card">
-              <div className="info-card-icon"><FaBuilding /></div>
-              <span className="info-card-label">{t('projects.organization')}</span>
-              <span className="info-card-value">{project.organization || '-'}</span>
-            </div>
-            <div className="info-card">
-              <div className="info-card-icon"><FaGlobeAmericas /></div>
-              <span className="info-card-label">{t('projects.country')}</span>
-              <span className="info-card-value">{project.country_name || t('projectDetails.regional')}</span>
-            </div>
-            <div className="info-card">
-              <div className="info-card-icon"><FaMicrochip /></div>
-              <span className="info-card-label">{t('projects.technology')}</span>
-              <span className="info-card-value">{project.technology || '-'}</span>
-            </div>
-            <div className="info-card">
-              <div className="info-card-icon"><FaFlag /></div>
-              <span className="info-card-label">{t('projectDetails.sdgAlignment')}</span>
-              <span className="info-card-value">{project.sdg ? `SDG ${project.sdg.goal_number}: ${project.sdg.title}` : '-'}</span>
-            </div>
-          </div>
-
-          <section className="detail-section animate-up delay-2">
-            <h2>{t('projectDetails.projectOverview')}</h2>
-            <div className="content-card">
-              <p className="description-text">{project.description}</p>
-            </div>
-          </section>
-
-          {(project.website || (project.documents && project.documents.length > 0)) && (
-            <section className="detail-section animate-up delay-2">
-              <h2>{t('projectDetails.resourcesLinks')}</h2>
-              <div className="resources-flex">
-                {project.website && (
-                  <a href={project.website} target="_blank" rel="noopener noreferrer" className="resource-link-btn">
-                    <FaExternalLinkAlt /> {t('projectDetails.visitWebsite')}
-                  </a>
-                )}
-                {project.documents && project.documents.length > 0 && project.documents.map((doc, idx) => (
-                  <a key={idx} href={`${API_BASE}${doc.path}`} target="_blank" rel="noopener noreferrer" className="resource-link-btn outline">
-                    <FaDownload /> {doc.original_name || doc.original_filename}
-                  </a>
-                ))}
+          <div className="body-grid">
+            <div className="main-content">
+              <div className="section-card">
+                <h2 className="section-title">
+                  <FaProjectDiagram className="section-icon" />
+                  {t('projectDetails.overview')}
+                </h2>
+                <p className="description-text">{project.description}</p>
               </div>
-            </section>
-          )}
 
-          <section className="detail-section animate-up delay-2">
-            <h2>{t('map.stakeholders')} ({stakeholders.length})</h2>
-            {stakeholders.length > 0 ? (
-              <div className="stakeholders-grid">
-                {stakeholders.map((s, idx) => (
-                  <div key={idx} className="stakeholder-card">
-                    <div className="stakeholder-top">
-                      <div className="stakeholder-icon"><FaBuilding /></div>
-                      <span className="stakeholder-role"><FaUserTie /> {s.role}</span>
+              {project.technology && (
+                <div className="section-card">
+                <h2 className="section-title">
+                  <FaMicrochip className="section-icon" />
+                  {t('projectDetails.technologyStack')}
+                </h2>
+                  <div className="tech-tags">
+                    {project.technology.split(',').map((tech, idx) => (
+                      <span key={idx} className="tech-tag">
+                        {tech.trim()}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {project.sdg && (
+                <div className="section-card">
+                <h2 className="section-title">
+                  <FaFlag className="section-icon" />
+                  {t('projectDetails.sustainableDevelopmentGoal')}
+                </h2>
+                  <div className="sdg-card">
+                    <div className="sdg-number" style={{ background: SDG_COLORS[project.sdg.goal_number - 1] }}>
+                      {project.sdg.goal_number}
                     </div>
-                    <h3>{s.name}</h3>
-                    <p className="stakeholder-type">{s.type}</p>
-                    <p className="stakeholder-location">{s.city ? `${s.city}, ` : ''}{s.country}</p>
-                    {s.website && (
-                      <a href={s.website} target="_blank" rel="noopener noreferrer" className="stakeholder-link">
-                        <FaExternalLinkAlt /> {t('profile.website')}
+                    <div className="sdg-content">
+                      <h3>{project.sdg.title}</h3>
+                      <p>{project.sdg.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {stakeholders.length > 0 && (
+                <div className="section-card">
+                  <h2 className="section-title">
+                    <FaUsers className="section-icon" />
+                    {t('projectDetails.stakeholdersCount', { count: stakeholders.length })}
+                  </h2>
+                  <div className="stakeholders-grid">
+                    {stakeholders.map((s, idx) => (
+                      <div key={idx} className="stakeholder-card">
+                        <div className="stakeholder-header">
+                          <div className="stakeholder-avatar">
+                            {s.name?.charAt(0) || '?'}
+                          </div>
+                          <div className="stakeholder-info">
+                            <h3>{s.name}</h3>
+                            <span className="stakeholder-role">{s.role}</span>
+                          </div>
+                        </div>
+                        <div className="stakeholder-details">
+                          <span className="stakeholder-type">{s.type}</span>
+                          {s.city && (
+                            <span className="stakeholder-location">
+                              <FaMapMarkerAlt /> {s.city}, {s.country}
+                            </span>
+                          )}
+                        </div>
+                        {s.website && (
+                          <a
+                            href={s.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="stakeholder-link"
+                          >
+                            <FaExternalLinkAlt /> {t('projectDetails.visitWebsite')}
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="sidebar">
+              <div className="sidebar-card">
+                <h3 className="sidebar-title">{t('projectDetails.quickInfo')}</h3>
+                <div className="sidebar-items">
+                  <div className="sidebar-item">
+                    <FaTag className="sidebar-icon" />
+                    <div>
+                      <span className="sidebar-label">{t('projectDetails.status')}</span>
+                      <span className="sidebar-value" style={{ color: statusConfig.color }}>
+                        {statusConfig.label}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="sidebar-item">
+                    <FaLayerGroup className="sidebar-icon" />
+                    <div>
+                      <span className="sidebar-label">{t('projectDetails.sector')}</span>
+                      <span className="sidebar-value">{sectorInfo.label}</span>
+                    </div>
+                  </div>
+                  <div className="sidebar-item">
+                    <FaGlobeAmericas className="sidebar-icon" />
+                    <div>
+                      <span className="sidebar-label">{t('projectDetails.region')}</span>
+                      <span className="sidebar-value">{project.country_name || t('projectDetails.regional')}</span>
+                    </div>
+                  </div>
+                  <div className="sidebar-item">
+                    <FaCalendarAlt className="sidebar-icon" />
+                    <div>
+                      <span className="sidebar-label">{t('projectDetails.duration')}</span>
+                      <span className="sidebar-value">{duration || t('projectDetails.n/a')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {(project.website || (project.documents?.length > 0)) && (
+                <div className="sidebar-card">
+                  <h3 className="sidebar-title">{t('projectDetails.resources')}</h3>
+                  <div className="resources-list">
+                    {project.website && (
+                      <a
+                        href={project.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="resource-link"
+                      >
+                        <FaExternalLinkAlt />
+                        {t('projectDetails.visitProjectWebsite')}
                       </a>
                     )}
+                    {project.documents?.map((doc, idx) => (
+                      <a
+                        key={idx}
+                        href={`${API_BASE}${doc.path}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="resource-link"
+                      >
+                        <FaFileAlt />
+                        {doc.original_name || doc.original_filename}
+                      </a>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+
+              <div className="sidebar-card">
+                <h3 className="sidebar-title">{t('projectDetails.projectMetrics')}</h3>
+                <div className="metrics-grid">
+                  <div className="metric-item">
+                    <span className="metric-value">{stakeholders.length}</span>
+                    <span className="metric-label">{t('projectDetails.stakeholders')}</span>
+                  </div>
+                  <div className="metric-item">
+                    <span className="metric-value">{project.documents?.length || 0}</span>
+                    <span className="metric-label">{t('projectDetails.documents')}</span>
+                  </div>
+                  <div className="metric-item">
+                    <span className="metric-value">{project.views || 0}</span>
+                    <span className="metric-label">{t('projectDetails.views')}</span>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="content-card empty-state">
-                <p>{t('projectDetails.noStakeholders')}</p>
-              </div>
-            )}
-          </section>
+            </div>
+          </div>
         </div>
       </section>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
         .modern-project-details {
-          --p-primary: #2563eb;
-          --p-secondary: #0f172a;
-          --p-text: #1e293b;
-          --p-text-light: #64748b;
-          font-family: 'Outfit', sans-serif;
+          --p-primary: #6366F1;
+          --p-secondary: #1E293B;
+          --p-text: #0F172A;
+          --p-text-light: #64748B;
+          --p-border: #F1F5F9;
+          --p-shadow: rgba(0,0,0,0.04);
+          font-family: 'Inter', -apple-system, sans-serif;
           color: var(--p-text);
-          background: #fff;
+          background: #F8FAFC;
           min-height: 100vh;
         }
 
-        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
+        /* Hero Section */
         .details-hero {
           position: relative;
-          padding: 120px 0 80px;
-          background: #fff;
+          padding: 40px 0 60px;
+          background: #FFFFFF;
+          border-bottom: 1px solid var(--p-border);
           overflow: hidden;
-          text-align: center;
         }
 
-        .animated-blobs {
-          position: absolute; width: 100%; height: 100%;
-          top: 0; left: 0;
-          filter: blur(70px);
-          opacity: 0.3;
-        }
-        .blob {
+        .hero-pattern {
           position: absolute;
-          border-radius: 50%;
-          background: var(--p-primary);
-          animation: float 15s infinite alternate;
-        }
-        .blob-1 { width: 300px; height: 300px; top: -50px; left: 5%; background: #60a5fa; }
-        .blob-2 { width: 250px; height: 250px; bottom: -50px; right: 5%; background: #93c5fd; animation-delay: -5s; }
-        @keyframes float {
-          0% { transform: translate(0, 0) scale(1); }
-          100% { transform: translate(40px, 20px) scale(1.1); }
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: 
+            radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 50%),
+            radial-gradient(circle at 80% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 50%);
+          pointer-events: none;
         }
 
-        .hero-container { position: relative; z-index: 2; }
+        .hero-gradient {
+          position: absolute;
+          top: -50%;
+          right: -20%;
+          width: 500px;
+          height: 500px;
+          background: radial-gradient(circle, rgba(99, 102, 241, 0.06) 0%, transparent 70%);
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        .hero-container {
+          position: relative;
+          z-index: 2;
+        }
+
+        .hero-content {
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        .hero-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 32px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .back-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: transparent;
+          border: none;
+          color: var(--p-text-light);
+          font-weight: 600;
+          font-size: 0.9rem;
+          cursor: pointer;
+          padding: 8px 0;
+          transition: color 0.2s;
+          font-family: inherit;
+        }
+        .back-btn:hover { color: var(--p-primary); }
+
+        .hero-actions {
+          display: flex;
+          gap: 8px;
+        }
+
+        .hero-action-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          background: var(--p-border);
+          border: none;
+          border-radius: 8px;
+          color: var(--p-text-light);
+          font-weight: 600;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-family: inherit;
+        }
+        .hero-action-btn:hover {
+          background: #E2E8F0;
+          color: var(--p-text);
+        }
+        .hero-action-btn.active {
+          background: #EEF2FF;
+          color: var(--p-primary);
+        }
+
+        .hero-badges {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
 
         .hero-badge {
           display: inline-flex;
           align-items: center;
           gap: 8px;
           padding: 6px 16px;
-          background: rgba(37, 99, 235, 0.08);
           border-radius: 100px;
-          color: var(--p-primary);
-          font-weight: 700;
+          font-weight: 600;
           font-size: 0.8rem;
           text-transform: uppercase;
-          letter-spacing: 1px;
-          margin-bottom: 24px;
+          letter-spacing: 0.3px;
         }
 
         .details-hero h1 {
-          font-size: clamp(2rem, 5vw, 3.2rem);
-          font-weight: 800;
+          font-size: clamp(2rem, 4vw, 3rem);
+          font-weight: 900;
           line-height: 1.1;
-          margin-bottom: 20px;
+          margin-bottom: 24px;
           letter-spacing: -0.02em;
           color: var(--p-secondary);
-          max-width: 800px;
-          margin-left: auto;
-          margin-right: auto;
         }
 
-        .hero-meta {
-          display: flex;
-          justify-content: center;
-          gap: 32px;
-          flex-wrap: wrap;
+        .hero-meta-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
         }
+
         .hero-meta-item {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           color: var(--p-text-light);
-          font-weight: 600;
-          font-size: 1rem;
-        }
-        .hero-meta-item svg { color: var(--p-primary); }
-
-        .details-body {
-          padding-bottom: 100px;
-          margin-top: -30px;
-        }
-
-        .body-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
-          gap: 16px;
-          flex-wrap: wrap;
-        }
-
-        .back-link {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: #fff;
-          border: 1px solid #f1f5f9;
-          padding: 10px 20px;
-          border-radius: 14px;
-          color: var(--p-text-light);
-          font-weight: 700;
-          cursor: pointer;
-          transition: 0.3s;
-          font-family: inherit;
+          font-weight: 500;
           font-size: 0.9rem;
         }
-        .back-link:hover { color: var(--p-primary); border-color: #bfdbfe; background: #eff6ff; }
+        .meta-icon { color: var(--p-primary); font-size: 0.9rem; }
 
-        .top-badges { display: flex; gap: 10px; flex-wrap: wrap; }
-
-        .sector-badge {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 18px;
-          border-radius: 100px;
-          font-weight: 700;
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+        /* Body */
+        .details-body {
+          padding: 40px 0 80px;
         }
-        .sector-badge svg { font-size: 1rem; }
 
-        .health { background: #fef2f2; color: #ef4444; }
-        .edu { background: #eff6ff; color: #3b82f6; }
-        .agri { background: #ecfdf5; color: #10b981; }
-        .fin { background: #f5f3ff; color: #8b5cf6; }
-        .trans { background: #fff7ed; color: #f97316; }
-        .energy { background: #fffbeb; color: #f59e0b; }
-        .env { background: #f0fdf4; color: #22c55e; }
-        .security { background: #f8fafc; color: #475569; }
-        .default { background: #f1f5f9; color: var(--p-text-light); }
-
-        .status-badge {
-          padding: 8px 18px;
-          border-radius: 100px;
-          font-weight: 700;
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .status-badge.approved,
-        .status-badge.active { background: #ecfdf5; color: #10b981; }
-        .status-badge.pending { background: #fffbeb; color: #f59e0b; }
-        .status-badge.rejected { background: #fef2f2; color: #ef4444; }
-        .status-badge.completed { background: #ecfdf5; color: #10b981; }
-        .status-badge.ongoing { background: #eff6ff; color: #3b82f6; }
-
-        .info-cards-grid {
+        .body-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-          margin-bottom: 48px;
+          grid-template-columns: 2fr 1fr;
+          gap: 32px;
         }
 
-        .info-card {
-          background: #fff;
-          border: 1px solid #f1f5f9;
-          border-radius: 20px;
-          padding: 24px;
-          text-align: center;
-          transition: 0.3s;
+        .main-content {
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
         }
-        .info-card:hover { border-color: #e2e8f0; box-shadow: 0 8px 24px rgba(0,0,0,0.02); }
 
-        .info-card-icon {
-          width: 48px;
-          height: 48px;
-          margin: 0 auto 12px;
-          background: #f8fafc;
-          border-radius: 14px;
+        .section-card {
+          background: #FFFFFF;
+          border: 1px solid var(--p-border);
+          border-radius: 16px;
+          padding: 28px 32px;
+          transition: box-shadow 0.2s;
+        }
+        .section-card:hover { box-shadow: 0 4px 12px var(--p-shadow); }
+
+        .section-title {
           display: flex;
           align-items: center;
-          justify-content: center;
-          font-size: 1.2rem;
-          color: var(--p-primary);
-        }
-        .info-card-label {
-          display: block;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: var(--p-text-light);
-          margin-bottom: 6px;
-        }
-        .info-card-value {
-          display: block;
-          font-weight: 800;
-          font-size: 1rem;
-          color: var(--p-secondary);
-        }
-
-        .detail-section {
-          margin-bottom: 48px;
-        }
-        .detail-section h2 {
-          font-size: 1.5rem;
+          gap: 10px;
+          font-size: 1.1rem;
           font-weight: 800;
           color: var(--p-secondary);
-          margin-bottom: 20px;
+          margin-bottom: 16px;
         }
-
-        .content-card {
-          background: #fff;
-          border: 1px solid #f1f5f9;
-          border-radius: 24px;
-          padding: 36px;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
-        }
+        .section-icon { color: var(--p-primary); font-size: 1.1rem; }
 
         .description-text {
-          font-size: 1.1rem;
+          font-size: 1rem;
           line-height: 1.8;
           color: #475569;
           white-space: pre-line;
           margin: 0;
         }
 
-        .resources-flex {
+        /* Tech Tags */
+        .tech-tags {
           display: flex;
           flex-wrap: wrap;
-          gap: 12px;
+          gap: 8px;
         }
 
-        .resource-link-btn {
-          display: inline-flex;
-          align-items: center;
-          gap: 10px;
-          padding: 14px 28px;
-          border-radius: 14px;
-          font-weight: 700;
-          font-size: 0.9rem;
-          text-decoration: none;
-          transition: 0.3s;
-          background: var(--p-secondary);
-          color: #fff;
-          border: none;
-          cursor: pointer;
-          font-family: inherit;
-        }
-        .resource-link-btn:hover { transform: translateY(-2px); background: #1e293b; }
-        .resource-link-btn.outline {
-          background: #f8fafc;
-          color: var(--p-primary);
-          border: 1.5px solid #e2e8f0;
-        }
-        .resource-link-btn.outline:hover {
-          background: var(--p-primary);
-          color: #fff;
-          border-color: var(--p-primary);
+        .tech-tag {
+          padding: 6px 14px;
+          background: #F1F5F9;
+          border-radius: 6px;
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: var(--p-text-light);
         }
 
-        .stakeholders-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 20px;
-        }
-
-        .stakeholder-card {
-          background: #fff;
-          border: 1px solid #f1f5f9;
-          border-radius: 20px;
-          padding: 24px;
-          transition: 0.3s;
-        }
-        .stakeholder-card:hover { transform: translateY(-4px); border-color: #e2e8f0; box-shadow: 0 12px 24px rgba(0,0,0,0.02); }
-
-        .stakeholder-top {
+        /* SDG Card */
+        .sdg-card {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
+          gap: 16px;
+          padding: 20px;
+          background: #F8FAFC;
+          border-radius: 12px;
         }
-        .stakeholder-icon {
-          width: 44px;
-          height: 44px;
-          background: #f1f5f9;
+
+        .sdg-number {
+          width: 48px;
+          height: 48px;
           border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: var(--p-primary);
-          font-size: 1.2rem;
-        }
-        .stakeholder-role {
-          background: rgba(37,99,235,0.08);
-          color: var(--p-primary);
-          padding: 4px 12px;
-          border-radius: 100px;
-          font-size: 0.75rem;
-          font-weight: 800;
-          display: flex;
-          align-items: center;
-          gap: 6px;
+          font-size: 1.5rem;
+          font-weight: 900;
+          color: #FFFFFF;
+          flex-shrink: 0;
         }
 
-        .stakeholder-card h3 {
-          font-size: 1.15rem;
-          font-weight: 800;
-          color: var(--p-secondary);
-          margin: 0 0 6px;
-        }
-        .stakeholder-type {
-          color: var(--p-primary);
+        .sdg-content h3 {
+          font-size: 1rem;
           font-weight: 700;
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
           margin: 0 0 4px;
+          color: var(--p-secondary);
         }
-        .stakeholder-location {
+        .sdg-content p {
+          font-size: 0.9rem;
+          color: var(--p-text-light);
+          margin: 0;
+          line-height: 1.5;
+        }
+
+        /* Stakeholders */
+        .stakeholders-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 16px;
+        }
+
+        .stakeholder-card {
+          padding: 16px 20px;
+          background: #F8FAFC;
+          border-radius: 12px;
+          border: 1px solid var(--p-border);
+          transition: all 0.2s;
+        }
+        .stakeholder-card:hover {
+          border-color: var(--p-primary);
+          background: #FFFFFF;
+          box-shadow: 0 4px 12px var(--p-shadow);
+        }
+
+        .stakeholder-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .stakeholder-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: var(--p-primary);
+          color: #FFFFFF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 1rem;
+          flex-shrink: 0;
+        }
+
+        .stakeholder-info h3 {
+          font-size: 0.95rem;
+          font-weight: 700;
+          margin: 0 0 2px;
+          color: var(--p-secondary);
+        }
+
+        .stakeholder-role {
+          font-size: 0.75rem;
+          color: var(--p-primary);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+
+        .stakeholder-details {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .stakeholder-type {
+          font-size: 0.85rem;
           color: var(--p-text-light);
           font-weight: 500;
-          font-size: 0.9rem;
-          margin: 0 0 16px;
         }
+
+        .stakeholder-location {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.8rem;
+          color: var(--p-text-light);
+        }
+        .stakeholder-location svg { font-size: 0.7rem; }
+
         .stakeholder-link {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          color: var(--p-secondary);
-          font-weight: 700;
+          gap: 6px;
+          margin-top: 12px;
+          color: var(--p-primary);
+          font-weight: 600;
           font-size: 0.85rem;
           text-decoration: none;
+          transition: color 0.2s;
         }
-        .stakeholder-link:hover { color: var(--p-primary); }
+        .stakeholder-link:hover { color: #4F46E5; }
 
-        .empty-state { text-align: center; padding: 48px; }
-        .empty-state p { color: var(--p-text-light); font-size: 1rem; margin: 0; }
+        /* Sidebar */
+        .sidebar {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .sidebar-card {
+          background: #FFFFFF;
+          border: 1px solid var(--p-border);
+          border-radius: 16px;
+          padding: 24px;
+        }
+
+        .sidebar-title {
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: var(--p-text-light);
+          margin: 0 0 16px;
+        }
+
+        .sidebar-items {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .sidebar-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .sidebar-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: #F1F5F9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--p-text-light);
+          font-size: 0.9rem;
+          flex-shrink: 0;
+        }
+
+        .sidebar-item > div {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .sidebar-label {
+          font-size: 0.7rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          color: var(--p-text-light);
+        }
+
+        .sidebar-value {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: var(--p-secondary);
+        }
+
+        /* Resources */
+        .resources-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .resource-link {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          background: #F8FAFC;
+          border-radius: 8px;
+          color: var(--p-text);
+          font-weight: 500;
+          font-size: 0.85rem;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+        .resource-link:hover {
+          background: var(--p-primary);
+          color: #FFFFFF;
+        }
+        .resource-link svg { font-size: 0.9rem; }
+
+        /* Metrics */
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+        }
+
+        .metric-item {
+          text-align: center;
+          padding: 12px;
+          background: #F8FAFC;
+          border-radius: 8px;
+        }
+
+        .metric-value {
+          display: block;
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: var(--p-secondary);
+        }
+
+        .metric-label {
+          font-size: 0.7rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          color: var(--p-text-light);
+        }
+
+        /* Loading & Error States */
+        .loading-state, .error-state {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #F8FAFC;
+          gap: 16px;
+        }
 
         .spinner {
-          width: 40px; height: 40px;
-          border: 3px solid #f1f5f9;
+          width: 48px;
+          height: 48px;
+          border: 3px solid var(--p-border);
           border-top-color: var(--p-primary);
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
-          margin: 0 auto;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .action-btn {
-          background: var(--p-primary);
-          color: #fff;
-          border: none;
-          padding: 14px 28px;
-          border-radius: 14px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: 0.3s;
-          font-family: inherit;
-          font-size: 0.9rem;
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
-        .action-btn:hover { background: #1d4ed8; transform: translateY(-2px); }
 
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-up { animation: fadeUp 0.5s ease both; }
-        .delay-1 { animation-delay: 0.1s; }
-        .delay-2 { animation-delay: 0.2s; }
-
-        @media (max-width: 900px) {
-          .info-cards-grid { grid-template-columns: repeat(2, 1fr); }
+        /* Responsive */
+        @media (max-width: 1024px) {
+          .body-grid {
+            grid-template-columns: 1fr;
+          }
         }
-        @media (max-width: 600px) {
-          .info-cards-grid { grid-template-columns: 1fr; }
-          .body-top { flex-direction: column; align-items: flex-start; }
-          .hero-meta { flex-direction: column; align-items: center; gap: 8px; }
-          .details-hero h1 { font-size: 1.8rem; }
-          .content-card { padding: 24px; }
-          .details-hero { padding: 100px 0 60px; }
+
+        @media (max-width: 768px) {
+          .details-hero { padding: 24px 0 40px; }
+          .hero-top { flex-direction: column; align-items: stretch; }
+          .hero-actions { justify-content: flex-start; }
+          .hero-meta-grid { grid-template-columns: 1fr; }
+          .section-card { padding: 20px; }
+          .stakeholders-grid { grid-template-columns: 1fr; }
+          .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+          .sdg-card { flex-direction: column; align-items: center; text-align: center; }
+          .details-body { padding: 24px 0 60px; }
+        }
+
+        @media (max-width: 480px) {
+          .hero-badges { flex-direction: column; }
+          .hero-meta-item { font-size: 0.8rem; }
         }
       `}</style>
     </div>
   )
 }
+
+function LoadingState({ t }) {
+  return (
+    <div className="loading-state">
+      <div className="spinner" />
+      <p style={{ color: '#64748B', fontWeight: 500 }}>{t('projectDetails.loading')}</p>
+      <style>{`
+        .loading-state {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #F8FAFC;
+          gap: 16px;
+        }
+        .spinner {
+          width: 48px;
+          height: 48px;
+          border: 3px solid #F1F5F9;
+          border-top-color: #6366F1;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function ErrorState({ error, navigate, t }) {
+  return (
+    <div className="error-state">
+      <div className="error-icon">⚠️</div>
+      <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A' }}>
+        {t('projectDetails.notFound')}
+      </h2>
+      <p style={{ color: '#64748B', marginBottom: 8 }}>
+        {error || t('projectDetails.notFoundDescAlt')}
+      </p>
+      <button
+        onClick={() => navigate('/projects')}
+        className="error-btn"
+      >
+        {t('projectDetails.browseProjects')}
+      </button>
+      <style>{`
+        .error-state {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: #F8FAFC;
+          gap: 8px;
+          padding: 24px;
+          text-align: center;
+        }
+        .error-icon { font-size: 4rem; }
+        .error-btn {
+          margin-top: 8px;
+          padding: 12px 28px;
+          background: #6366F1;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 10px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: background 0.2s;
+          font-family: inherit;
+        }
+        .error-btn:hover { background: #4F46E5; }
+      `}</style>
+    </div>
+  )
+}
+
+const SDG_COLORS = [
+  '#E5243B','#DDA63A','#4C9F38','#C5192D','#FF3A21','#26BDE2',
+  '#FCC30B','#A21942','#FD6925','#DD1367','#FD9D24','#BF8B2E',
+  '#3F7E44','#0A97D9','#56C02B','#00689D','#19486A'
+]
 
 export default ProjectDetails

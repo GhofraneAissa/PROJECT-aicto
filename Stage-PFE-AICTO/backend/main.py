@@ -145,8 +145,8 @@ try:
                     nullable = "NULL" if col != "user_id" else "NOT NULL DEFAULT 0"
                     conn.execute(text(f"ALTER TABLE notifications ADD COLUMN {col} {col_type} {nullable}"))
                     logger.info(f"[DB] Added column {col} to notifications table")
-        except Exception:
-            pass
+        except Exception as ex:
+            logger.warning(f"[DB] Notification migration skipped: {ex}")
         # Fix chat_sessions FK to cascade on user delete
         try:
             from sqlalchemy import inspect as sa_inspect
@@ -162,8 +162,8 @@ try:
                     # SQLite cannot alter FK; delete orphaned sessions as cleanup
                     conn.execute(text("DELETE FROM chat_sessions WHERE user_id IS NOT NULL AND user_id NOT IN (SELECT id FROM users)"))
                     logger.info("[DB] Cleaned up orphaned chat_sessions")
-        except Exception:
-            pass
+        except Exception as ex:
+            logger.warning(f"[DB] FK migration skipped: {ex}")
         conn.commit()
 except Exception as e:
     logger.error(f"[DB] ERROR: {e}")

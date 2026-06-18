@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 import { API_BASE } from '../config'
 
-const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Tourism', 'Transportation', 'Energy', 'Environment', 'Cybersecurity', 'Governance', 'Telecommunications', 'Data Science', 'Business Intelligence', 'Other']
+const sectors = ['Health', 'EduTech', 'AgriTech', 'Finance', 'Tourism', 'Transportation', 'Energy', 'Environment', 'Governance', 'Telecommunications', 'Other']
 const technologies = ['NLP', 'Computer Vision', 'Robotics', 'Machine Learning', 'Deep Learning', 'Speech Recognition', 'Business Intelligence', 'Data Engineering', 'Data Science', 'Generative AI', 'IoT']
 const arabCountries = [
   'Algeria', 'Bahrain', 'Comoros', 'Djibouti', 'Egypt', 'Iraq',
@@ -37,20 +37,20 @@ const getSectorInfo = (sector) => {
     'EduTech':      { class: 'edu',    icon: <FaLightbulb /> },
     'Education':    { class: 'edu',    icon: <FaLightbulb /> },
     'AgriTech':     { class: 'agri',   icon: <FaGlobeAmericas /> },
-    'Agriculture':  { class: 'agri',   icon: <FaGlobeAmericas /> },
+    
     'Finance':      { class: 'fin',    icon: <FaCity /> },
     'Transportation': { class: 'trans',  icon: <FaRocket /> },
     'Energy':       { class: 'energy', icon: <FaLightbulb /> },
     'Environment':  { class: 'env',    icon: <FaLeaf /> },
-    'Cybersecurity':{ class: 'security',icon: <FaShieldAlt /> },
-    'Security':     { class: 'security', icon: <FaShieldAlt /> },
+    
+    
     'Governance':   { class: 'gov',   icon: <FaCity /> },
     'Telecommunications': { class: 'telecom', icon: <FaRocket /> },
     'SmartCities':  { class: 'fin', icon: <FaCity /> },
     'Industry':     { class: 'trans', icon: <FaRocket /> },
-    'Business Intelligence': { class: 'fin', icon: <FaCity /> },
+    
     'Tourism':     { class: 'trans', icon: <FaGlobeAmericas /> },
-    'Data Science': { class: 'edu', icon: <FaMicrochip /> },
+    
     'Other':       { class: 'default', icon: <FaMicrochip /> }
   }
   return map[sector] || { class: 'default', icon: <FaMicrochip /> }
@@ -80,6 +80,7 @@ function ProjectStocktaking() {
   const [filterSdg, setFilterSdg] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [stakeholderSearch, setStakeholderSearch] = useState('')
+  const [userStakeholder, setUserStakeholder] = useState(null)
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [extracting, setExtracting] = useState(false)
   const [extractedData, setExtractedData] = useState(null)
@@ -110,6 +111,29 @@ function ProjectStocktaking() {
     }
   }
 
+  useEffect(() => {
+    if (user && user.id) {
+      fetchUserStakeholder(user.id)
+    } else {
+      setUserStakeholder(null)
+    }
+  }, [user])
+
+  const fetchUserStakeholder = async (userId) => {
+    try {
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+      const res = await fetch(`${API_BASE}/api/users/${userId}/stakeholder`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.stakeholder) setUserStakeholder(data.stakeholder)
+      }
+    } catch (err) {
+      console.error('Failed to fetch user stakeholder:', err)
+    }
+  }
+
   const fetchSdgs = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/sdgs/`)
@@ -136,7 +160,7 @@ function ProjectStocktaking() {
       const response = await fetch(`${API_BASE}/api/projects/?${params}`)
       if (!response.ok) throw new Error('Failed to fetch projects')
       const data = await response.json()
-      setProjects(data.items)
+      setProjects(data.items.filter(p => !['Cybersecurity','Telecommunications','Data Science','Business Intelligence'].includes(p.sector)))
       setTotal(data.total)
       setTotalPages(data.total_pages)
       setError(null)
@@ -171,12 +195,12 @@ function ProjectStocktaking() {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        toast.error(err.detail || 'Extraction failed')
+        toast.error(err.detail || t('projects.extractionFailed'))
         return
       }
       const data = await res.json()
       if (!data.extracted) {
-        toast.error(data.error || 'Could not extract project info')
+        toast.error(data.error || t('projects.extractionFailedDesc'))
         return
       }
       setExtractedData(data.fields)
@@ -197,18 +221,93 @@ function ProjectStocktaking() {
         country_id: countryId || prev.country_id,
         sdg_id: sdgId || prev.sdg_id,
       }))
-      toast.success('Project info extracted successfully!')
+      toast.success(t('projects.extractionSuccess'))
     } catch (err) {
-      toast.error('Extraction failed: ' + err.message)
+      toast.error(t('projects.extractionFailed') + ': ' + err.message)
     } finally {
       setExtracting(false)
     }
   }
 
   const getConfidenceColor = (score) => {
-    if (score >= 0.7) return { bg: '#dcfce7', color: '#166534', text: 'High' }
-    if (score >= 0.4) return { bg: '#fef9c3', color: '#854d0e', text: 'Medium' }
-    return { bg: '#fee2e2', color: '#991b1b', text: 'Low' }
+    if (score >= 0.7) return { bg: '#dcfce7', color: '#166534', text: t('common.high') }
+    if (score >= 0.4) return { bg: '#fef9c3', color: '#854d0e', text: t('common.medium') }
+    return { bg: '#fee2e2', color: '#991b1b', text: t('common.low') }
+  }
+
+  const sectorLabel = (s) => {
+    const map = {
+      'Health': t('projects.sectorHealth'),
+      'EduTech': t('projects.sectorEduTech'),
+      'AgriTech': t('projects.sectorAgriTech'),
+      'Finance': t('projects.sectorFinance'),
+      'Tourism': t('projects.sectorTourism'),
+      'Transportation': t('projects.sectorTransportation'),
+      'Energy': t('projects.sectorEnergy'),
+      'Environment': t('projects.sectorEnvironment'),
+      'Cybersecurity': t('projects.sectorCybersecurity'),
+      'Governance': t('projects.sectorGovernance'),
+      'Telecommunications': t('projects.sectorTelecommunications'),
+      'Other': t('projects.sectorOther'),
+    }
+    return map[s] || s
+  }
+
+  const techLabel = (tech) => {
+    const map = {
+      'NLP': t('projects.techNlp'),
+      'Computer Vision': t('projects.techComputerVision'),
+      'Robotics': t('projects.techRobotics'),
+      'Machine Learning': t('projects.techMachineLearning'),
+      'Deep Learning': t('projects.techDeepLearning'),
+      'Speech Recognition': t('projects.techSpeechRecognition'),
+      'Business Intelligence': t('projects.techBusinessIntelligence'),
+      'Data Engineering': t('projects.techDataEngineering'),
+      'Data Science': t('projects.techDataScience'),
+      'Generative AI': t('projects.techGenerativeAi'),
+      'IoT': t('projects.techIot'),
+    }
+    return map[tech] || tech
+  }
+
+  const countryLabel = (c) => {
+    const map = {
+      'Algeria': t('projects.countryAlgeria'),
+      'Bahrain': t('projects.countryBahrain'),
+      'Comoros': t('projects.countryComoros'),
+      'Djibouti': t('projects.countryDjibouti'),
+      'Egypt': t('projects.countryEgypt'),
+      'Iraq': t('projects.countryIraq'),
+      'Jordan': t('projects.countryJordan'),
+      'Kuwait': t('projects.countryKuwait'),
+      'Lebanon': t('projects.countryLebanon'),
+      'Libya': t('projects.countryLibya'),
+      'Mauritania': t('projects.countryMauritania'),
+      'Morocco': t('projects.countryMorocco'),
+      'Oman': t('projects.countryOman'),
+      'Palestine': t('projects.countryPalestine'),
+      'Qatar': t('projects.countryQatar'),
+      'Saudi Arabia': t('projects.countrySaudiArabia'),
+      'Somalia': t('projects.countrySomalia'),
+      'Sudan': t('projects.countrySudan'),
+      'Syria': t('projects.countrySyria'),
+      'Tunisia': t('projects.countryTunisia'),
+      'United Arab Emirates': t('projects.countryUnitedArabEmirates'),
+      'Yemen': t('projects.countryYemen'),
+    }
+    return map[c] || c
+  }
+
+  const regionLabel = (r) => {
+    const map = {
+      'North Africa': t('projects.regionNorthAfrica'),
+      'MENA': t('projects.regionMena'),
+      'East Africa': t('projects.regionEastAfrica'),
+      'Gulf': t('projects.regionGulf'),
+      'Levant': t('projects.regionLevant'),
+      'Arab Region': t('projects.regionArabRegion'),
+    }
+    return map[r] || r
   }
 
   const isAutoFilled = (field) => {
@@ -319,7 +418,19 @@ function ProjectStocktaking() {
     }
   }
 
+  const toggleForm = () => {
+    const opening = !showForm
+    setShowForm(opening)
+    if (opening && userStakeholder) {
+      setSelectedStakeholders(prev => {
+        if (prev.some(s => s.stakeholder_id === userStakeholder.id)) return prev
+        return [...prev, { stakeholder_id: userStakeholder.id, role: 'Owner' }]
+      })
+    }
+  }
+
   const toggleStakeholder = (stakeholderId) => {
+    if (userStakeholder && stakeholderId === userStakeholder.id) return
     setSelectedStakeholders(prev =>
       prev.some(s => s.stakeholder_id === stakeholderId)
         ? prev.filter(s => s.stakeholder_id !== stakeholderId)
@@ -406,7 +517,7 @@ function ProjectStocktaking() {
               </button>
               
               {user && (
-                <button className="submit-btn" onClick={() => setShowForm(!showForm)}>
+                <button className="submit-btn" onClick={toggleForm}>
                   <FaPlus /> {showForm ? t('projects.closeForm') : t('projects.submitProject')}
                 </button>
               )}
@@ -420,21 +531,21 @@ function ProjectStocktaking() {
                   <label>{t('projects.country')}</label>
                   <select value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
                     <option value="">{t('projects.allCountries')}</option>
-                    {arabCountries.map(c => <option key={c} value={c}>{c}</option>)}
+                    {arabCountries.map(c => <option key={c} value={c}>{countryLabel(c)}</option>)}
                   </select>
                 </div>
                 <div className="filter-item">
                   <label>{t('projects.sector')}</label>
                   <select value={filterSector} onChange={e => setFilterSector(e.target.value)}>
                     <option value="">{t('projects.allSectors')}</option>
-                    {sectors.map(s => <option key={s} value={s}>{s}</option>)}
+                    {sectors.map(s => <option key={s} value={s}>{sectorLabel(s)}</option>)}
                   </select>
                 </div>
                 <div className="filter-item">
                   <label>{t('projects.sdgAlignment')}</label>
                   <select value={filterSdg} onChange={e => setFilterSdg(e.target.value)}>
                     <option value="">{t('projects.allSdgs')}</option>
-                    {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
+                    {sdgList.map(s => <option key={s.id} value={s.id}>{t('projects.sdg')} {s.goal_number}: {s.title}</option>)}
                   </select>
                 </div>
               </div>
@@ -467,7 +578,7 @@ function ProjectStocktaking() {
                     <input
                       type="url"
                       className="extract-url-input"
-                      placeholder="Paste LinkedIn post URL to auto-extract project info..."
+                      placeholder={t('projects.linkedinPlaceholder')}
                       value={linkedinUrl}
                       onChange={e => setLinkedinUrl(e.target.value)}
                     />
@@ -477,18 +588,16 @@ function ProjectStocktaking() {
                       onClick={extractFromUrl}
                       disabled={extracting || !linkedinUrl.trim()}
                     >
-                      {extracting ? <span className="extract-spinner"></span> : 'Extract'}
+                      {extracting ? <span className="extract-spinner"></span> : t('projects.extract')}
                     </button>
                     {extractedData && (
-                      <button type="button" className="extract-clear-btn" onClick={resetExtraction} title="Clear extraction">
-                        ✕
-                      </button>
+                      <button type="button" className="extract-clear-btn" onClick={resetExtraction} title={t('projects.clearExtraction')}>&times;</button>
                     )}
                   </div>
                   {extractedData && (
                     <div className="extract-summary">
-                      <span className="extract-badge success">AI extracted</span>
-                      <span className="extract-hint">Form fields have been pre-filled. Review and adjust below.</span>
+                      <span className="extract-badge success">{t('projects.aiExtracted')}</span>
+                      <span className="extract-hint">{t('projects.prefilledHint')}</span>
                     </div>
                   )}
                 </div>
@@ -538,7 +647,7 @@ function ProjectStocktaking() {
                       <div className="field-input-row">
                         <select name="sector" value={formData.sector} onChange={handleChange} required>
                           <option value="">{t('projects.selectSector')}</option>
-                          {sectors.map(s => <option key={s} value={s}>{s}</option>)}
+                          {sectors.map(s => <option key={s} value={s}>{sectorLabel(s)}</option>)}
                         </select>
                         {isAutoFilled('primary_sector') && (() => {
                           const c = getConfidenceColor(extractedData.primary_sector.confidence)
@@ -551,7 +660,7 @@ function ProjectStocktaking() {
                       <div className="field-input-row">
                         <select name="technology" value={formData.technology} onChange={handleChange} required>
                           <option value="">{t('projects.selectTechnology')}</option>
-                          {technologies.map(t => <option key={t} value={t}>{t}</option>)}
+                          {technologies.map(tech => <option key={tech} value={tech}>{techLabel(tech)}</option>)}
                         </select>
                         {isAutoFilled('core_ai_technology') && (() => {
                           const c = getConfidenceColor(extractedData.core_ai_technology.confidence)
@@ -587,7 +696,7 @@ function ProjectStocktaking() {
                     <div className="field-input-row">
                       <select name="sdg_id" value={formData.sdg_id} onChange={handleChange}>
                         <option value="">{t('projects.selectSdg')}</option>
-                        {sdgList.map(s => <option key={s.id} value={s.id}>SDG {s.goal_number}: {s.title}</option>)}
+                        {sdgList.map(s => <option key={s.id} value={s.id}>{t('projects.sdg')} {s.goal_number}: {s.title}</option>)}
                       </select>
                       {isAutoFilled('sdg_alignment') && (() => {
                         const c = getConfidenceColor(extractedData.sdg_alignment.confidence)
@@ -625,7 +734,7 @@ function ProjectStocktaking() {
                           {formData.files.map((f, idx) => (
                             <div key={idx} className="file-preview-item">
                               <span className="file-name">{f.name}</span>
-                              <span className="file-size">({(f.size / 1024).toFixed(1)} KB)</span>
+                              <span className="file-size">({t('projects.fileSizeKb', { size: (f.size / 1024).toFixed(1) })})</span>
                             </div>
                           ))}
                         </div>
@@ -655,20 +764,21 @@ function ProjectStocktaking() {
                         {allStakeholders
                           .filter(s => s.name.toLowerCase().includes(stakeholderSearch.toLowerCase()))
                           .map(s => {
-                            const isSelected = selectedStakeholders.some(ss => ss.stakeholder_id === s.id)
+                            const isOwner = userStakeholder && s.id === userStakeholder.id
+                            const isSelected = isOwner || selectedStakeholders.some(ss => ss.stakeholder_id === s.id)
                             return (
-                              <div key={s.id} className={`list-choice-item ${isSelected ? 'selected' : ''}`}>
+                              <div key={s.id} className={`list-choice-item ${isSelected ? 'selected' : ''} ${isOwner ? 'owner-stakeholder' : ''}`}>
                                 <div className="item-main-info" onClick={() => toggleStakeholder(s.id)}>
-                                  <div className={`custom-checkbox ${isSelected ? 'checked' : ''}`}>
+                                  <div className={`custom-checkbox ${isSelected ? 'checked' : ''} ${isOwner ? 'disabled' : ''}`}>
                                     {isSelected && <FaCheck />}
                                   </div>
                                   <div className="org-details">
-                                    <span className="org-name">{s.name}</span>
+                                    <span className="org-name">{s.name} {isOwner && <span className="owner-badge">{t('projects.owner')}</span>}</span>
                                     <span className="org-meta">{s.type} · {s.country}</span>
                                   </div>
                                 </div>
                                 
-                                {isSelected && (
+                                {isSelected && !isOwner && (
                                   <div className="role-picker">
                                     <label>{t('projects.role')}</label>
                                     <select 
@@ -680,6 +790,12 @@ function ProjectStocktaking() {
                                       <option value="research">{t('projects.roleResearch')}</option>
                                       <option value="funding">{t('projects.roleFunding')}</option>
                                     </select>
+                                  </div>
+                                )}
+                                {isSelected && isOwner && (
+                                  <div className="role-picker">
+                                    <label>{t('projects.role')}</label>
+                                    <span className="owner-role-display">{t('projects.roleOwner')}</span>
                                   </div>
                                 )}
                               </div>
@@ -781,14 +897,14 @@ function ProjectStocktaking() {
                         <p className="project-dates">
                           {formatDate(p.start_date)} — {formatDate(p.end_date)}
                         </p>
-                        <p className="country-tag">{countryName} · {region}</p>
+                        <p className="country-tag">{countryName} · {regionLabel(region)}</p>
                       </div>
 
                       <div className="stakeholders-list">
                         <div className="stakeholder-avatars">
                           {p.stakeholders && p.stakeholders.slice(0, 3).map((assoc, idx) => (
                             <div key={idx} className="stakeholder-tag" title={assoc.stakeholder?.name}>
-                              {assoc.stakeholder?.name?.substring(0, 2).toUpperCase() || 'NA'}
+                              {assoc.stakeholder?.name?.substring(0, 2).toUpperCase() || t('common.notAvailable')}
                             </div>
                           ))}
                           {p.stakeholders && p.stakeholders.length > 3 && (
@@ -808,7 +924,7 @@ function ProjectStocktaking() {
                           </div>
                         </div>
                         <div className="sdg-badge">
-                          {p.sdg ? `SDG${p.sdg.goal_number}` : t('projects.n/a')}
+                          {p.sdg ? `${t('projects.sdg')}${p.sdg.goal_number}` : t('projects.n/a')}
                         </div>
                       </div>
 
@@ -1300,6 +1416,37 @@ function ProjectStocktaking() {
         .custom-checkbox.checked {
           background: var(--p-primary);
           border-color: var(--p-primary);
+        }
+        .custom-checkbox.disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .owner-stakeholder {
+          background: #f0fdf4 !important;
+          border-bottom: 1px solid #bbf7d0;
+        }
+        .owner-stakeholder .org-name { color: #15803d; }
+        .owner-badge {
+          display: inline-block;
+          font-size: 0.6rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          background: #15803d;
+          color: #fff;
+          padding: 1px 8px;
+          border-radius: 20px;
+          margin-left: 8px;
+          vertical-align: middle;
+          letter-spacing: 0.5px;
+        }
+        .owner-role-display {
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: #15803d;
+          background: #dcfce7;
+          padding: 4px 14px;
+          border-radius: 20px;
         }
 
         .org-details { display: flex; flex-direction: column; }

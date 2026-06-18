@@ -78,7 +78,7 @@ function MyProjects() {
           fetch(`${API_BASE}/api/resources/?user_id=${u.id}`).then(r => r.json()),
         ])
           .then(([projectsData, resourcesData]) => {
-            setProjects(projectsData.projects || [])
+            setProjects((projectsData.projects || []).filter(p => !['Cybersecurity','Telecommunications','Data Science','Business Intelligence'].includes(p.sector)))
             setResources(resourcesData || [])
             setLoading(false)
           })
@@ -240,7 +240,7 @@ function MyProjects() {
               <div>
                 <h1>{t('nav.myPublications')}</h1>
                 <p className="header-sub">
-                  {resources.length + projects.length} publication{(resources.length + projects.length) !== 1 ? 's' : ''}
+                  {t('resources.publication', { count: resources.length + projects.length })}
                 </p>
               </div>
             </div>
@@ -249,7 +249,7 @@ function MyProjects() {
                 <FaPlus /> {t('resources.addResource')}
               </Link>
               <Link to="/projects" className="btn-outline">
-                <FaPlus /> New Project
+                <FaPlus /> {t('myProjects.newProject')}
               </Link>
             </div>
           </div>
@@ -270,7 +270,7 @@ function MyProjects() {
           {activeTab === 'resources' && (
             <>
               <div className="section-header">
-                <span className="count-badge">{resources.length} resource{resources.length !== 1 ? 's' : ''}</span>
+                <span className="count-badge">{t('resources.resource', { count: resources.length })}</span>
               </div>
               {resources.length === 0 ? (
                 <div className="mp-empty">
@@ -326,7 +326,7 @@ function MyProjects() {
           {activeTab === 'projects' && (
             <>
               <div className="section-header">
-                <span className="count-badge">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
+                <span className="count-badge">{t('projects.project', { count: projects.length })}</span>
               </div>
               {projects.length === 0 ? (
                 <div className="mp-empty">
@@ -408,25 +408,25 @@ function MyProjects() {
                 <div className="field">
                   <label>{t('resources.type')} *</label>
                   <select name="type" value={editForm.type} onChange={e => setEditForm({ ...editForm, type: e.target.value })}>
-                    <option value="Policy Document">{t('resources.types.policyDocument')}</option>
-                    <option value="White Paper">{t('resources.types.whitePaper')}</option>
-                    <option value="Dataset">{t('resources.types.dataset')}</option>
-                    <option value="Report">{t('resources.types.report')}</option>
+                    <option value="Policy Document">{t('resources.typePolicyDocument')}</option>
+                    <option value="White Paper">{t('resources.typeWhitePaper')}</option>
+                    <option value="Dataset">{t('resources.typeDataset')}</option>
+                    <option value="Report">{t('resources.typeReport')}</option>
                   </select>
                 </div>
                 <div className="field">
                   <label>{t('resources.category')} *</label>
                   <select name="category" value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
-                    <option value="Strategy">{t('resources.categories.strategy')}</option>
-                    <option value="Governance">{t('resources.categories.governance')}</option>
-                    <option value="Technical">{t('resources.categories.technical')}</option>
-                    <option value="Research">{t('resources.categories.research')}</option>
-                    <option value="Education">{t('resources.categories.education')}</option>
+                    <option value="Strategy">{t('resources.categoryStrategy')}</option>
+                    <option value="Governance">{t('resources.categoryGovernance')}</option>
+                    <option value="Technical">{t('resources.categoryTechnical')}</option>
+                    <option value="Research">{t('resources.categoryResearch')}</option>
+                    <option value="Education">{t('resources.categoryEducation')}</option>
                   </select>
                 </div>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>{t('resources.description')}</label>
+                <label>{t('resources.descriptionField')}</label>
                 <textarea name="description" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} rows={3} />
               </div>
               <div className="modal-actions" style={{ marginTop: 16 }}>
@@ -464,7 +464,7 @@ function MyProjects() {
                 </div>
               </div>
               <div className="field" style={{ gridColumn: '1 / -1' }}>
-                <label>{t('resources.description')}</label>
+                <label>{t('resources.descriptionField')}</label>
                 <textarea name="description" value={projectEditForm.description} onChange={e => setProjectEditForm({ ...projectEditForm, description: e.target.value })} rows={3} />
               </div>
               <div className="modal-actions" style={{ marginTop: 16 }}>

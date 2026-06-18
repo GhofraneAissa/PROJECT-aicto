@@ -66,16 +66,23 @@ function groupBy(arr, key) {
   return m
 }
 
-function exportCSV(data) {
-  const header = 'ID,Title,Country,Region,Sector,Status,Technology,SDG,Duration\n'
-  const rows = data
-    .map(p => `${p.id},"${p.title || ''}",${p.country || ''},${p.region || ''},${p.sector || ''},${p.status || ''},"${p.technology || ''}",${p.sdg || ''},${p.duration || ''}`)
-    .join('\n')
-  const blob = new Blob([header + rows], { type: 'text/csv' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href = url; a.download = 'analytics_export.csv'; a.click()
-  URL.revokeObjectURL(url)
+async function exportCSV(projectsUrl) {
+  try {
+    const res = await fetch(projectsUrl)
+    const json = await res.json()
+    const items = json.items || json.projects || json.results || json
+    if (!Array.isArray(items) || items.length === 0) return
+    const header = 'ID,Title,Country,Sector,Status,Technology,Organization\n'
+    const rows = items
+      .filter(p => !['Cybersecurity','Telecommunications','Data Science','Business Intelligence'].includes(p.sector))
+      .map(p => `${p.id},"${(p.title || '').replace(/"/g,'""')}",${p.country || ''},${p.sector || ''},${p.status || ''},"${(p.technology || '').replace(/"/g,'""')}","${(p.organization || '').replace(/"/g,'""')}"`)
+      .join('\n')
+    const blob = new Blob([header + rows], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url; a.download = 'analytics_export.csv'; a.click()
+    URL.revokeObjectURL(url)
+  } catch { /* silent */ }
 }
 
 function CustomTooltip({ active, payload, label }) {
@@ -296,9 +303,9 @@ function InsightBar({ insights }) {
   )
 }
 
-function HBarList({ entries, colorFn }) {
+function HBarList({ entries, colorFn, t }) {
   const max = entries[0]?.[1] || 1
-  if (!entries.length) return <p style={{ textAlign: 'center', color: 'var(--at-muted)', fontSize: 12, padding: 20 }}>No data</p>
+  if (!entries.length) return <p style={{ textAlign: 'center', color: 'var(--at-muted)', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {entries.map(([k, v], i) => (
@@ -457,7 +464,7 @@ function CardHeader({ icon: Icon, iconBg, iconColor, title, sub, badge, action }
   )
 }
 
-function MultiSelect({ label, options, selected, onChange, icon: Icon }) {
+function MultiSelect({ label, options, selected, onChange, icon: Icon, t }) {
   const [open, setOpen]     = useState(false)
   const [search, setSearch] = useState('')
   const ref = useRef(null)
@@ -546,7 +553,7 @@ function MultiSelect({ label, options, selected, onChange, icon: Icon }) {
             <FaSearch style={{ fontSize: 11, color: 'var(--at-muted)' }} />
             <input
               type="text"
-              placeholder={`Search ${label.toLowerCase()}...`}
+              placeholder={t('analytics.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -580,7 +587,7 @@ function MultiSelect({ label, options, selected, onChange, icon: Icon }) {
                 onChange={selectAll}
                 style={{ accentColor: C.primary }}
               />
-              Select all
+              {t('analytics.selectAll')}
             </label>
             {filtered.map(opt => (
               <label key={opt} style={{
@@ -727,11 +734,11 @@ function Analytics() {
     stakeholderTypes: [...new Set((data.stakeholdersByType|| []).map(s => s.type).filter(Boolean))],
   }), [data])
 
-  if (loading) return <Loader />
+  if (loading) return <Loader t={t} />
 
   const tabs = [
-    { label: 'Overview',       icon: FaChartBar    },
-    { label: 'Users & Stakeholders', icon: FaUsers },
+    { label: t('analytics.tabOverview'),       icon: FaChartBar    },
+    { label: t('analytics.tabUsersStakeholders'), icon: FaUsers },
   ]
 
   return (
@@ -778,12 +785,12 @@ function Analytics() {
               background: `linear-gradient(135deg, ${C.primary}, ${C.secondary})`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
-            }}>Analytics Dashboard</div>
+            }}>{t('analytics.pageTitle')}</div>
             <div style={{
               fontSize: 11,
               color: 'var(--at-muted)',
               fontWeight: 500
-            }}>Arab ICT Observatory — Real-time intelligence</div>
+            }}>{t('analytics.pageSubtitle')}</div>
           </div>
         </div>
 
@@ -802,14 +809,14 @@ function Analytics() {
             <FaClock style={{ fontSize: 10, opacity: 0.6 }} />
             {lastUpdated ? lastUpdated.toLocaleTimeString() : '--:--'}
           </span>
-          <HeaderBtn icon={FaExpand}     onClick={toggleFullscreen} title="Fullscreen" />
-          <HeaderBtn icon={FaFileExport} title="Export PDF" />
-          <HeaderBtn icon={FaDownload}   onClick={() => exportCSV([])} title="Export CSV" />
-          <HeaderBtn icon={FaSyncAlt}    onClick={() => fetchAllData(debouncedQS)} title="Refresh" primary />
+          <HeaderBtn icon={FaExpand}     onClick={toggleFullscreen} title={t('analytics.fullscreen')} />
+          <HeaderBtn icon={FaFileExport} title={t('analytics.exportPdf')} />
+          <HeaderBtn icon={FaDownload}   onClick={() => exportCSV(`${API_BASE}/api/projects?page_size=5000`)} title={t('analytics.exportCsv')} />
+          <HeaderBtn icon={FaSyncAlt}    onClick={() => fetchAllData(debouncedQS)} title={t('analytics.refresh')} primary />
         </div>
       </div>
 
-      <div style={{
+      {/* <div style={{
         background: 'var(--at-card)',
         borderBottom: '1px solid var(--at-border)',
         padding: '8px 24px',
@@ -824,7 +831,7 @@ function Analytics() {
 
       {dashboardMode === 'admin' ? (
         <AdminDashboard token={token} />
-      ) : (
+      ) : ( */}
         <>
           <div style={{
             background: 'var(--at-card)',
@@ -841,13 +848,13 @@ function Analytics() {
             backgroundColor: 'var(--at-card)'
           }}>
             <FaFilter style={{ fontSize: 11, color: 'var(--at-muted)', marginRight: 4 }} />
-            <MultiSelect label="Sector"      options={filterOptions.sectors}          selected={filterSector}          onChange={setFilterSector}          icon={FaLayerGroup}    />
-            <MultiSelect label="Country"     options={filterOptions.countries}        selected={filterCountry}         onChange={setFilterCountry}         icon={FaGlobeAmericas} />
-            <MultiSelect label="Status"      options={filterOptions.statuses}         selected={filterStatus}          onChange={setFilterStatus}          icon={FaCheckCircle}   />
-            <MultiSelect label="Technology"  options={filterOptions.technologies}     selected={filterTech}            onChange={setFilterTech}            icon={FaMicrochip}     />
-            <MultiSelect label="SDG"         options={filterOptions.sdgs}            selected={filterSdg}             onChange={setFilterSdg}             icon={FaFlag}          />
-            <MultiSelect label="Region"      options={filterOptions.regions}          selected={filterRegion}          onChange={setFilterRegion}          icon={FaGlobeAmericas} />
-            <MultiSelect label="Stakeholder" options={filterOptions.stakeholderTypes} selected={filterStakeholderType} onChange={setFilterStakeholderType} icon={FaUsers}         />
+            <MultiSelect label={t('analytics.filterSector')}      options={filterOptions.sectors}          selected={filterSector}          onChange={setFilterSector}          icon={FaLayerGroup}    t={t} />
+            <MultiSelect label={t('analytics.filterCountry')}     options={filterOptions.countries}        selected={filterCountry}         onChange={setFilterCountry}         icon={FaGlobeAmericas} t={t} />
+            <MultiSelect label={t('analytics.filterStatus')}      options={filterOptions.statuses}         selected={filterStatus}          onChange={setFilterStatus}          icon={FaCheckCircle}   t={t} />
+            <MultiSelect label={t('analytics.filterTechnology')}  options={filterOptions.technologies}     selected={filterTech}            onChange={setFilterTech}            icon={FaMicrochip}     t={t} />
+            <MultiSelect label={t('analytics.filterSdg')}         options={filterOptions.sdgs}            selected={filterSdg}             onChange={setFilterSdg}             icon={FaFlag}          t={t} />
+            <MultiSelect label={t('analytics.filterRegion')}      options={filterOptions.regions}          selected={filterRegion}          onChange={setFilterRegion}          icon={FaGlobeAmericas} t={t} />
+            <MultiSelect label={t('analytics.filterStakeholder')} options={filterOptions.stakeholderTypes} selected={filterStakeholderType} onChange={setFilterStakeholderType} icon={FaUsers}         t={t} />
 
             <div style={{
               display: 'flex',
@@ -913,7 +920,7 @@ function Analytics() {
                 onMouseEnter={e => e.currentTarget.style.background = `${C.danger}20`}
                 onMouseLeave={e => e.currentTarget.style.background = `${C.danger}10`}
               >
-                <FaTimes style={{ fontSize: 10 }} /> Clear {activeFilterCount}
+                <FaTimes style={{ fontSize: 10 }} /> {t('analytics.clearFilters', { count: activeFilterCount })}
               </button>
             )}
           </div>
@@ -964,14 +971,13 @@ function Analytics() {
             {activeTab === 1 && <UserDashboard      data={data} t={t} />}
           </div>
         </>
-      )}
 
       <style>{GLOBAL_CSS}</style>
     </div>
   )
 }
 
-function Loader() {
+function Loader({ t }) {
   return (
     <div style={{
       height: '100vh',
@@ -995,7 +1001,7 @@ function Loader() {
         fontSize: 14,
         fontWeight: 500,
         letterSpacing: '0.3px'
-      }}>Loading analytics...</p>
+      }}>{t('analytics.loadingAnalytics')}</p>
       <style>{`@keyframes at-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
@@ -1096,7 +1102,7 @@ function OverviewDashboard({ data, t }) {
     return sd?.count ?? 0
   }, [statusDistribution])
 
-  const sectorData   = useMemo(() => (projectsBySector  || []).map((s, i) => ({ ...s, fill: SECTOR_COLORS[s.sector] || C.chart[i % C.chart.length] })), [projectsBySector])
+  const sectorData   = useMemo(() => (projectsBySector  || []).slice(0, 5).map((s, i) => ({ ...s, fill: SECTOR_COLORS[s.sector] || C.chart[i % C.chart.length] })), [projectsBySector])
   const techData     = useMemo(() => (aiTech || []).slice(0, 10).map((t, i) => ({ ...t, fill: C.chart[i % C.chart.length] })), [aiTech])
   const topCountries = (projectsByCountry || []).slice(0, 10)
   const topSdgs      = useMemo(() => (sdgCoverage || []).filter(s => s.count > 0).sort((a, b) => b.count - a.count).slice(0, 10), [sdgCoverage])
@@ -1108,23 +1114,24 @@ function OverviewDashboard({ data, t }) {
     })), [projectsTimeline])
 
   const treemapData = useMemo(() => [{
-    name: 'AI Technologies',
+    name: t('analytics.aiTechnologies'),
     children: (aiTech || []).map(t => ({ name: t.technology, size: t.count }))
-  }], [aiTech])
+  }], [aiTech, t])
 
   const kpis = [
-    { label: 'Total Projects',   value: totalProjects,     icon: FaProjectDiagram, color: C.primary,   delta: '+5%',  deltaUp: true, sparkData: projectsTimeline, subtitle: 'All tracked initiatives' },
-    { label: 'Active Countries',  value: activeCountries,   icon: FaGlobeAmericas,  color: C.secondary, delta: '+2',  deltaUp: true, subtitle: 'Countries with projects' },
-    { label: 'Stakeholders',     value: totalStakeholders, icon: FaUsers,          color: C.info,      delta: '+8%',  deltaUp: true, subtitle: 'Engaged partners' },
-    { label: 'Total Resources',  value: totalResources,    icon: FaDownload,       color: C.success,   delta: '+7%',  deltaUp: true, subtitle: 'Available assets' },
-    { label: 'Approved Projects',value: approvedCount,     icon: FaCheckCircle,    color: C.success,   delta: null,   subtitle: 'Active initiatives' },
-    { label: 'AI Technologies',  value: techCount,         icon: FaMicrochip,      color: C.warning,   delta: null,   subtitle: 'Tech stack diversity' },
+    { label: t('analytics.totalProjects'),   value: totalProjects,     icon: FaProjectDiagram, color: C.primary,   delta: '+5%',  deltaUp: true, sparkData: projectsTimeline, subtitle: t('analytics.allTrackedInitiatives') },
+    { label: t('analytics.activeCountries'),  value: activeCountries,   icon: FaGlobeAmericas,  color: C.secondary, delta: '+2',  deltaUp: true, subtitle: t('analytics.countriesWithProjects') },
+    { label: t('analytics.stakeholders'),     value: totalStakeholders, icon: FaUsers,          color: C.info,      delta: '+8%',  deltaUp: true, subtitle: t('analytics.engagedPartners') },
+    { label: t('analytics.totalResources'),  value: totalResources,    icon: FaDownload,       color: C.success,   delta: '+7%',  deltaUp: true, subtitle: t('analytics.availableAssets') },
+    { label: t('analytics.approvedProjects'),value: approvedCount,     icon: FaCheckCircle,    color: C.success,   delta: null,   subtitle: t('analytics.activeInitiatives') },
+    { label: t('analytics.aiTechnologies'),  value: techCount,         icon: FaMicrochip,      color: C.warning,   delta: null,   subtitle: t('analytics.techStackDiversity') },
   ]
 
+  const insightOpts = { interpolation: { escapeValue: false } }
   const insights = [
-    { Icon: FaBrain, bg: `${C.primary}12`, color: C.primary, text: `<strong>${totalProjects}</strong> projects tracked across <strong>${activeCountries}</strong> countries. <strong>${approvedCount}</strong> approved with <strong>${techCount}</strong> AI technologies.` },
-    { Icon: FaRegLightbulb, bg: `${C.success}12`, color: C.success, text: sectorData.length > 0 ? `<strong>${sectorData[0].sector}</strong> leads by sector with <strong>${sectorData[0].count}</strong> initiatives.` : 'Sector data is being populated.' },
-    { Icon: FaChartLine, bg: `${C.secondary}12`, color: C.secondary, text: topSdgs.length > 0 ? `SDG <strong>${topSdgs[0].goal_number}</strong> is the most addressed with <strong>${topSdgs[0].count}</strong> mapped initiatives.` : 'SDG data is being collected.' },
+    { Icon: FaBrain, bg: `${C.primary}12`, color: C.primary, text: t('analytics.insightProjectsTracked', { count: totalProjects, countries: activeCountries, approved: approvedCount, tech: techCount }, insightOpts) },
+    { Icon: FaRegLightbulb, bg: `${C.success}12`, color: C.success, text: sectorData.length > 0 ? t('analytics.insightSectorLeads', { sector: sectorData[0].sector, count: sectorData[0].count }, insightOpts) : t('analytics.insightSectorDataPopulating') },
+    { Icon: FaChartLine, bg: `${C.secondary}12`, color: C.secondary, text: topSdgs.length > 0 ? t('analytics.insightSdgLeads', { goal: topSdgs[0].goal_number, count: topSdgs[0].count }, insightOpts) : t('analytics.insightSdgDataCollecting') },
   ]
 
   function getMapColor(count) {
@@ -1145,7 +1152,7 @@ function OverviewDashboard({ data, t }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
 
         <Card span={4}>
-          <CardHeader icon={FaMapMarkerAlt} title="Arab Region Map" sub="Geographic distribution of AI projects" iconBg={`${C.primary}12`} iconColor={C.primary} badge={`${(mapData || []).length} locations`} />
+          <CardHeader icon={FaMapMarkerAlt} title={t('analytics.arabRegionMap')} sub={t('analytics.geographicDistOfAi')} iconBg={`${C.primary}12`} iconColor={C.primary} badge={`${(mapData || []).length} ${t('analytics.locations')}`} />
           <div style={{ height: 380, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--at-border)' }}>
             <MapContainer center={[26, 30]} zoom={4} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -1157,7 +1164,7 @@ function OverviewDashboard({ data, t }) {
                   pathOptions={{ color: getMapColor(point.project_count || 0), fillColor: getMapColor(point.project_count || 0), fillOpacity: 0.5, weight: 1.5 }}
                 >
                   <LTooltip direction="top" offset={[0, -10]}>
-                    <span style={{ fontWeight: 600 }}>{point.country}</span>: {point.project_count || 0} projects
+                    <span style={{ fontWeight: 600 }}>{point.country}</span>: {point.project_count || 0} {t('analytics.projects')}
                   </LTooltip>
                 </CircleMarker>
               ))}
@@ -1166,14 +1173,14 @@ function OverviewDashboard({ data, t }) {
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaGlobeAmericas} title="Top 10 Countries" sub="By project count" iconBg={`${C.secondary}12`} iconColor={C.secondary} />
+          <CardHeader icon={FaGlobeAmericas} title={t('analytics.top10Countries')} sub={t('analytics.byProjectCount')} iconBg={`${C.secondary}12`} iconColor={C.secondary} />
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={topCountries} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" horizontal={false} />
               <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
               <YAxis type="category" dataKey="country" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 11, fontWeight: 500 }} width={100} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--at-surface)' }} />
-              <Bar dataKey="projects" name="Projects" radius={[0, 6, 6, 0]} barSize={16}>
+              <Bar dataKey="projects" name={t('analytics.projects')} radius={[0, 6, 6, 0]} barSize={16}>
                 {topCountries.map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
               </Bar>
             </BarChart>
@@ -1181,7 +1188,7 @@ function OverviewDashboard({ data, t }) {
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaChartPie} title="Sector Distribution" sub="Projects by sector" iconBg={`${C.warning}12`} iconColor={C.warning} />
+          <CardHeader icon={FaChartPie} title={t('analytics.sectorDistribution')} sub={t('analytics.projectsBySector')} iconBg={`${C.warning}12`} iconColor={C.warning} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <ResponsiveContainer width={160} height={160} style={{ flexShrink: 0 }}>
               <PieChart>
@@ -1195,20 +1202,21 @@ function OverviewDashboard({ data, t }) {
               <HBarList
                 entries={sectorData.map(s => [s.sector, s.count])}
                 colorFn={k => SECTOR_COLORS[k] || '#888'}
+                t={t}
               />
             </div>
           </div>
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaGlobeAmericas} title="Projects by Region" sub="Regional distribution" iconBg={`${C.secondary}12`} iconColor={C.secondary} />
+          <CardHeader icon={FaGlobeAmericas} title={t('analytics.projectsByRegion')} sub={t('analytics.regionalDistribution')} iconBg={`${C.secondary}12`} iconColor={C.secondary} />
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data.projectsByRegion || []} margin={{ top: 4, right: 6, left: 0, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" vertical={false} />
               <XAxis dataKey="region" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 9 }} interval={0} angle={-20} textAnchor="end" />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="Projects" radius={[4, 4, 0, 0]} barSize={28}>
+              <Bar dataKey="count" name={t('analytics.projects')} radius={[4, 4, 0, 0]} barSize={28}>
                 {(data.projectsByRegion || []).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
               </Bar>
             </BarChart>
@@ -1216,7 +1224,7 @@ function OverviewDashboard({ data, t }) {
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaMicrochip} title="AI Technologies Treemap" sub="Technology adoption distribution" iconBg={`${C.primary}12`} iconColor={C.primary} badge={`${(aiTech || []).length} technologies`} />
+          <CardHeader icon={FaMicrochip} title={t('analytics.aiTechnologiesTreemap')} sub={t('analytics.techAdoptionDist')} iconBg={`${C.primary}12`} iconColor={C.primary} badge={`${(aiTech || []).length} ${t('analytics.technologies')}`} />
           <ResponsiveContainer width="100%" height={240}>
             <Treemap
               data={treemapData}
@@ -1232,7 +1240,7 @@ function OverviewDashboard({ data, t }) {
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaChartLine} title="Evolution by Year" sub="Project timeline" iconBg={`${C.primary}12`} iconColor={C.primary} badge={`${timelineData.reduce((a, b) => a + b.count, 0)} total`} />
+          <CardHeader icon={FaChartLine} title={t('analytics.evolutionByYear')} sub={t('analytics.projectTimeline')} iconBg={`${C.primary}12`} iconColor={C.primary} badge={`${timelineData.reduce((a, b) => a + b.count, 0)} ${t('analytics.total')}`} />
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={timelineData} margin={{ top: 6, right: 8, left: 0, bottom: 6 }}>
               <defs>
@@ -1245,20 +1253,20 @@ function OverviewDashboard({ data, t }) {
               <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="count" name="Projects" stroke={C.primary} strokeWidth={2} fill="url(#grad-evol)" />
+              <Area type="monotone" dataKey="count" name={t('analytics.projects')} stroke={C.primary} strokeWidth={2} fill="url(#grad-evol)" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaFlag} title="SDG Coverage" sub="Sustainable Development Goals" iconBg={`${C.success}12`} iconColor={C.success} />
+          <CardHeader icon={FaFlag} title={t('analytics.sdgCoverage')} sub={t('analytics.sustainableDevGoals')} iconBg={`${C.success}12`} iconColor={C.success} />
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={topSdgs} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" horizontal={false} />
               <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
-              <YAxis type="category" dataKey="goal_number" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 11, fontWeight: 500 }} tickFormatter={v => `SDG ${v}`} width={60} />
+              <YAxis type="category" dataKey="goal_number" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 11, fontWeight: 500 }} tickFormatter={v => `${t('analytics.sdgAbbr')} ${v}`} width={60} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="Projects" radius={[0, 6, 6, 0]} barSize={16}>
+              <Bar dataKey="count" name={t('analytics.projects')} radius={[0, 6, 6, 0]} barSize={16}>
                 {topSdgs.map((e, i) => <Cell key={i} fill={e.color || SDG_COLORS[(e.goal_number - 1) % SDG_COLORS.length]} />)}
               </Bar>
             </BarChart>
@@ -1266,7 +1274,7 @@ function OverviewDashboard({ data, t }) {
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaBuilding} title="Organization Types" sub="User distribution by organization" iconBg={`${C.warning}12`} iconColor={C.warning} />
+          <CardHeader icon={FaBuilding} title={t('analytics.orgTypes')} sub={t('analytics.userDistByOrg')} iconBg={`${C.warning}12`} iconColor={C.warning} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
               <PieChart>
@@ -1280,13 +1288,14 @@ function OverviewDashboard({ data, t }) {
               <HBarList
                 entries={(usersByOrgType || []).map(o => [o.type, o.count])}
                 colorFn={k => ORG_TYPE_COLORS[k] || '#888'}
+                t={t}
               />
             </div>
           </div>
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaCheckCircle} title="Project Status" sub="Approved / Pending / Rejected" iconBg={`${C.success}12`} iconColor={C.success} />
+          <CardHeader icon={FaCheckCircle} title={t('analytics.statusDistribution')} sub={t('analytics.approvedPendingRejected')} iconBg={`${C.success}12`} iconColor={C.success} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
               <PieChart>
@@ -1300,6 +1309,7 @@ function OverviewDashboard({ data, t }) {
               <HBarList
                 entries={(statusDistribution || []).filter(s => ['approved','pending','rejected'].includes(s.status)).map(s => [s.status.charAt(0).toUpperCase() + s.status.slice(1), s.count])}
                 colorFn={(k) => C.status[k.toLowerCase()] || '#888'}
+                t={t}
               />
             </div>
           </div>
@@ -1327,19 +1337,23 @@ function UserDashboard({ data, t }) {
 
   const totalStakeholders = (stakeholdersByType || []).reduce((a, b) => a + b.count, 0)
 
+  const insightOpts = { interpolation: { escapeValue: false } }
+  const topCategory = (stakeholdersByCategory || []).length > 0 ? stakeholdersByCategory.reduce((a, b) => a.count > b.count ? a : b) : null
+  const topOrgType = (usersByOrgType || []).length > 0 ? usersByOrgType.reduce((a, b) => a.count > b.count ? a : b) : null
+
   const kpis = [
-    { label: 'Total Signups',     value: (userSignups || []).reduce((a, b) => a + b.count, 0), icon: FaUsers,        color: C.primary,   delta: '+10%', deltaUp: true, sparkData: userSignups, subtitle: 'New users' },
-    { label: 'Organization Types',value: (usersByOrgType || []).length,                        icon: FaBuilding,     color: C.warning,   delta: null,   subtitle: 'Diversity' },
-    { label: 'Stakeholders',      value: totalStakeholders,                                    icon: FaHandshake,    color: C.info,      delta: '+7%',  deltaUp: true, subtitle: 'Engaged partners' },
-    { label: 'Stakeholder Types', value: (stakeholdersByType || []).length,                     icon: FaClipboardList,color: C.secondary, delta: null,   subtitle: 'Categories' },
-    { label: 'Resource Types',    value: (resourcesByType || []).length,                       icon: FaDownload,     color: C.success,   delta: null,   subtitle: 'Asset diversity' },
-    { label: 'Total Resources',   value: overview?.total_resources ?? 0,                       icon: FaRocket,       color: C.danger,    delta: '+12%', deltaUp: true, subtitle: 'Available assets' },
+    { label: t('analytics.totalSignups'),     value: (userSignups || []).reduce((a, b) => a + b.count, 0), icon: FaUsers,        color: C.primary,   delta: '+10%', deltaUp: true, sparkData: userSignups, subtitle: t('analytics.newUsersKpi') },
+    { label: t('analytics.orgTypes'),value: (usersByOrgType || []).length,                        icon: FaBuilding,     color: C.warning,   delta: null,   subtitle: t('analytics.diversity') },
+    { label: t('analytics.stakeholders'),      value: totalStakeholders,                                    icon: FaHandshake,    color: C.info,      delta: '+7%',  deltaUp: true, subtitle: t('analytics.engagedPartners') },
+    { label: t('analytics.stakeholderTypes'), value: (stakeholdersByType || []).length,                     icon: FaClipboardList,color: C.secondary, delta: null,   subtitle: t('analytics.categories') },
+    { label: t('analytics.resourceTypes'),    value: (resourcesByType || []).length,                       icon: FaDownload,     color: C.success,   delta: null,   subtitle: t('analytics.assetDiversity') },
+    { label: t('analytics.totalResources'),   value: overview?.total_resources ?? 0,                       icon: FaRocket,       color: C.danger,    delta: '+12%', deltaUp: true, subtitle: t('analytics.availableAssets') },
   ]
 
   const insights = [
-    { Icon: FaBrain, bg: `${C.primary}12`, color: C.primary, text: `<strong>${totalStakeholders}</strong> total stakeholders across <strong>${(stakeholdersByType || []).length}</strong> types.` },
-    { Icon: FaRegLightbulb, bg: `${C.success}12`, color: C.success, text: (stakeholdersByCategory || []).length > 0 ? `<strong>${stakeholdersByCategory.reduce((a, b) => a.count > b.count ? a : b).category}</strong> leads stakeholder categories with <strong>${stakeholdersByCategory.reduce((a, b) => a.count > b.count ? a : b).count}</strong>.` : 'Stakeholder data is being collected.' },
-    { Icon: FaChartLine, bg: `${C.secondary}12`, color: C.secondary, text: (usersByOrgType || []).length > 0 ? `<strong>${usersByOrgType.reduce((a, b) => a.count > b.count ? a : b).type}</strong> is the dominant organization type.` : 'Organization data is being collected.' },
+    { Icon: FaBrain, bg: `${C.primary}12`, color: C.primary, text: t('analytics.insightStakeholdersTotal', { count: totalStakeholders, types: (stakeholdersByType || []).length }, insightOpts) },
+    { Icon: FaRegLightbulb, bg: `${C.success}12`, color: C.success, text: topCategory ? t('analytics.insightCategoryLeads', { category: topCategory.category, count: topCategory.count }, insightOpts) : t('analytics.insightStakeholderDataCollecting') },
+    { Icon: FaChartLine, bg: `${C.secondary}12`, color: C.secondary, text: topOrgType ? t('analytics.insightOrgTypeDominant', { type: topOrgType.type }, insightOpts) : t('analytics.insightOrgDataCollecting') },
   ]
 
   return (
@@ -1353,7 +1367,7 @@ function UserDashboard({ data, t }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
 
         <Card span={2}>
-          <CardHeader icon={FaChartLine} title="Signup Growth" sub="Monthly new users" iconBg={`${C.primary}12`} iconColor={C.primary} />
+          <CardHeader icon={FaChartLine} title={t('analytics.signupGrowth')} sub={t('analytics.monthlyNewUsers')} iconBg={`${C.primary}12`} iconColor={C.primary} />
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={signupChart} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
               <defs>
@@ -1366,13 +1380,13 @@ function UserDashboard({ data, t }) {
               <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 9 }} interval={1} angle={-20} textAnchor="end" />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="count" name="Signups" stroke={C.primary} strokeWidth={2} fill="url(#grad-signup)" />
+              <Area type="monotone" dataKey="count" name={t('analytics.signups')} stroke={C.primary} strokeWidth={2} fill="url(#grad-signup)" />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaBuilding} title="Organization Types" sub="User distribution" iconBg={`${C.warning}12`} iconColor={C.warning} />
+          <CardHeader icon={FaBuilding} title={t('analytics.orgTypes')} sub={t('analytics.userDistribution')} iconBg={`${C.warning}12`} iconColor={C.warning} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
               <PieChart>
@@ -1386,13 +1400,14 @@ function UserDashboard({ data, t }) {
               <HBarList
                 entries={(usersByOrgType || []).map(o => [o.type, o.count])}
                 colorFn={k => ORG_TYPE_COLORS[k] || '#888'}
+                t={t}
               />
             </div>
           </div>
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaCheckCircle} title="Project Status" sub="Distribution by status" iconBg={`${C.success}12`} iconColor={C.success} />
+          <CardHeader icon={FaCheckCircle} title={t('analytics.statusDistribution')} sub={t('analytics.distByStatus')} iconBg={`${C.success}12`} iconColor={C.success} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
               <PieChart>
@@ -1406,20 +1421,21 @@ function UserDashboard({ data, t }) {
               <HBarList
                 entries={(statusDistribution || []).filter(s => ['approved','pending','rejected'].includes(s.status)).map(s => [s.status.charAt(0).toUpperCase() + s.status.slice(1), s.count])}
                 colorFn={(k) => C.status[k.toLowerCase()] || '#888'}
+                t={t}
               />
             </div>
           </div>
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaHandshake} title="Stakeholders by Category" sub="Category distribution" iconBg={`${C.secondary}12`} iconColor={C.secondary} />
+          <CardHeader icon={FaHandshake} title={t('analytics.stakeholdersByCategory')} sub={t('analytics.categoryDistribution')} iconBg={`${C.secondary}12`} iconColor={C.secondary} />
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={stakeholdersByCategory || []} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" horizontal={false} />
               <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
               <YAxis type="category" dataKey="category" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10, fontWeight: 500 }} width={130} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name="Stakeholders" radius={[0, 6, 6, 0]} barSize={16}>
+              <Bar dataKey="count" name={t('analytics.stakeholders')} radius={[0, 6, 6, 0]} barSize={16}>
                 {(stakeholdersByCategory || []).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
               </Bar>
             </BarChart>
@@ -1427,7 +1443,7 @@ function UserDashboard({ data, t }) {
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaUsers} title="Stakeholders by Type" sub="Stakeholder type breakdown" iconBg={`${C.primary}12`} iconColor={C.primary} />
+          <CardHeader icon={FaUsers} title={t('analytics.stakeholdersByType')} sub={t('analytics.stakeholderTypeBreakdown')} iconBg={`${C.primary}12`} iconColor={C.primary} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <ResponsiveContainer width={140} height={140} style={{ flexShrink: 0 }}>
               <PieChart>
@@ -1441,20 +1457,21 @@ function UserDashboard({ data, t }) {
               <HBarList
                 entries={(stakeholdersByType || []).map(s => [s.type, s.count])}
                 colorFn={(k, i) => C.chart[i % C.chart.length]}
+                t={t}
               />
             </div>
           </div>
         </Card>
 
         <Card span={2}>
-          <CardHeader icon={FaDownload} title="Resources by Type" sub="Distribution of resource types" iconBg={`${C.warning}12`} iconColor={C.warning} />
+          <CardHeader icon={FaDownload} title={t('analytics.resourcesByType')} sub={t('analytics.distOfResourceTypes')} iconBg={`${C.warning}12`} iconColor={C.warning} />
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={resourcesByType || []} margin={{ top: 4, right: 6, left: 0, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--at-border)" vertical={false} />
               <XAxis dataKey="type" axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 9 }} interval={0} angle={-20} textAnchor="end" />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--at-muted)', fontSize: 10 }} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--at-surface)' }} />
-              <Bar dataKey="count" name="Resources" radius={[4, 4, 0, 0]} barSize={28}>
+              <Bar dataKey="count" name={t('analytics.resources')} radius={[4, 4, 0, 0]} barSize={28}>
                 {(resourcesByType || []).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
               </Bar>
             </BarChart>

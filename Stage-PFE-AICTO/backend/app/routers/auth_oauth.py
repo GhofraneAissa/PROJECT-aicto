@@ -1,5 +1,8 @@
 import os
 import secrets
+import hmac
+import hashlib
+import base64
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
@@ -17,14 +20,28 @@ LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID", "")
 LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET", "")
 LINKEDIN_REDIRECT_URI = os.getenv("LINKEDIN_REDIRECT_URI", "http://localhost:8000/api/auth/linkedin/callback")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3001")
+SECRET_KEY = os.getenv("SECRET_KEY", "sarai-oauth-fallback-key")
 
-_oauth_states = {}
+
+def create_signed_state():
+    raw = secrets.token_urlsafe(32)
+    sig = hmac.new(SECRET_KEY.encode(), raw.encode(), hashlib.sha256).hexdigest()
+    return base64.urlsafe_b64encode(f"{raw}:{sig}".encode()).decode()
+
+
+def verify_signed_state(signed_state):
+    try:
+        decoded = base64.urlsafe_b64decode(signed_state.encode()).decode()
+        raw, sig = decoded.rsplit(":", 1)
+        expected = hmac.new(SECRET_KEY.encode(), raw.encode(), hashlib.sha256).hexdigest()
+        return hmac.compare_digest(sig, expected)
+    except Exception:
+        return False
 
 
 @router.get("/linkedin/login")
 def linkedin_login():
-    state = secrets.token_urlsafe(32)
-    _oauth_states[state] = True
+    state = create_signed_state()
 
     params = {
         "response_type": "code",
@@ -39,9 +56,8 @@ def linkedin_login():
 
 @router.get("/linkedin/callback")
 def linkedin_callback(code: str, state: str, db: Session = Depends(get_db)):
-    if state not in _oauth_states:
+    if not verify_signed_state(state):
         raise HTTPException(status_code=400, detail="Invalid state parameter")
-    del _oauth_states[state]
 
     token_resp = httpx.post(
         "https://www.linkedin.com/oauth/v2/accessToken",

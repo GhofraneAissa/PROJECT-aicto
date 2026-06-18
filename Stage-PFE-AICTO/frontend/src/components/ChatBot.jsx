@@ -21,13 +21,6 @@ function authHeaders() {
   return t ? { 'Authorization': `Bearer ${t}` } : {}
 }
 
-const GREETING_RESPONSE = {
-  hi: "Hello! I am SARAI Assistant.\n\nI can help you find AI projects, stakeholders, and resources in the Arab region.\nTry asking:\n- \"AI projects in Tunisia\"\n- \"Healthcare AI\"\n- \"Stakeholders in Egypt\"\n- \"Give me all resources\"",
-  hello: "Hello! I am SARAI Assistant.\n\nI can help you find AI projects, stakeholders, and resources in the Arab region.\nTry asking:\n- \"AI projects in Tunisia\"\n- \"Healthcare AI\"\n- \"Stakeholders in Egypt\"\n- \"Give me all resources\"",
-  bonjour: "Bonjour ! Je suis l'assistant SARAI.\n\nJe peux vous aider a trouver des projets IA, des parties prenantes et des ressources dans la region arabe.\n\nEssayez de demander :\n- \"Projets IA en Tunisie\"\n- \"Sante IA\"\n- \"Organisations en Egypte\"",
-  salut: "Bonjour ! Je suis l'assistant SARAI.\n\nJe peux vous aider a trouver des projets IA, des parties prenantes et des ressources dans la region arabe.\n\nEssayez de demander :\n- \"Projets IA en Tunisie\"\n- \"Sante IA\"\n- \"Organisations en Egypte\"",
-}
-
 let sessionsCache = []
 
 function ChatBot() {
@@ -148,8 +141,7 @@ function ChatBot() {
 
     const isGreeting = /^(hi|hello|hey|salut|bonjour|hiii|helloo|salam)$/i.test(userMsg.trim())
     if (isGreeting) {
-      const reply = GREETING_RESPONSE[userMsg.trim().toLowerCase()] || GREETING_RESPONSE.hello
-      const newMsg = { role: 'assistant', content: reply, provider: 'local', timeMs: 0, results: [] }
+      const newMsg = { role: 'assistant', content: t('chatbot.greeting'), provider: 'local', timeMs: 0, results: [] }
       setMessages(prev => [...prev, newMsg])
       msgCache.current[activeSid] = [...(msgCache.current[activeSid] || []), { role: 'user', content: userMsg, attachments }, newMsg]
       setLoading(false)
@@ -178,8 +170,8 @@ function ChatBot() {
       await loadSessions()
     } catch (err) {
       const errorMsg = err.message?.includes('401')
-        ? 'Please log in to use the AI chat feature, or try asking a simpler question.'
-        : (t('chat.errorProcessing') || 'Sorry, something went wrong. Please try again.')
+        ? t('chatbot.loginRequired')
+        : t('chatbot.genericError')
       setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, provider: 'error', timeMs: 0, results: [] }])
     }
     setLoading(false)

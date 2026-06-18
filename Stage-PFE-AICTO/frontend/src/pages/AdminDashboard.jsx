@@ -81,7 +81,7 @@ function AdminDashboard() {
       })
       if (res.ok) {
         const data = await res.json()
-        setPendingProjects(data)
+        setPendingProjects(data.filter(p => !['Cybersecurity','Telecommunications','Data Science','Business Intelligence'].includes(p.sector)))
       }
     } catch (err) {
       console.error('Error fetching pending projects:', err)

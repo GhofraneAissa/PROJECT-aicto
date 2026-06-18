@@ -379,8 +379,7 @@ def _fallback_recent(db: Session, entity_type: str, limit: int = 20):
                 ORDER BY p.updated_at DESC NULLS LAST
                 LIMIT :lim
             """), {"lim": limit}).fetchall()
-            keys = rows[0].keys() if rows else []
-            return [dict(zip(keys, r)) for r in rows]
+            return [dict(r._mapping) for r in rows]
         elif entity_type == "stakeholder":
             rows = db.execute(text("""
                 SELECT id, name AS title, description, type, category, country, website
@@ -388,8 +387,7 @@ def _fallback_recent(db: Session, entity_type: str, limit: int = 20):
                 ORDER BY updated_at DESC NULLS LAST
                 LIMIT :lim
             """), {"lim": limit}).fetchall()
-            keys = rows[0].keys() if rows else []
-            return [dict(zip(keys, r)) for r in rows]
+            return [dict(r._mapping) for r in rows]
         elif entity_type == "resource":
             rows = db.execute(text("""
                 SELECT id, title, description, type, category, language, file_url
@@ -397,8 +395,7 @@ def _fallback_recent(db: Session, entity_type: str, limit: int = 20):
                 ORDER BY updated_at DESC NULLS LAST
                 LIMIT :lim
             """), {"lim": limit}).fetchall()
-            keys = rows[0].keys() if rows else []
-            return [dict(zip(keys, r)) for r in rows]
+            return [dict(r._mapping) for r in rows]
     except Exception as e:
         logger.warning(f"[FALLBACK] Error: {e}")
         db.rollback()
@@ -422,8 +419,7 @@ def _fuzzy_fallback(db: Session, query: str, entity_type: str, limit: int = 20):
                 ORDER BY sim DESC
                 LIMIT :lim
             """), {"q": query, "lim": limit}).fetchall()
-            keys = rows[0].keys() if rows else []
-            items = [dict(zip(keys, r)) for r in rows]
+            items = [dict(r._mapping) for r in rows]
             for it in items:
                 it.pop("sim", None)
             return items
@@ -550,21 +546,21 @@ def _fetch_entity_item(db: Session, entity_type: str, entity_id: int):
                 WHERE p.id = :id
             """), {"id": entity_id}).fetchone()
             if row:
-                return dict(zip(row.keys(), row))
+                return dict(row._mapping)
         elif entity_type == "stakeholder":
             row = db.execute(text("""
                 SELECT id, name AS title, description, type, category, country, website
                 FROM stakeholders WHERE id = :id
             """), {"id": entity_id}).fetchone()
             if row:
-                return dict(zip(row.keys(), row))
+                return dict(row._mapping)
         elif entity_type == "resource":
             row = db.execute(text("""
                 SELECT id, title, description, type, category, language
                 FROM resources WHERE id = :id
             """), {"id": entity_id}).fetchone()
             if row:
-                return dict(zip(row.keys(), row))
+                return dict(row._mapping)
     except Exception as e:
         logger.warning(f"[HYBRID] Error fetching {entity_type}/{entity_id}: {e}")
         db.rollback()

@@ -35,9 +35,9 @@ function Navbar() {
   }
 
   const languages = [
-    { code: 'en', label: 'English' },
-    { code: 'fr', label: 'Français' },
-    { code: 'ar', label: 'العربية' }
+    { code: 'en', label: t('nav.langEn') },
+    { code: 'fr', label: t('nav.langFr') },
+    { code: 'ar', label: t('nav.langAr') }
   ]
 
   useEffect(() => {
@@ -157,7 +157,7 @@ function Navbar() {
   }
 
   const isLoggedIn = !!user
-  const displayName = user?.organization_name || user?.email || 'User'
+  const displayName = user?.organization_name || user?.email || t('nav.userFallback')
   const displayEmail = user?.email || ''
   const initials = displayName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
 
@@ -267,19 +267,19 @@ function Navbar() {
 
           {isLoggedIn && user?.role === 'admin' && (
             <div className="notif-dropdown" ref={notifDropdownRef}>
-              <button className="notif-btn" onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) fetchNotifications() }} aria-label="Notifications">
+              <button className="notif-btn" onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) fetchNotifications() }} aria-label={t('nav.notifications')}>
                 <FaBell />
                 {unreadCount > 0 && <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
               </button>
               {notifOpen && (
                 <div className="notif-menu">
                   <div className="notif-header">
-                    <h4>Notifications</h4>
-                    {unreadCount > 0 && <button className="notif-mark-all" onClick={handleMarkAllAsRead}>Mark all as read</button>}
+                    <h4>{t('nav.notifications')}</h4>
+                    {unreadCount > 0 && <button className="notif-mark-all" onClick={handleMarkAllAsRead}>{t('nav.markAllRead')}</button>}
                   </div>
                   <div className="notif-list">
                     {notifications.length === 0 ? (
-                      <div className="notif-empty">No notifications</div>
+                      <div className="notif-empty">{t('nav.noNotifications')}</div>
                     ) : (
                       notifications.map(n => (
                         <div key={n.id} className={`notif-item ${n.is_read ? '' : 'unread'}`} onClick={() => handleMarkAsRead(n.id)}>
@@ -294,7 +294,7 @@ function Navbar() {
                   </div>
                   {notifications.length > 0 && (
                     <div className="notif-footer">
-                      <a href="/admin" onClick={() => setNotifOpen(false)}>Go to Admin Panel</a>
+                      <a href="/admin" onClick={() => setNotifOpen(false)}>{t('nav.goToAdmin')}</a>
                     </div>
                   )}
                 </div>

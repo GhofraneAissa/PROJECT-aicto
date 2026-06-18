@@ -93,6 +93,9 @@ class UserResponse(UserBase):
     id: int
     role: str
     is_active: bool = False
+    is_approved: bool = False
+    rejection_reason: Optional[str] = None
+    stakeholder_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime] = None

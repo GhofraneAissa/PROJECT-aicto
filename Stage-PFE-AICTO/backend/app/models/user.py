@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, CheckConstraint, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, CheckConstraint, Index
 from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -40,7 +40,9 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_login = Column(DateTime(timezone=True), nullable=True)
+    stakeholder_id = Column(Integer, ForeignKey("stakeholders.id", ondelete="SET NULL"), nullable=True)
 
+    stakeholder = relationship("Stakeholder", foreign_keys=[stakeholder_id])
     projects = relationship("Project", back_populates="owner", cascade="all, delete-orphan", foreign_keys="Project.user_id")
     resources = relationship("Resource", back_populates="publisher", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
@@ -51,8 +53,8 @@ class User(Base):
             name="chk_organization_type",
         ),
         CheckConstraint(
-            "email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$'",
-            name="chk_valid_email",
+            "role IN ('admin', 'organization')",
+            name="chk_user_role",
         ),
         Index("idx_users_email", "email"),
         Index("idx_users_organization_type", "organization_type"),
@@ -82,4 +84,5 @@ class User(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "last_login": self.last_login,
+            "stakeholder_id": self.stakeholder_id,
         }

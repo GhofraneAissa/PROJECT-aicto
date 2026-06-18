@@ -115,7 +115,7 @@ function SearchResults() {
       const res = await fetch(`${API_BASE}/api/search/ai-search?${params}`)
       const data = await res.json()
       const all = [
-        ...(data.projects || []).map(p => ({ ...p, entity_type: 'project' })),
+        ...(data.projects || []).filter(p => !['Cybersecurity','Telecommunications','Data Science','Business Intelligence'].includes(p.sector)).map(p => ({ ...p, entity_type: 'project' })),
         ...(data.stakeholders || []).map(s => ({ ...s, entity_type: 'stakeholder' })),
         ...(data.resources || []).map(r => ({ ...r, entity_type: 'resource' }))
       ]
@@ -220,8 +220,8 @@ function SearchResults() {
               {parsedQuery.sector && <span className="detected-tag"><FaLayerGroup /> {parsedQuery.sector}</span>}
               {parsedQuery.technology && <span className="detected-tag"><FaMicrochip /> {parsedQuery.technology}</span>}
               {parsedQuery.entity && <span className="detected-tag"><FaFilter /> {parsedQuery.entity}</span>}
-              {parsedQuery.date_from && <span className="detected-tag"><FaCalendarAlt /> After {parsedQuery.date_from}</span>}
-              {parsedQuery.date_to && <span className="detected-tag"><FaCalendarAlt /> Before {parsedQuery.date_to}</span>}
+              {parsedQuery.date_from && <span className="detected-tag"><FaCalendarAlt /> {t('search.afterDate', { date: parsedQuery.date_from })}</span>}
+              {parsedQuery.date_to && <span className="detected-tag"><FaCalendarAlt /> {t('search.beforeDate', { date: parsedQuery.date_to })}</span>}
             </div>
           )}
         </div>
@@ -383,7 +383,7 @@ function SearchResults() {
                           <div className="result-footer">
                             {item.stakeholders && <span className="result-stakeholders"><FaBuilding /> {item.stakeholders}</span>}
                             {item.type && <span className="result-stakeholders"><FaBook /> {item.type}</span>}
-                            {item.sdg_goal_number && <span className="result-sdg">SDG{item.sdg_goal_number}</span>}
+                            {item.sdg_goal_number && <span className="result-sdg">{t('projects.sdg')}{item.sdg_goal_number}</span>}
                           </div>
                         </div>
                         <div className="result-arrow">
