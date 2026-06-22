@@ -1,0 +1,100 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+skinparam usecaseFontColor #2C3E50
+skinparam usecaseBorderColor #3498DB
+skinparam usecaseBorderThickness 2
+skinparam actorBorderColor #2C3E50
+skinparam actorFontColor #2C3E50
+skinparam actorFontSize 14
+skinparam usecaseFontSize 12
+skinparam arrowColor #7F8C8D
+skinparam packageBorderColor #E0E0E0
+skinparam packageFontColor #2C3E50
+skinparam packageFontSize 14
+skinparam packageBackgroundColor #FAFBFC
+skinparam usecaseBackgroundColor #FFFFFF
+
+left to right direction
+
+actor "Visiteur" as V
+actor "Organisation" as O
+actor "Admin AICTO" as A
+
+A --|> O
+O --|> V
+
+rectangle "SARAI Platform – Stocktaking of Arab Regional AI Initiatives" {
+  
+  ' ── NIVEAU 1 : VISITEUR ──
+  rectangle "Consultation & Découverte" as grp1 {
+    usecase "Parcourir les projets IA" as UC1
+    usecase "Consulter la carte interactive" as UC2
+    usecase "Explorer les ressources" as UC3
+    usecase "Visualiser le dashboard Analytics" as UC4
+    usecase "Utiliser la recherche" as UC5
+    usecase "S'inscrire / Se connecter" as UC16
+    usecase "Utiliser le chatbot (éphémère)" as UC17
+  }
+  
+  ' ── NIVEAU 2 : ORGANISATION ──
+  rectangle "Contribution & Gestion" as grp2 {
+    usecase "Soumettre un projet" as UC6
+    usecase "Extraire depuis LinkedIn (IA)" as UC7
+    usecase "Gérer son profil" as UC8
+    usecase "Suivre ses soumissions" as UC9
+    usecase "Modifier ses soumissions" as UC18
+    usecase "Supprimer ses soumissions" as UC19
+    usecase "Ajouter des ressources" as UC10
+    usecase "Modifier ses ressources" as UC20
+    usecase "Supprimer ses ressources" as UC21
+    usecase "Utiliser le chatbot (persistant)" as UC22
+    usecase "Envoyer une réclamation" as UC23
+  }
+  
+  ' ── NIVEAU 3 : ADMIN ──
+  rectangle "Gouvernance & Modération" as grp3 {
+    usecase "Modérer les projets" as UC11
+    usecase "Forcer modification/suppression" as UC24
+    usecase "Approuver les organisations" as UC12
+    usecase "Gérer les utilisateurs" as UC14
+    usecase "Dashboard décisionnel" as UC13
+    usecase "Exporter les rapports" as UC15
+    usecase "Gérer les notifications" as UC25
+    usecase "Traiter les réclamations" as UC27
+  }
+}
+
+' ── RELATIONS VISITEUR ──
+V --> UC1
+V --> UC2
+V --> UC3
+V --> UC4
+V --> UC5
+V --> UC16
+V --> UC17
+
+' ── RELATIONS ORGANISATION ──
+O --> UC6
+O --> UC7
+O --> UC8
+O --> UC9
+O --> UC18
+O --> UC19
+O --> UC10
+O --> UC20
+O --> UC21
+O --> UC22
+O --> UC23
+
+' ── RELATIONS ADMIN ──
+A --> UC11
+A --> UC24
+A --> UC12
+A --> UC14
+A --> UC13
+A --> UC15
+A --> UC25
+A --> UC27
+@enduml
