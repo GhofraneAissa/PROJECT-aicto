@@ -50,7 +50,9 @@ def get_optional_user(authorization: str = Header(None), db: Session = Depends(g
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
+GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
 
@@ -134,6 +136,21 @@ SECTOR_KEYWORDS = {
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
 
 
+def detect_image_mime(base64_str: str) -> str:
+    raw = base64.b64decode(base64_str[:100])
+    if raw[:2] == b'\xff\xd8':
+        return "image/jpeg"
+    if raw[:4] == b'\x89PNG':
+        return "image/png"
+    if raw[:3] in (b'GIF',):
+        return "image/gif"
+    if raw[:2] == b'BM':
+        return "image/bmp"
+    if raw[:4] == b'RIFF':
+        return "image/webp"
+    return "image/jpeg"
+
+
 # ── LLM Providers ──
 
 class LLMProvider(ABC):
@@ -152,24 +169,69 @@ class GroqProvider(LLMProvider):
             api_key=GROQ_API_KEY,
         )
         self.model = GROQ_MODEL
-        self.vision_model = GROQ_VISION_MODEL
+        self.vision_models = [GROQ_VISION_MODEL]
 
     def generate(self, system_prompt, user_query, context, image_data=None, history=None):
+        use_vision = image_data is not None
+        models_to_try = self.vision_models if use_vision else [self.model]
+
+        for model in models_to_try:
+            try:
+                content = []
+                user_text = user_query.strip() or "Describe this image in detail."
+                if context and context.strip():
+                    content.append({"type": "text", "text": f"{context}\n\n### User Question\n{user_text}"})
+                else:
+                    content.append({"type": "text", "text": user_text})
+
+                if image_data:
+                    mime = detect_image_mime(image_data)
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{image_data}"}
+                    })
+
+                messages = [{"role": "system", "content": system_prompt}]
+                for h in (history or []):
+                    messages.append({"role": h["role"], "content": h["content"]})
+                messages.append({"role": "user", "content": content})
+
+                resp = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=1024,
+                    timeout=60,
+                )
+                return resp.choices[0].message.content.strip()
+            except Exception as e:
+                err_msg = str(e)
+                logger.warning(f"Groq API error (model={model}): {err_msg}")
+                continue
+
+        return None
+
+
+class MistralAPIProvider(LLMProvider):
+    def __init__(self):
+        if not MISTRAL_API_KEY:
+            raise ValueError("MISTRAL_API_KEY is not set")
+        from openai import OpenAI
+        self.client = OpenAI(
+            base_url="https://api.mistral.ai/v1",
+            api_key=MISTRAL_API_KEY,
+        )
+        self.model = MISTRAL_MODEL
+
+    def generate(self, system_prompt, user_query, context, image_data=None, history=None):
+        if image_data is not None:
+            return None  # Mistral Small has no vision — fall through to Groq
         try:
-            use_vision = image_data is not None
-            model = self.vision_model if use_vision else self.model
-
-            content = []
+            content = ""
             if context and context.strip():
-                content.append({"type": "text", "text": f"{context}\n\n### User Question\n{user_query}"})
+                content = f"{context}\n\n### User Question\n{user_query}"
             else:
-                content.append({"type": "text", "text": user_query})
-
-            if image_data:
-                content.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
-                })
+                content = user_query
 
             messages = [{"role": "system", "content": system_prompt}]
             for h in (history or []):
@@ -177,7 +239,7 @@ class GroqProvider(LLMProvider):
             messages.append({"role": "user", "content": content})
 
             resp = self.client.chat.completions.create(
-                model=model,
+                model=self.model,
                 messages=messages,
                 temperature=0.1,
                 max_tokens=1024,
@@ -185,7 +247,7 @@ class GroqProvider(LLMProvider):
             )
             return resp.choices[0].message.content.strip()
         except Exception as e:
-            logger.warning(f"Groq API error: {e}")
+            logger.warning(f"Mistral API error: {e}")
             return None
 
 
@@ -221,10 +283,29 @@ def build_provider_chain():
         try:
             providers.append(("groq", GroqProvider()))
         except Exception as e:
-            logger.warning(f"Failed to init Groq: {e}")
-    if LLM_PROVIDER in ("ollama", "groq"):
-        providers.append(("ollama", OllamaProvider()))
-    providers.append(("template", TemplateProvider()))
+            logger.warning(f"Failed to init GroqProvider: {e}")
+
+    if LLM_PROVIDER == "mistral" and MISTRAL_API_KEY:
+        try:
+            providers.append(("mistral", MistralAPIProvider()))
+        except Exception as e:
+            logger.warning(f"Failed to init MistralAPIProvider: {e}")
+
+    if LLM_PROVIDER == "ollama":
+        try:
+            providers.append(("ollama", OllamaProvider()))
+        except Exception as e:
+            logger.warning(f"Failed to init OllamaProvider: {e}")
+
+    if GROQ_API_KEY and not any(p[0] == "groq" for p in providers):
+        try:
+            providers.append(("groq", GroqProvider()))
+        except Exception as e:
+            logger.warning(f"Failed to init GroqProvider (fallback): {e}")
+
+    if not providers:
+        providers.append(("template", TemplateProvider()))
+
     return providers
 
 
