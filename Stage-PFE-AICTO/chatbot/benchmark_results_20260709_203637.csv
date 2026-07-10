@@ -1,0 +1,381 @@
+id,category,question,model,reply,n_rag_results,total_time_s,gen_time_s,est_tokens,tokens_per_sec,relevance,faithfulness,factuality,hallucination_free,recall_at_1,recall_at_3,recall_at_5,mrr,map
+S1,simple,List AI projects in Tunisia,groq-llama3.1-8b,"Based on the provided context, the following AI projects are in Tunisia:
+
+1. Tunisia Health AI Platform
+2. Smart Hospital Tunisia
+3. AI Medical Imaging
+4. Telemedicine Tunisia
+5. Arabic NLP Knowledge Hub
+6. Global Health AI Network",15,5.033729791641235,3.7250616550445557,57,15.5,5,4,4,3,0.125,0.375,0.5,1.0,0.8404761904761904
+S2,simple,AI projects in Egypt,groq-llama3.1-8b,"Based on the provided context, there are 4 AI projects in Egypt:
+
+1. MENA AI Partnership Hub
+2. Egyptian NLP Initiative
+3. Medical Vision AI
+4. AI Healthcare Assistant",15,0.2782003879547119,0.1999530792236328,41,208.8,5,2,1,1,0.14285714285714285,0.42857142857142855,0.7142857142857143,1.0,1.0
+S3,simple,Organizations working on AI in Jordan,groq-llama3.1-8b,"Based on the provided context, the following organizations are working on AI in Jordan:
+
+1. Jordan AI Network (NGO)
+2. Jordan Ministry of Digital Economy (Government)
+3. Jordan AgriTech AI (AgriTech)
+4. AI Land Restoration (Environment)
+5. Medical Vision AI (Health)
+6. AI Healthcare Assistant (Health)
+7. Tourism Recommendation Engine (Tourism)",15,0.3574182987213135,0.25826072692871094,86,334.0,5,2,3,2,0.14285714285714285,0.2857142857142857,0.5714285714285714,1.0,0.827437641723356
+S4,simple,AI resources available,groq-llama3.1-8b,"Based on the provided context, the following AI resources are available:
+
+- Arabic NLP Dataset (Data)
+- Arabic NLP Dataset (Research)
+- AI Ethics Guidelines (Ethics)
+- AI Governance Report (Governance)",13,0.3442080020904541,0.23486065864562988,50,214.0,5,5,5,5,0.0,0.0,0.0,0.0,0.0
+C1,complex,AI projects in healthcare in Tunisia,groq-llama3.1-8b,"Based on the provided context, there are 4 AI projects in healthcare in Tunisia:
+
+1. Tunisia Health AI Platform
+2. Smart Hospital Tunisia
+3. AI Medical Imaging
+4. Telemedicine Tunisia
+5. Global Health AI Network",15,10.162632465362549,9.944944381713867,52,5.3,5,2,3,2,0.2,0.4,0.6,1.0,0.75
+C2,complex,Educational AI initiatives in Egypt,groq-llama3.1-8b,"Based on the provided context, I found the following educational AI initiatives in Egypt:
+
+- Egyptian NLP Initiative | Egypt | EduTech
+
+This is the only educational AI initiative in Egypt present in the database.",15,0.7007713317871094,0.5871446132659912,53,90.3,5,4,5,5,0.14285714285714285,0.42857142857142855,0.7142857142857143,1.0,0.9821428571428571
+C3,complex,Stakeholders in smart city projects in UAE,groq-llama3.1-8b,"Based on the provided context, the stakeholders in smart city projects in UAE are:
+
+- UAE Smart Intelligence Center (Government)
+- Dubai AI Center (Research Lab)
+
+These stakeholders are associated with the ""Smart City Urban Analytics"" project in the United Arab Emirates.",15,0.7375922203063965,0.6339735984802246,67,106.9,5,2,3,2,0.2,0.6,0.6,1.0,0.7976190476190476
+C4,complex,Agricultural AI projects in Morocco and Tunisia,groq-llama3.1-8b,"Based on the provided context, I found the following agricultural AI projects:
+
+- Desert Agriculture AI | Morocco | Agriculture
+- AI for Sustainable Development | Morocco | Sustainable Development (related to agriculture)
+- Medical Vision AI | Morocco | Health (related to agriculture)
+- Rural Health AI System | Morocco | Health (related to agriculture)
+
+For Tunisia, I found:
+
+- Tunisia Health AI Platform | Tunisia | Health (related to agriculture)
+
+Please let me know if you need more details.",15,0.5018398761749268,0.40737056732177734,124,305.0,5,4,5,4,0.14285714285714285,0.2857142857142857,0.42857142857142855,1.0,0.6430795395081109
+M1,multi-hop,What organizations are involved in Smart Hospital Tunisia?,groq-llama3.1-8b,I don't have that information.,15,14.024796962738037,13.826758861541748,7,0.5,1,1,5,5,1.0,1.0,1.0,1.0,1.0
+M2,multi-hop,Which SDG does the Tunisia Health AI Platform target?,groq-llama3.1-8b,The Tunisia Health AI Platform targets SDG 3: Good Health and Well-being.,15,3.322153329849243,3.2425923347473145,18,5.6,5,4,5,5,1.0,1.0,1.0,1.0,1.0
+M3,multi-hop,Tell me about AI Medical Imaging project and its stakeholders,groq-llama3.1-8b,I don't have information about the stakeholders of the AI Medical Imaging project in Tunisia.,15,0.3130455017089844,0.2226254940032959,23,104.4,2,1,1,1,1.0,1.0,1.0,1.0,1.0
+M4,multi-hop,What AI technologies are used in Telemedicine Tunisia?,groq-llama3.1-8b,I don't have information on the specific AI technologies used in Telemedicine Tunisia.,15,6.705430030822754,6.614475727081299,21,3.3,2,2,5,5,1.0,1.0,1.0,1.0,1.0
+K1,conversational,Tell me more about the first project,groq-llama3.1-8b,"The first project is the Egyptian NLP Initiative. Here are its details:
+
+- **Project Name:** Egyptian NLP Initiative
+- **Country:** Egypt
+- **Domain:** EduTech",14,0.34812426567077637,0.2714848518371582,39,146.4,5,4,5,5,0.0,0.0,1.0,0.25,0.25
+K2,conversational,What about in Egypt?,groq-llama3.1-8b,I don't have that information.,14,0.24092602729797363,0.16741228103637695,7,44.8,1,1,5,5,0.16666666666666666,0.3333333333333333,0.5,1.0,0.7794011544011544
+K3,conversational,Show me the stakeholders,groq-llama3.1-8b,"Based on the provided context, the stakeholders are:
+
+1. Jordan Ministry of Digital Economy (Jordan, Government)
+2. Libya AI Development Hub (Libya, Government)
+3. Kuwait Data Vision (Kuwait, Government)
+4. Iraq Smart Solutions (Iraq, Startup)
+5. Somalia Digital Future (Somalia, Government)
+6. Bahrain Smart Tech Hub (Bahrain, Startup)
+7. Comoros Digital Initiative (Comoros, Government)
+8. Saudi Data Authority (Saudi Arabia, Government)
+9. Yemen Innovation Network (Yemen, NGO)
+10. Syria Tech Vision (Syria, Startup)
+11. Lebanon Digital Lab (Lebanon, Research Lab)
+12. Sudan AI Research Group (Sudan, University)
+13. GA Insights (Tunisia, Startup)",15,1.491809606552124,1.4298439025878906,162,113.6,5,1,1,1,0.0,0.0,0.0,0.0,0.0
+K4,conversational,Donne moi plus de details,groq-llama3.1-8b,"Voici les détails supplémentaires sur les projets en Tunisie :
+
+Je n'ai pas trouvé de projet spécifique en Tunisie dans le contexte actuel. Cependant, je peux vous fournir des informations générales sur les initiatives en Tunisie liées à l'IA :
+
+- **Initiatives gouvernementales** : Le gouvernement tunisien a lancé des initiatives pour promouvoir l'utilisation de l'IA dans divers secteurs, notamment l'éducation, la santé et la sécurité.
+- **Recherche et développement** : Les universités et les instituts de recherche tunisiens travaillent sur des projets d'IA, notamment dans les domaines de l'apprentissage automatique, de la reconnaissance de formes et de la linguistique.
+- **Entreprises et startups** : Des entreprises et startups tunisiennes développent des solutions basées sur l'IA, notamment dans les domaines de l'intelligence artificielle, de la réalité virtuelle et de l'analyse de données.
+
+Je n'ai pas de détails spécifiques sur des projets en Tunisie dans le contexte actuel. Si vous avez besoin de plus d'informations, je peux essayer de vous aider à trouver des ressources supplémentaires.",13,4.743791818618774,4.676019191741943,277,59.3,4,3,5,4,0.0,0.0,0.0,0.0,0.0
+O1,out-of-domain,What is the capital of France?,groq-llama3.1-8b,"I don't have that information. The provided context is about Arab regional AI initiatives, and it does not include information about France.",14,5.361175060272217,5.241295099258423,35,6.7,5,5,5,5,0.0,0.0,0.0,0.0,0.0
+O2,out-of-domain,How do I bake a chocolate cake?,groq-llama3.1-8b,I don't have information on baking a chocolate cake.,15,5.332634449005127,5.233876466751099,13,2.5,1,5,5,5,0.0,0.0,0.0,0.0,0.0
+O3,out-of-domain,Translate hello to Spanish,groq-llama3.1-8b,I don't have that information.,14,2.2969489097595215,2.228317975997925,7,3.4,1,1,1,5,0.0,0.0,0.0,0.0,0.0
+O4,out-of-domain,Who won the World Cup in 2022?,groq-llama3.1-8b,"I don't have information about the 2022 World Cup winner. My database is focused on Arab regional AI initiatives, and I don't have data on general sports events.",14,4.39457106590271,4.327113389968872,40,9.3,5,5,5,5,0.0,0.0,0.0,0.0,0.0
+S1,simple,List AI projects in Tunisia,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Tunisia Health AI Platform (Tunisia | Health)
+- Smart Hospital Tunisia (Tunisia | Health)
+- AI Medical Imaging (Tunisia | Health)
+- Telemedicine Tunisia (Tunisia | Health)
+- Arabic NLP Knowledge Hub (Tunisia | Education)
+
+**Organizations:**
+- Tunisia AI Labs (Tunisia | Research Lab)
+- aicto lab (Tunisia | Government)
+
+**Resources:**
+- projects in lebanon ( | Data)",15,2.2982912063598633,2.232163906097412,108,48.6,5,5,5,5,0.125,0.375,0.5,1.0,0.8404761904761904
+S2,simple,AI projects in Egypt,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- MENA AI Partnership Hub (Egypt | Governance)
+- Egyptian NLP Initiative (Egypt | EduTech)
+- Medical Vision AI (Egypt | Health)
+- AI Healthcare Assistant (Egypt | Health)
+- Desert Agriculture AI (Morocco | Agriculture)
+
+**Organizations:**
+- Cairo University AI Lab (Egypt | Research Lab)
+- Cairo University AI Lab (Egypt | University)
+- Egypt Future Intelligence Lab (Egypt | Research Lab)
+
+**Resources:**
+- projects in lebanon ( | Data)",15,2.105564832687378,2.0479018688201904,125,61.4,5,4,4,4,0.14285714285714285,0.42857142857142855,0.7142857142857143,1.0,1.0
+S3,simple,Organizations working on AI in Jordan,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Organizations:**
+- Jordan AI Network (Jordan | NGO)
+- Dubai AI Center (UAE | Research Lab)
+- Jordan Ministry of Digital Economy (Jordan | Government)
+- Cairo University AI Lab (Egypt | Research Lab)
+- Cairo University AI Lab (Egypt | University)
+
+**Projects:**
+- Jordan AgriTech AI (Jordan | AgriTech)
+- MENA AI Partnership Hub (Egypt | Governance)
+- AI Land Restoration (Jordan | Environment)
+- Medical Vision AI (Jordan | Health)
+- AI Healthcare Assistant (Jordan | Health)
+
+**Resources:**
+- projects in lebanon ( | Data)
+- AI Governance Report ( | Governance)",15,2.1358275413513184,2.0682568550109863,154,74.5,2,1,2,1,0.14285714285714285,0.2857142857142857,0.5714285714285714,1.0,0.827437641723356
+S4,simple,AI resources available,mistral-small,"I found 13 relevant item(s) in the SARAI database:
+
+**Resources:**
+- AI Governance Report ( | Governance)
+- projects in lebanon ( | Data)
+- Arabic NLP Dataset ( | Data)
+- Arabic NLP Dataset ( | Research)
+- AI Ethics Guidelines ( | Ethics)
+
+**Projects:**
+- AI Startup Ecosystem Observatory (Sudan | Data Science)
+- MENA AI Partnership Hub (Egypt | Governance)
+- AI Land Restoration (Jordan | Environment)
+- Desert Agriculture AI (Morocco | Agriculture)
+
+**Organizations:**
+- Dubai AI Center (UAE | Research Lab)
+- Jordan AI Network (Jordan | NGO)
+- Cairo University AI Lab (Egypt | Research Lab)",13,2.104832410812378,2.040462017059326,148,72.8,5,5,5,5,0.0,0.0,0.0,0.0,0.0
+C1,complex,AI projects in healthcare in Tunisia,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Tunisia Health AI Platform (Tunisia | Health)
+- Smart Hospital Tunisia (Tunisia | Health)
+- AI Healthcare Assistant (Lebanon | Health)
+- AI Medical Imaging (Tunisia | Health)
+- AI Healthcare Assistant (Algeria | Health)",15,2.1336913108825684,2.064512014389038,71,34.8,5,4,5,4,0.2,0.4,0.6,1.0,0.75
+C2,complex,Educational AI initiatives in Egypt,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Organizations:**
+- Cairo University AI Lab (Egypt | University)
+- Cairo University AI Lab (Egypt | Research Lab)
+- Egypt Future Intelligence Lab (Egypt | Research Lab)
+- Jordan AI Network (Jordan | NGO)
+
+**Projects:**
+- Egyptian NLP Initiative (Egypt | EduTech)
+- MENA AI Partnership Hub (Egypt | Governance)
+- Medical Vision AI (Egypt | Health)
+- AI Healthcare Assistant (Egypt | Health)
+- AI Healthcare Assistant (Sudan | Health)
+
+**Resources:**
+- AI Governance Report ( | Governance)
+- projects in lebanon ( | Data)",15,2.1174442768096924,2.0508480072021484,143,69.7,5,4,5,4,0.14285714285714285,0.42857142857142855,0.7142857142857143,1.0,0.9821428571428571
+C3,complex,Stakeholders in smart city projects in UAE,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Smart City Urban Analytics (United Arab Emirates | Smart Cities)
+- Smart Hospital Tunisia (Tunisia | Health)
+- Smart Port Logistics Optimization (Libya | Transportation)
+- National Energy Consumption Forecasting (United Arab Emirates | Energy)
+- Smart Waste Classification Platform (Algeria | Environment)
+
+**Organizations:**
+- UAE Smart Intelligence Center (United Arab Emirates | Government)
+- UAE Smart Intelligence Center (UAE | Government)
+- Bahrain Smart Tech Hub (Bahrain | Startup)
+- Iraq Smart Solutions (Iraq | Startup)
+- Oman Future Tech (Oman | Government)",15,2.1534717082977295,2.073866128921509,159,76.7,2,2,3,2,0.2,0.6,0.6,1.0,0.7976190476190476
+C4,complex,Agricultural AI projects in Morocco and Tunisia,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Desert Agriculture AI (Morocco | Agriculture)
+- Smart Irrigation System for Desert Agriculture (Qatar | Agriculture)
+- AI for Sustainable Development (Morocco | Sustainable Development)
+- Jordan AgriTech AI (Jordan | AgriTech)
+- Rural Health AI System (Morocco | Health)
+
+**Resources:**
+- projects in lebanon ( | Data)
+
+**Organizations:**
+- Tunisia AI Labs (Tunisia | Research Lab)",15,2.1001458168029785,2.035989999771118,112,55.1,5,4,4,4,0.14285714285714285,0.2857142857142857,0.42857142857142855,1.0,0.6430795395081109
+M1,multi-hop,What organizations are involved in Smart Hospital Tunisia?,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Smart Hospital Tunisia (Tunisia | Health)
+- Telemedicine Tunisia (Tunisia | Health)
+- Smart Medical Records (Tunisia | Health)
+- Tunisia Health AI Platform (Tunisia | Health)
+- Morocco Smart Health (Morocco | Health)",15,2.1278088092803955,2.0488810539245605,71,34.7,5,5,5,5,1.0,1.0,1.0,1.0,1.0
+M2,multi-hop,Which SDG does the Tunisia Health AI Platform target?,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Tunisia Health AI Platform (Tunisia | Health)
+- Global Health AI Network (Tunisia | Health)
+- Smart Hospital Tunisia (Tunisia | Health)
+- Telemedicine Tunisia (Tunisia | Health)
+- Smart Medical Records (Tunisia | Health)
+
+**Organizations:**
+- Tunisia AI Labs (Tunisia | Research Lab)",15,2.146678924560547,2.0588886737823486,87,42.6,5,5,5,5,1.0,1.0,1.0,1.0,1.0
+M3,multi-hop,Tell me about AI Medical Imaging project and its stakeholders,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- AI Medical Imaging (Tunisia | Health)
+- Medical Vision AI (Lebanon | Health)
+- Medical Vision AI (Jordan | Health)
+- Medical Vision AI (Palestine | Health)
+- Medical Vision AI (Egypt | Health)",15,2.1569888591766357,2.0757641792297363,65,31.3,5,1,1,1,1.0,1.0,1.0,1.0,1.0
+M4,multi-hop,What AI technologies are used in Telemedicine Tunisia?,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Telemedicine Tunisia (Tunisia | Health)
+- Tunisia Health AI Platform (Tunisia | Health)
+- Smart Hospital Tunisia (Tunisia | Health)
+- AI Medical Imaging (Tunisia | Health)
+- Telemedicine Connect (Algeria | Health)
+
+**Organizations:**
+- Tunisia AI Labs (Tunisia | Research Lab)",15,2.133871078491211,2.0624630451202393,86,41.7,5,4,5,5,1.0,1.0,1.0,1.0,1.0
+K1,conversational,Tell me more about the first project,mistral-small,"I found 14 relevant item(s) in the SARAI database:
+
+**Resources:**
+- projects in lebanon ( | Data)
+
+**Projects:**
+- Egyptian NLP Initiative (Egypt | EduTech)
+- Arabic Creators (Sudan | Education)
+- Arabic NLP Knowledge Hub (Tunisia | Education)
+- AI Startup Ecosystem Observatory (Sudan | Data Science)
+- this is a test  (Somalia | Environment)",14,2.141390562057495,2.0735020637512207,86,41.5,5,4,4,2,0.0,0.0,1.0,0.25,0.25
+K2,conversational,What about in Egypt?,mistral-small,"I found 14 relevant item(s) in the SARAI database:
+
+**Organizations:**
+- Egypt Future Intelligence Lab (Egypt | Research Lab)
+- Cairo University AI Lab (Egypt | University)
+- Cairo University AI Lab (Egypt | Research Lab)
+- Morocco AI Ventures (Morocco | Startup)
+- aicto lab (Tunisia | Government)
+
+**Projects:**
+- this is a test  (Somalia | Environment)
+- Egyptian NLP Initiative (Egypt | EduTech)
+- MENA AI Partnership Hub (Egypt | Governance)
+- Medical Vision AI (Egypt | Health)
+- Arabic Creators (Sudan | Education)
+
+**Resources:**
+- projects in lebanon ( | Data)
+- AI Ethics Guidelines ( | Ethics)
+- AI Governance Report ( | Governance)",14,2.12186861038208,2.0497496128082275,160,78.4,5,2,4,2,0.16666666666666666,0.3333333333333333,0.5,1.0,0.7794011544011544
+K3,conversational,Show me the stakeholders,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Organizations:**
+- Jordan Ministry of Digital Economy (Jordan | Government)
+- Libya AI Development Hub (Libya | Government)
+- Kuwait Data Vision (Kuwait | Government)
+- Iraq Smart Solutions (Iraq | Startup)
+- Somalia Digital Future (Somalia | Government)
+
+**Resources:**
+- AI Governance Report ( | Governance)",15,2.119737148284912,2.04726243019104,90,44.3,5,5,5,5,0.0,0.0,0.0,0.0,0.0
+K4,conversational,Donne moi plus de details,mistral-small,"I found 13 relevant item(s) in the SARAI database:
+
+**Resources:**
+- Arabic NLP Dataset ( | Data)
+- Arabic NLP Dataset ( | Research)
+- projects in lebanon ( | Data)
+- AI Governance Report ( | Governance)
+- rappotrt ( | Ethics)
+
+**Projects:**
+- Egyptian NLP Initiative (Egypt | EduTech)
+
+**Organizations:**
+- Somalia Digital Future (Somalia | Government)
+- Mauritania Tech Alliance (Mauritania | NGO)
+- Lebanon Digital Lab (Lebanon | Research Lab)
+- Comoros Digital Initiative (Comoros | Government)
+- InnoTech Morocco (Morocco | Startup)",13,2.192385196685791,2.124680995941162,134,63.2,3,3,3,3,0.0,0.0,0.0,0.0,0.0
+O1,out-of-domain,What is the capital of France?,mistral-small,"I found 14 relevant item(s) in the SARAI database:
+
+**Organizations:**
+- InnoTech Morocco (Morocco | Startup)
+- Morocco AI Ventures (Morocco | Startup)
+- Algeria AI Innovation Center (Algeria | Research Lab)
+- Tunisia AI Labs (Tunisia | Research Lab)
+- Libya AI Development Hub (Libya | Government)
+
+**Resources:**
+- projects in lebanon ( | Data)",14,2.306212902069092,2.22005558013916,86,39.0,1,1,1,1,0.0,0.0,0.0,0.0,0.0
+O2,out-of-domain,How do I bake a chocolate cake?,mistral-small,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Arabic Creators (Sudan | Education)
+- Desert Agriculture AI (Morocco | Agriculture)
+- Smart Irrigation System for Desert Agriculture (Qatar | Agriculture)
+- Egyptian NLP Initiative (Egypt | EduTech)
+- ACT28 AI Climate Hackathon (United Arab Emirates | Environment)
+
+**Resources:**
+- projects in lebanon ( | Data)
+- Arabic NLP Dataset ( | Research)
+- Arabic NLP Dataset ( | Data)
+
+**Organizations:**
+- Tunisia AI Labs (Tunisia | Research Lab)",15,2.122821569442749,2.0482661724090576,127,62.1,1,1,5,5,0.0,0.0,0.0,0.0,0.0
+O3,out-of-domain,Translate hello to Spanish,mistral-small,"I found 14 relevant item(s) in the SARAI database:
+
+**Resources:**
+- Arabic NLP Dataset ( | Data)
+- Arabic NLP Dataset ( | Research)
+- projects in lebanon ( | Data)
+- AI Ethics Guidelines ( | Ethics)
+- rappotrt ( | Ethics)
+
+**Projects:**
+- Arabic NLP Knowledge Hub (Tunisia | Education)
+- Egyptian NLP Initiative (Egypt | EduTech)
+- Tourism Recommendation Engine (Jordan | Tourism)
+- Morocco Smart Health (Morocco | Health)
+- teeest (Saudi Arabia | Environment)
+
+**Organizations:**
+- string (string | string)
+- InnoTech Morocco (Morocco | Startup)",14,2.10949969291687,2.0469350814819336,136,66.8,1,1,1,1,0.0,0.0,0.0,0.0,0.0
+O4,out-of-domain,Who won the World Cup in 2022?,mistral-small,"I found 14 relevant item(s) in the SARAI database:
+
+**Organizations:**
+- Somalia Digital Future (Somalia | Government)
+- Qatar Innovation Institute (Qatar | Research Lab)
+- Oman Future Tech (Oman | Government)
+- Egypt Future Intelligence Lab (Egypt | Research Lab)
+- Syria Tech Vision (Syria | Startup)
+
+**Projects:**
+- Arabic Creators (Sudan | Education)
+- this is a test  (Somalia | Environment)
+- efeffz (Qatar | Energy)
+- ACT28 AI Climate Hackathon (United Arab Emirates | Environment)
+- AI for Sustainable Development (Morocco | Sustainable Development)",14,2.1324586868286133,2.0635757446289062,139,67.6,1,1,1,1,0.0,0.0,0.0,0.0,0.0

@@ -32,6 +32,9 @@ def _build_docs(db: Session):
             f"SARAI Project: {p.title}. "
             f"Sector: {p.sector or ''}, Technology: {p.technology or ''}, "
             f"implemented by {p.organization or ''} in {cname or ''}. "
+            f"Status: {p.status or 'active'}. "
+            f"Start: {p.start_date or 'N/A'}, End: {p.end_date or 'N/A'}, "
+            f"Year: {p.year_of_implementation or 'N/A'}. "
             f"An AI project contributing to the Arab region ecosystem. "
             f"Description: {p.description or p.title or ''}"
         )

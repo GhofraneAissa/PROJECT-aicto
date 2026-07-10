@@ -1,0 +1,39 @@
+﻿timestamp,question,reply,provider,time_ms,sources
+2026-07-05 23:46:33.093384,What is SARAI?,I don't have information about what SARAI is in the database.,groq,629,15
+2026-07-05 23:46:33.944435,List AI projects in Tunisia,"There are 7 AI projects in Tunisia.
+
+1. **Tunisia Health AI Platform** | Tunisia | Health (PROJECT)
+2. **Smart Hospital Tunisia** | Tunisia | Health (PROJECT)
+3. **AI Medical Imaging** | Tunisia | Hea",groq,851,7
+2026-07-05 23:46:39.065638,AI projects in Egypt,"There are 4 AI projects in Egypt.
+
+1. **MENA AI Partnership Hub** (Egypt | Governance)
+The MENA AI Partnership Hub aims to promote AI adoption and development in the Middle East and North Africa regio",groq,5121,4
+2026-07-05 23:46:41.931835,Organizations working on AI in Jordan,"There are 2 organizations working on AI in Jordan.
+
+1. **Jordan AI Network** (Jordan | NGO)
+2. **Jordan Ministry of Digital Economy** (Jordan | Government)",groq,2866,2
+2026-07-05 23:46:45.924881,AI resources available,"There are 7 AI resources available in the database.
+
+1. **AI Governance Report** (Governance)
+2. **projects in lebanon** (Data)
+3. **Arabic NLP Dataset** (Data)
+4. **Arabic NLP Dataset** (Research)
+5.",groq,3993,8
+2026-07-05 23:46:50.942498,AI projects in healthcare,"**Total Count: 15**
+
+Here are the AI projects in healthcare across the Arab region:
+
+1. **AI Healthcare Assistant** | Lebanon | Health [PROJECT]
+2. **AI Healthcare Assistant** | Sudan | Health [PROJEC",groq,5017,15
+2026-07-05 23:46:57.191093,Projets IA en Tunisie,"**Introduction** : 6 projets IA ont été trouvés en Tunisie.
+
+**Liste des projets IA en Tunisie :**
+
+1. **Smart Hospital Tunisia** | Tunisie | Santé
+- Ce projet vise à améliorer les soins de santé en T",groq,6248,15
+2026-07-05 23:47:03.439269,Organisations en Egypte,"**Total Count: 6**
+
+1. **Cairo University AI Lab** | Egypt | University (STAKEHOLDER)
+2. **Cairo University AI Lab** | Egypt | Research Lab (STAKEHOLDER)
+3. **Egypt Future Intelligence Lab** | Egypt |",groq,6248,7

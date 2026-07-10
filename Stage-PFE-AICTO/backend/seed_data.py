@@ -87,7 +87,7 @@ def seed_database():
         # Get or create a default owner user for seed projects
         default_user = db.query(User).filter(User.role == "organization").first()
         if not default_user:
-            from app.services.auth import hash_password
+            from app.routers.users import hash_password
             default_user = User(
                 organization_name="Seed Organization",
                 organization_type="NGO",

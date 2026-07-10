@@ -70,27 +70,34 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 SYSTEM_PROMPT = """You are SARAI Assistant for the Stocktaking of Arab Regional AI Initiatives platform.
 
 ### CRITICAL RULES — Never violate these:
-1. **ABSOLUTELY NEVER invent data.** Only report what is explicitly listed in the context below. Do not add countries, descriptions, sectors, or any details not present in the context.
-2. If the context is empty or insufficient, say "I don't have that information in the database" and suggest what the user can ask about.
-3. Respond in the same language as the user (English, French, or Arabic).
+1. **ABSOLUTELY NEVER invent data.** Only report database info from the `Matching Items` section. Do not add countries, descriptions, or details not present there.
+2. Use the `Conversation Memory` section and the conversation history to remember user information (name, preferences, past questions).
+3. If the database context is empty, say "I don't have that information in the database" and suggest what the user can ask about.
+4. Respond in the same language as the user (English, French, or Arabic).
+5. When the user asks for details about a specific project, use the `Detailed Information` section to provide full information: organization, dates, technology, stakeholders with their roles, status, SDG, website, and description.
 
 ### How to structure responses:
 - Start with a brief introduction mentioning the total count.
 - List items in a clear, readable format with **Title** (Country | Sector).
 - Be concise: 2-4 sentences unless the user asks for details.
-- Always cite the source type next to each item (Project, Stakeholder, Resource)."""
+- Always cite the source type next to each item (Project, Stakeholder, Resource).
+- When details are requested, present them in a structured format with bullet points or sections.
+"""
 
 SYSTEM_PROMPT_FR = """Vous etes l'assistant SARAI pour le recensement des initiatives IA dans la region arabe.
 
 ### REGLES CRITIQUES :
-1. **N'inventez JAMAIS de donnees.** Basez-vous uniquement sur le contexte fourni.
-2. Si le contexte est insuffisant, dites "Je n'ai pas trouve cette information dans la base de donnees."
-3. Repondez dans la meme langue que l'utilisateur.
+1. **N'inventez JAMAIS de donnees.** Basez-vous uniquement sur la section `Matching Items` pour les donnees.
+2. Utilisez la section `Conversation Memory` et l'historique de la conversation pour retenir les informations personnelles (prenom, preferences, questions passees).
+3. Si le contexte est insuffisant, dites "Je n'ai pas trouve cette information dans la base de donnees."
+4. Repondez dans la meme langue que l'utilisateur.
+5. Quand l'utilisateur demande des details sur un projet specifique, utilisez la section `Detailed Information` pour fournir les informations completes : organisation, dates, technologie, parties prenantes avec leurs roles, statut, ODD, site web et description.
 
 ### Structure des reponses :
 - Commencez par une breve introduction avec le nombre total d'elements trouves.
 - Listez les elements avec **Titre** (Pays | Secteur)
-- Soyez concis (2-4 phrases)."""
+- Soyez concis (2-4 phrases).
+- Quand des details sont demandes, presentez-les de maniere structuree avec des puces ou sections."""
 
 SENTENCE_SPLITTER = re.compile(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s")
 
@@ -131,7 +138,7 @@ IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
 
 class LLMProvider(ABC):
     @abstractmethod
-    def generate(self, system_prompt: str, user_query: str, context: str, image_data: Optional[str] = None) -> Optional[str]:
+    def generate(self, system_prompt: str, user_query: str, context: str, image_data: Optional[str] = None, history: Optional[list] = None) -> Optional[str]:
         ...
 
 
@@ -147,14 +154,14 @@ class GroqProvider(LLMProvider):
         self.model = GROQ_MODEL
         self.vision_model = GROQ_VISION_MODEL
 
-    def generate(self, system_prompt, user_query, context, image_data=None):
+    def generate(self, system_prompt, user_query, context, image_data=None, history=None):
         try:
             use_vision = image_data is not None
             model = self.vision_model if use_vision else self.model
 
             content = []
             if context and context.strip():
-                content.append({"type": "text", "text": f"### Database Context (only use this data, do not invent anything)\n{context}\n\n### User Question\n{user_query}"})
+                content.append({"type": "text", "text": f"{context}\n\n### User Question\n{user_query}"})
             else:
                 content.append({"type": "text", "text": user_query})
 
@@ -164,10 +171,10 @@ class GroqProvider(LLMProvider):
                     "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
                 })
 
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": content},
-            ]
+            messages = [{"role": "system", "content": system_prompt}]
+            for h in (history or []):
+                messages.append({"role": h["role"], "content": h["content"]})
+            messages.append({"role": "user", "content": content})
 
             resp = self.client.chat.completions.create(
                 model=model,
@@ -187,9 +194,13 @@ class OllamaProvider(LLMProvider):
         self.url = f"{OLLAMA_BASE_URL}/api/generate"
         self.model = OLLAMA_MODEL
 
-    def generate(self, system_prompt, user_query, context, image_data=None):
+    def generate(self, system_prompt, user_query, context, image_data=None, history=None):
         try:
-            prompt = f"{system_prompt}\n\n### Context from Database\n{context}\n\n### User Question\n{user_query}\n\n### Response"
+            history_text = ""
+            for h in (history or []):
+                role = "User" if h["role"] == "user" else "Assistant"
+                history_text += f"{role}: {h['content']}\n"
+            prompt = f"{system_prompt}\n\n### Conversation History\n{history_text}\n\n### Context\n{context}\n\n### User Question\n{user_query}\n\n### Response"
             payload = {"model": self.model, "prompt": prompt, "stream": False, "options": {"temperature": 0.3}}
             resp = requests.post(self.url, json=payload, timeout=60)
             if resp.ok:
@@ -200,7 +211,7 @@ class OllamaProvider(LLMProvider):
 
 
 class TemplateProvider(LLMProvider):
-    def generate(self, system_prompt, user_query, context, image_data=None):
+    def generate(self, system_prompt, user_query, context, image_data=None, history=None):
         return None
 
 
@@ -261,6 +272,104 @@ def format_context(results):
     for r in results:
         lines.append(f"[{r['type'].upper()}] {r['title']} | {r['country'] or 'N/A'} | {r['sector'] or 'N/A'}")
     return "\n".join(lines) if lines else "(empty)"
+
+
+DETAIL_KEYWORDS = {
+    "details", "detail", "more info", "more information", "tell me more",
+    "about", "describe", "description", "show", "display",
+    "détails", "détail", "plus d'infos", "à propos", "décrire",
+    "تفاصيل", "المزيد", "وصف",
+}
+
+
+def detect_detail_intent(query):
+    q = query.lower().strip()
+    for kw in DETAIL_KEYWORDS:
+        if kw in q:
+            return True
+    return False
+
+
+def fetch_project_details(project_id: int, db: Session, project_title: str = ""):
+    try:
+        from app.models.project import Project, ProjectStakeholderAssociation
+        from app.models.stakeholder import Stakeholder
+        from app.models.country import Country
+        from app.models.sdg import SDG
+
+        p = db.query(Project).filter(Project.id == project_id).first()
+        if not p and project_title:
+            p = db.query(Project).filter(Project.title.ilike(f"%{project_title}%")).first()
+        if not p:
+            return None
+        country_name = db.query(Country.country).filter(Country.id == p.country_id).scalar() or "N/A"
+        sdg_goal = db.query(SDG.title).filter(SDG.id == p.sdg_id).scalar() if p.sdg_id else None
+
+        stakeholders = (
+            db.query(Stakeholder.name, Stakeholder.type, ProjectStakeholderAssociation.role)
+            .join(ProjectStakeholderAssociation, ProjectStakeholderAssociation.stakeholder_id == Stakeholder.id)
+            .filter(ProjectStakeholderAssociation.project_id == project_id)
+            .all()
+        )
+
+        return {
+            "title": p.title or "",
+            "organization": p.organization or "",
+            "country": country_name,
+            "sector": p.sector or "",
+            "technology": p.technology or "",
+            "description": p.description or "",
+            "status": p.status or "active",
+            "start_date": str(p.start_date) if p.start_date else None,
+            "end_date": str(p.end_date) if p.end_date else None,
+            "year_of_implementation": p.year_of_implementation,
+            "website": p.website or "",
+            "sdg": sdg_goal or "",
+            "stakeholders": [
+                {"name": s.name, "type": s.type, "role": s.role}
+                for s in stakeholders
+            ],
+        }
+    except Exception as e:
+        logger.warning(f"Failed to fetch project details for {project_id}: {e}")
+        return None
+
+
+def format_detail_context(results, db: Session, max_details: int = 3):
+    detail_count = 0
+    lines = []
+    for r in results:
+        if detail_count >= max_details:
+            break
+        if r["type"] == "project":
+            details = fetch_project_details(r["id"], db, r.get("title", ""))
+            if details:
+                lines.append(f"--- Project: {details['title']} ---")
+                lines.append(f"  Organization: {details['organization']}")
+                lines.append(f"  Country: {details['country']}")
+                lines.append(f"  Sector: {details['sector']}")
+                lines.append(f"  Technology: {details['technology']}")
+                lines.append(f"  Status: {details['status']}")
+                if details.get("start_date"):
+                    lines.append(f"  Start Date: {details['start_date']}")
+                if details.get("end_date"):
+                    lines.append(f"  End Date: {details['end_date']}")
+                if details.get("year_of_implementation"):
+                    lines.append(f"  Year: {details['year_of_implementation']}")
+                if details.get("description"):
+                    lines.append(f"  Description: {details['description'][:500]}")
+                if details.get("website"):
+                    lines.append(f"  Website: {details['website']}")
+                if details.get("sdg"):
+                    lines.append(f"  SDG: {details['sdg']}")
+                if details["stakeholders"]:
+                    lines.append("  Stakeholders:")
+                    for sh in details["stakeholders"]:
+                        role_str = f" ({sh['role']})" if sh['role'] else ""
+                        lines.append(f"    - {sh['name']} [{sh['type']}]{role_str}")
+                lines.append("")
+                detail_count += 1
+    return "\n".join(lines) if lines else None
 
 
 def make_url(item):
@@ -486,6 +595,7 @@ def chat_send(
 
     query = request.message.strip()
     attachments = request.attachments
+    chat_history = request.history or []
     image_data = None
     doc_texts = []
 
@@ -569,10 +679,16 @@ def chat_send(
     if doc_texts:
         doc_section = "\n\n### Uploaded Document Content\n" + "\n\n".join(doc_texts)
 
+    detail_section = ""
+    if results and detect_detail_intent(query):
+        detail_text = format_detail_context(results, db)
+        if detail_text:
+            detail_section = f"\n\n### Detailed Information\n{detail_text}"
+
     lang = detect_language(query)
     active_system_prompt = SYSTEM_PROMPT_FR if lang == 'fr' else SYSTEM_PROMPT
 
-    full_context = f"### Stats\n{stats}\n\n### Matching Items\n{context}{doc_section}"
+    full_context = f"### Stats\n{stats}\n\n### Matching Items\n{context}{doc_section}{detail_section}"
 
     providers = build_provider_chain()
     reply = None
@@ -583,7 +699,7 @@ def chat_send(
             reply = build_template_reply(results, query)
             active_provider = name
             break
-        gen = provider.generate(active_system_prompt, query, full_context, image_data)
+        gen = provider.generate(active_system_prompt, query, full_context, image_data, chat_history)
         if gen:
             reply = gen
             active_provider = name

@@ -1,0 +1,47 @@
+﻿timestamp,question,reply,provider,time_ms,sources
+2026-07-09 21:09:12.220969,What is SARAI?,"I don't have information about SARAI in the database. However, I can suggest asking about the platform or the initiative you are referring to, and I'll do my best to provide information based on the a",groq,3694,15
+2026-07-09 21:09:17.314760,List AI projects in Tunisia,"I found 7 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Tunisia Health AI Platform (Tunisia | Health)
+- Smart Hospital Tunisia (Tunisia | Health)
+- AI Medical Imaging (Tunisia | Health)
+- T",template,5093,7
+2026-07-09 21:09:28.103637,AI projects in Egypt,"I found 4 relevant item(s) in the SARAI database:
+
+**Projects:**
+- MENA AI Partnership Hub (Egypt | Governance)
+- Egyptian NLP Initiative (Egypt | EduTech)
+- Medical Vision AI (Egypt | Health)
+- AI He",template,10788,4
+2026-07-09 21:09:31.679098,Organizations working on AI in Jordan,"There are 2 organizations working on AI in Jordan.
+
+1. **Jordan AI Network** (NGO)
+2. **Jordan Ministry of Digital Economy** (Government)",groq,3575,2
+2026-07-09 21:09:36.718261,AI resources available,"I found 6 relevant item(s) in the SARAI database:
+
+**Resources:**
+- AI Governance Report ( | Governance)
+- projects in lebanon ( | Data)
+- Arabic NLP Dataset ( | Data)
+- Arabic NLP Dataset ( | Researc",template,5039,6
+2026-07-09 21:09:42.468183,AI projects in healthcare,"I found 15 relevant item(s) in the SARAI database:
+
+**Projects:**
+- AI Healthcare Assistant (Lebanon | Health)
+- AI Healthcare Assistant (Jordan | Health)
+- AI Healthcare Assistant (Sudan | Health)
+- ",template,5749,15
+2026-07-09 21:09:47.438563,Projets IA en Tunisie,"J'ai trouve 15 element(s) pertinent(s) dans la base SARAI :
+
+**Projets :**
+- Smart Hospital Tunisia (Tunisia | Health)
+- Tunisia Health AI Platform (Tunisia | Health)
+- Telemedicine Tunisia (Tunisia |",template,4969,15
+2026-07-09 21:09:52.468389,Organisations en Egypte,"I found 7 relevant item(s) in the SARAI database:
+
+**Projects:**
+- Egyptian NLP Initiative (Egypt | EduTech)
+- MENA AI Partnership Hub (Egypt | Governance)
+- Telemedicine Connect (Egypt | Health)
+- AI",template,5029,7

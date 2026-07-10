@@ -1,0 +1,21 @@
+  1: # ── Configuration LLM (meme que app/routers/chat.py) ──
+  2: LLM_PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()
+  3: GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+  4: GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+  5: GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-11b-vision-preview")
+  6: OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+  7: OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral-small")
+  8: 
+  9: DEFAULT_TEMP = 0.3
+ 10: print(f"Provider: {LLM_PROVIDER} | Modele: {OLLAMA_MODEL}")
+ 11: print(f"Mistral: disponible via Ollama")
+ 12: 
+ 13: 
+ 14: # Verification Ollama
+ 15: try:
+ 16:     r = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
+ 17:     OLLAMA_OK = r.ok
+ 18:     print(f"Ollama: {'disponible' if OLLAMA_OK else 'indisponible'}")
+ 19: except Exception:
+ 20:     OLLAMA_OK = False
+ 21:     print("Ollama: indisponible")
