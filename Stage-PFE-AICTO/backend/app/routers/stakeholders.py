@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -42,15 +42,17 @@ def get_stakeholder(id: int, db: Session = Depends(get_db)):
     return stakeholder
 
 @router.post("/", response_model=StakeholderResponse)
-def create_stakeholder(stakeholder: StakeholderCreate, db: Session = Depends(get_db)):
+def create_stakeholder(stakeholder: StakeholderCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_stakeholder = Stakeholder(**stakeholder.model_dump())
     db.add(db_stakeholder)
     db.commit()
     db.refresh(db_stakeholder)
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return db_stakeholder
 
 @router.put("/{id}", response_model=StakeholderResponse)
-def update_stakeholder(id: int, stakeholder: StakeholderUpdate, db: Session = Depends(get_db)):
+def update_stakeholder(id: int, stakeholder: StakeholderUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_stakeholder = db.query(Stakeholder).filter(Stakeholder.id == id).first()
     if not db_stakeholder:
         raise HTTPException(status_code=404, detail="Stakeholder not found")
@@ -61,14 +63,18 @@ def update_stakeholder(id: int, stakeholder: StakeholderUpdate, db: Session = De
     
     db.commit()
     db.refresh(db_stakeholder)
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return db_stakeholder
 
 @router.delete("/{id}")
-def delete_stakeholder(id: int, db: Session = Depends(get_db)):
+def delete_stakeholder(id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_stakeholder = db.query(Stakeholder).filter(Stakeholder.id == id).first()
     if not db_stakeholder:
         raise HTTPException(status_code=404, detail="Stakeholder not found")
     
     db.delete(db_stakeholder)
     db.commit()
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return {"message": "Stakeholder deleted successfully"}

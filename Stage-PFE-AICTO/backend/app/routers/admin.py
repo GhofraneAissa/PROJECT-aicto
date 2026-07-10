@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, Body
+from fastapi import APIRouter, Depends, HTTPException, Header, Body, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
@@ -160,7 +160,7 @@ def get_approved_organizations(page: int = 1, page_size: int = 20, db: Session =
     return [_serialize_org(o) for o in orgs]
 
 @router.put("/orgs/{user_id}/approve")
-def approve_organization(user_id: int, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def approve_organization(user_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
     org = db.query(User).filter(User.id == user_id, User.role == "organization").first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -190,6 +190,8 @@ def approve_organization(user_id: int, db: Session = Depends(get_db), admin: Use
             org.stakeholder_id = stakeholder.id
 
     db.commit()
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return {"message": "Organization approved successfully"}
 
 @router.put("/orgs/{user_id}/reject")
@@ -213,7 +215,7 @@ def reject_organization(user_id: int, reason: str = Body("", embed=True), db: Se
     return {"message": "Organization rejected"}
 
 @router.put("/projects/{project_id}/approve")
-def approve_project(project_id: int, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def approve_project(project_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -221,10 +223,12 @@ def approve_project(project_id: int, db: Session = Depends(get_db), admin: User 
     project.moderated_by = admin.id
     project.moderated_at = datetime.now(timezone.utc)
     db.commit()
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return {"message": "Project approved successfully"}
 
 @router.put("/projects/{project_id}/reject")
-def reject_project(project_id: int, reason: str = Body("", embed=True), db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def reject_project(project_id: int, reason: str = Body("", embed=True), background_tasks: BackgroundTasks = None, db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
     if not reason or not reason.strip():
         raise HTTPException(status_code=400, detail="Rejection reason is required")
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -244,4 +248,7 @@ def reject_project(project_id: int, reason: str = Body("", embed=True), db: Sess
             reason=reason.strip()
         )
 
+    if background_tasks:
+        from app.services.rag_service import trigger_rag_reindex
+        trigger_rag_reindex(background_tasks)
     return {"message": "Project rejected"}

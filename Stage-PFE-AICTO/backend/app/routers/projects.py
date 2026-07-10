@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 import os
@@ -98,7 +98,7 @@ def get_projects(
     return ProjectPaginatedResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
 
 @router.post("/submit", response_model=ProjectResponse)
-def submit_project(project_data: ProjectSubmit, db: Session = Depends(get_db)):
+def submit_project(project_data: ProjectSubmit, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user_org = ""
     from app.models.user import User
     user = db.query(User).filter(User.id == project_data.user_id).first()
@@ -150,6 +150,9 @@ def submit_project(project_data: ProjectSubmit, db: Session = Depends(get_db)):
         )
         db.add(notification)
     db.commit()
+
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
 
     return db_project
 
@@ -375,7 +378,7 @@ async def upload_project_documents(project_id: int, files: List[UploadFile] = Fi
     return {"files": uploaded}
 
 @router.post("/", response_model=ProjectResponse)
-def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
+def create_project(project: ProjectCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_project = Project(**project.model_dump())
     db.add(db_project)
     db.flush()
@@ -396,10 +399,12 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(db_project)
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return db_project
 
 @router.put("/{id}", response_model=ProjectResponse)
-def update_project(id: int, project: ProjectUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_project(id: int, project: ProjectUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_project = db.query(Project).filter(Project.id == id).first()
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -412,10 +417,12 @@ def update_project(id: int, project: ProjectUpdate, db: Session = Depends(get_db
     
     db.commit()
     db.refresh(db_project)
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return db_project
 
 @router.delete("/{id}")
-def delete_project(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_project(id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_project = db.query(Project).filter(Project.id == id).first()
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -424,6 +431,8 @@ def delete_project(id: int, db: Session = Depends(get_db), current_user: User = 
     
     db.delete(db_project)
     db.commit()
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return {"message": "Project deleted successfully"}
 
 

@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Optional
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 from app.models.project import Project
 from app.models.stakeholder import Stakeholder
@@ -208,3 +209,22 @@ def ensure_index(db: Session):
 def search_rag(query: str, db: Session, etype: Optional[str] = None, country: Optional[str] = None, sector: Optional[str] = None):
     svc = get_rag_service(db)
     return svc.search(query, top_k=15, etype=etype, country=country, sector=sector)
+
+
+def _rebuild_rag_background():
+    from app.database import SessionLocal
+    db = SessionLocal()
+    try:
+        svc = get_rag_service(db)
+        svc.rebuild_from_db(db)
+        logger.info("[RAG] Background reindex completed")
+    except Exception as e:
+        logger.warning(f"[RAG] Background reindex failed: {e}")
+    finally:
+        db.close()
+
+
+def trigger_rag_reindex(background_tasks: BackgroundTasks):
+    """Schedule a full RAG index rebuild after the HTTP response is sent."""
+    background_tasks.add_task(_rebuild_rag_background)
+    logger.info("[RAG] Background reindex scheduled")

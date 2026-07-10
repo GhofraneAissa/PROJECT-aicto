@@ -1,6 +1,6 @@
 import os
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -54,7 +54,7 @@ def get_resource(id: int, db: Session = Depends(get_db)):
     return resource
 
 @router.post("/", response_model=ResourceResponse)
-def create_resource(resource: ResourceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_resource(resource: ResourceCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_resource = Resource(**resource.model_dump(), user_id=current_user.id)
     db.add(db_resource)
     db.commit()
@@ -74,6 +74,8 @@ def create_resource(resource: ResourceCreate, db: Session = Depends(get_db), cur
         db.add(notification)
     db.commit()
 
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return db_resource
 
 
@@ -82,9 +84,10 @@ async def upload_resource(
     title: str = Form(...),
     type: str = Form(...),
     category: str = Form(...),
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
     language: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -131,11 +134,14 @@ async def upload_resource(
         db.add(notification)
     db.commit()
 
+    if background_tasks:
+        from app.services.rag_service import trigger_rag_reindex
+        trigger_rag_reindex(background_tasks)
     return db_resource
 
 
 @router.put("/{id}", response_model=ResourceResponse)
-def update_resource(id: int, resource: ResourceUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_resource(id: int, resource: ResourceUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_resource = db.query(Resource).filter(Resource.id == id).first()
     if not db_resource:
         raise HTTPException(status_code=404, detail="Resource not found")
@@ -148,10 +154,12 @@ def update_resource(id: int, resource: ResourceUpdate, db: Session = Depends(get
     
     db.commit()
     db.refresh(db_resource)
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return db_resource
 
 @router.delete("/{id}")
-def delete_resource(id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_resource(id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_resource = db.query(Resource).filter(Resource.id == id).first()
     if not db_resource:
         raise HTTPException(status_code=404, detail="Resource not found")
@@ -160,6 +168,8 @@ def delete_resource(id: int, db: Session = Depends(get_db), current_user: User =
     
     db.delete(db_resource)
     db.commit()
+    from app.services.rag_service import trigger_rag_reindex
+    trigger_rag_reindex(background_tasks)
     return {"message": "Resource deleted successfully"}
 
 @router.get("/view/{filename}")
