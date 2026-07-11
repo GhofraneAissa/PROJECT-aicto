@@ -3,18 +3,17 @@ import { useTranslation } from 'react-i18next'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
-  AreaChart, Area, Treemap, ComposedChart
+  AreaChart, Area, ComposedChart
 } from 'recharts'
 import {
   FaProjectDiagram, FaGlobeAmericas, FaBuilding, FaRocket,
   FaArrowUp, FaArrowDown, FaChartLine, FaUsers, FaClipboardList,
-  FaLayerGroup, FaHandshake, FaCheckCircle, FaTimesCircle,
-  FaClock, FaPercentage, FaCalendarAlt, FaDownload, FaFileExport,
-  FaExpand, FaSearch, FaTimes, FaChartBar,
+  FaHandshake, FaCheckCircle, FaTimesCircle,
+  FaPercentage, FaDownload,
   FaMapMarkerAlt, FaLightbulb, FaMicrochip, FaChartPie,
   FaUserGraduate, FaChartArea, FaFlag, FaSyncAlt,
-  FaChevronDown, FaRegLightbulb, FaBrain, FaUserShield,
-  FaTable, FaFilter, FaStar, FaFileCsv, FaGripLines,
+  FaRegLightbulb, FaBrain, FaUserShield,
+  FaTable, FaStar, FaFileCsv, FaGripLines,
   FaThLarge, FaList, FaCircle, FaDotCircle
 } from 'react-icons/fa'
 
@@ -25,25 +24,28 @@ import { API_BASE } from '../config'
 import { useAuth } from '../context/AuthContext'
 
 const C = {
-  primary:   '#6366F1',
-  secondary: '#8B5CF6',
-  success:   '#10B981',
-  warning:   '#F59E0B',
-  danger:    '#EF4444',
-  info:      '#06B6D4',
-  chart:     ['#6366F1','#8B5CF6','#10B981','#F59E0B','#EF4444','#EC4899','#8B5CF6','#34D399','#F472B6','#60A5FA'],
-  status: { approved: '#10B981', pending: '#F59E0B', rejected: '#EF4444' }
+  primary:   '#4F46E5',
+  secondary: '#7C3AED',
+  success:   '#059669',
+  warning:   '#D97706',
+  danger:    '#DC2626',
+  info:      '#0891B2',
+  pink:      '#EC4899',
+  background: '#F1F5F9',
+  cardBg:    '#FFFFFF',
+  chart:     ['#4F46E5','#7C3AED','#059669','#D97706','#DC2626','#EC4899','#0891B2','#8B5CF6','#34D399','#F472B6'],
+  status: { approved: '#059669', pending: '#D97706', rejected: '#DC2626' }
 }
 
 const SECTOR_COLORS = {
-  Healthcare: '#6366F1', Education: '#8B5CF6', Agriculture: '#10B981',
-  Finance: '#F59E0B', Energy: '#EF4444', Transport: '#06B6D4',
+  Healthcare: '#4F46E5', Education: '#7C3AED', Agriculture: '#059669',
+  Finance: '#D97706', Energy: '#DC2626', Transport: '#0891B2',
   Government: '#EC4899', Environment: '#34D399', 'Smart Cities': '#F472B6'
 }
 
 const ORG_TYPE_COLORS = {
-  NGO: '#10B981', Startup: '#8B5CF6', Company: '#6366F1',
-  Government: '#F59E0B', University: '#EC4899', 'Research Lab': '#34D399'
+  NGO: '#059669', Startup: '#7C3AED', Company: '#4F46E5',
+  Government: '#D97706', University: '#EC4899', 'Research Lab': '#34D399'
 }
 
 const SDG_COLORS = [
@@ -52,9 +54,9 @@ const SDG_COLORS = [
   '#3F7E44','#0A97D9','#56C02B','#00689D','#19486A'
 ]
 
-const SHADOW = '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
-const SHADOW_HOVER = '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)'
-const RADIUS = 14
+const SHADOW = '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)'
+const SHADOW_HOVER = '0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06)'
+const RADIUS = 12
 
 function topBy(arr, key) {
   const m = {}
@@ -69,27 +71,10 @@ function groupBy(arr, key) {
   return m
 }
 
-async function exportCSV(projectsUrl) {
-  try {
-    const res = await fetch(projectsUrl)
-    const json = await res.json()
-    const items = json.items || json.projects || json.results || json
-    if (!Array.isArray(items) || items.length === 0) return
-    const header = 'ID,Title,Country,Sector,Status,Technology,Organization\n'
-    const rows = items
-      .filter(p => !['Cybersecurity','Telecommunications','Data Science','Business Intelligence'].includes(p.sector))
-      .map(p => `${p.id},"${(p.title || '').replace(/"/g,'""')}",${p.country || ''},${p.sector || ''},${p.status || ''},"${(p.technology || '').replace(/"/g,'""')}","${(p.organization || '').replace(/"/g,'""')}"`)
-      .join('\n')
-    const blob = new Blob([header + rows], { type: 'text/csv' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href = url; a.download = 'analytics_export.csv'; a.click()
-    URL.revokeObjectURL(url)
-  } catch { /* silent */ }
-}
+
 
 const cardStyle = {
-  background: '#fff', borderRadius: RADIUS, padding: '22px 24px',
+  background: '#fff', borderRadius: RADIUS, padding: '20px 22px',
   boxShadow: SHADOW, border: '1px solid rgba(0,0,0,0.04)',
   transition: 'all 0.25s ease', cursor: 'default'
 }
@@ -103,7 +88,7 @@ function CustomTooltip({ active, payload, label }) {
   return (
     <div style={{
       background: 'rgba(15,23,42,0.95)', backdropFilter: 'blur(12px)',
-      borderRadius: 12, padding: '12px 16px', color: '#fff',
+      borderRadius: 10, padding: '12px 16px', color: '#fff',
       border: '1px solid rgba(255,255,255,0.08)', fontSize: 12,
       boxShadow: '0 8px 32px rgba(0,0,0,0.3)', minWidth: 140
     }}>
@@ -133,49 +118,106 @@ const Sparkline = memo(({ data = [], color = C.primary }) => {
   )
 })
 
-const KpiCard = memo(({ label, value, icon: Icon, color, delta, deltaUp, sparkData, subtitle }) => {
+const KpiCardModern = memo(({ label, value, icon: Icon, color, percentage, sparkData }) => {
   const [isHovered, setIsHovered] = useState(false)
+  const isPositive = percentage > 0
+
   return (
     <div style={{
-      ...cardStyle, position: 'relative', overflow: 'hidden',
-      ...(isHovered ? cardHover : {}),
-      borderColor: isHovered ? color : undefined
+      ...cardStyle,
+      position: 'relative',
+      overflow: 'hidden',
+      borderLeft: `4px solid ${color}`,
+      ...(isHovered ? cardHover : {})
     }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${color}, ${color}66)`, borderRadius: `${RADIUS}px ${RADIUS}px 0 0` }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 4 }}>{label}</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+            {value}
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            marginTop: 6,
+            fontSize: 12,
+            fontWeight: 600,
+            color: isPositive ? C.success : C.danger
+          }}>
+            {isPositive ? <FaArrowUp style={{ fontSize: 10 }} /> : <FaArrowDown style={{ fontSize: 10 }} />}
+            {Math.abs(percentage)}%
+          </div>
+        </div>
         <div style={{
-          width: 42, height: 42, borderRadius: 12,
-          background: `${color}10`, color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
-          transition: 'transform 0.3s', transform: isHovered ? 'scale(1.05)' : 'scale(1)'
+          width: 44, height: 44, borderRadius: 12,
+          background: `${color}15`, color: color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 18, flexShrink: 0,
+          transition: 'transform 0.3s',
+          transform: isHovered ? 'scale(1.1)' : 'scale(1)'
         }}>
           <Icon />
         </div>
-        {delta !== undefined && (
-          <span style={{
-            display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600,
-            padding: '4px 10px', borderRadius: 20,
-            color: deltaUp ? C.success : C.danger,
-            background: deltaUp ? `${C.success}10` : `${C.danger}10`,
-            border: `1px solid ${deltaUp ? `${C.success}25` : `${C.danger}25`}`
-          }}>
-            {deltaUp ? <FaArrowUp style={{ fontSize: 9 }} /> : <FaArrowDown style={{ fontSize: 9 }} />}
-            {delta}
-          </span>
-        )}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1, marginBottom: 6, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em', color: '#0f172a' }}>
-        {value ?? 0}
-      </div>
-      <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{label}</div>
-      {subtitle && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{subtitle}</div>}
-      {sparkData && <div style={{ position: 'absolute', bottom: 12, right: 12, opacity: 0.25, transition: 'opacity 0.3s' }}><Sparkline data={sparkData} color={color} /></div>}
+      {sparkData && (
+        <div style={{ position: 'absolute', bottom: 8, right: 8, opacity: 0.3 }}>
+          <Sparkline data={sparkData} color={color} />
+        </div>
+      )}
     </div>
   )
 })
+
+
+
+const TrendChartCard = ({ data, title = 'Projects Timeline' }) => {
+  const hasRealData = data && data.length > 0
+  const chartData = hasRealData ? data : [
+    { year: '2014', seriesA: 75, seriesB: 65, seriesC: 56 },
+    { year: '2015', seriesA: 80, seriesB: 70, seriesC: 60 },
+    { year: '2016', seriesA: 85, seriesB: 75, seriesC: 65 },
+    { year: '2017', seriesA: 90, seriesB: 80, seriesC: 70 },
+    { year: '2018', seriesA: 95, seriesB: 85, seriesC: 75 },
+    { year: '2019', seriesA: 88, seriesB: 82, seriesC: 72 },
+    { year: '2020', seriesA: 92, seriesB: 78, seriesC: 68 },
+  ]
+
+  return (
+    <div style={{ ...cardStyle, padding: '16px 20px' }}>
+      <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginBottom: 12 }}>
+        {title}
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+          <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+          <Tooltip content={<CustomTooltip />} />
+          <Legend
+            verticalAlign="top"
+            height={36}
+            iconType="circle"
+            iconSize={8}
+            wrapperStyle={{ fontSize: 11, color: '#64748b' }}
+          />
+          {hasRealData ? (
+            <Bar dataKey="projects" name="Projects" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+          ) : (
+            <>
+              <Bar dataKey="seriesA" name="Series A" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="seriesB" name="Series B" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="seriesC" name="Series C" fill="#EC4899" radius={[4, 4, 0, 0]} />
+            </>
+          )}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
 function InsightBar({ insights }) {
   return (
@@ -273,90 +315,12 @@ function CardHeader({ icon: Icon, iconBg, iconColor, title, sub, badge, action }
   )
 }
 
-function MultiSelect({ label, options, selected, onChange, icon: Icon, t }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const handleOut = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setSearch('') } }
-    if (open) document.addEventListener('mousedown', handleOut)
-    return () => document.removeEventListener('mousedown', handleOut)
-  }, [open])
-
-  const filtered = options.filter(o => String(o).toLowerCase().includes(search.toLowerCase()))
-  const toggle = opt => onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt])
-  const selectAll = () => onChange(filtered.length === selected.length ? [] : [...filtered])
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button onClick={() => setOpen(!open)} style={{
-        display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px',
-        background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 24,
-        cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
-        color: '#64748b', transition: 'all 0.2s', whiteSpace: 'nowrap',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-      }}>
-        {Icon && <Icon style={{ fontSize: 11, color: C.primary }} />}
-        {label}
-        {selected.length > 0 && (
-          <span style={{ background: C.primary, color: '#fff', fontSize: 10, padding: '1px 7px', borderRadius: 20, fontWeight: 700, marginLeft: 2 }}>
-            {selected.length}
-          </span>
-        )}
-        <FaChevronDown style={{ fontSize: 8, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none', opacity: 0.5 }} />
-      </button>
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200,
-          minWidth: 220, maxWidth: 300, background: '#fff',
-          border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12,
-          boxShadow: '0 12px 48px rgba(0,0,0,0.12)', padding: 6
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 4 }}>
-            <FaSearch style={{ fontSize: 11, color: '#94a3b8' }} />
-            <input type="text" placeholder={t('analytics.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)}
-              style={{ border: 'none', background: 'transparent', outline: 'none', fontFamily: 'inherit', fontSize: 12, width: '100%', color: '#0f172a' }} />
-          </div>
-          <div style={{ maxHeight: 240, overflowY: 'auto', padding: '2px 0' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: C.primary, borderBottom: '1px solid rgba(0,0,0,0.06)', marginBottom: 2 }}>
-              <input type="checkbox" checked={filtered.length > 0 && filtered.length === selected.length} onChange={selectAll} style={{ accentColor: C.primary }} />
-              {t('analytics.selectAll')}
-            </label>
-            {filtered.map(opt => (
-              <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: '#64748b', transition: 'background 0.15s' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} style={{ accentColor: C.primary }} />
-                {opt}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function Analytics() {
   const { t } = useTranslation()
   const { isAdmin, token } = useAuth()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
-  const [fullscreen, setFullscreen] = useState(false)
-  const [activeTab, setActiveTab] = useState(0)
-
-  const [filterSector, setFilterSector] = useState([])
-  const [filterCountry, setFilterCountry] = useState([])
-  const [filterStatus, setFilterStatus] = useState([])
-  const [filterTech, setFilterTech] = useState([])
-  const [filterSdg, setFilterSdg] = useState([])
-  const [filterRegion, setFilterRegion] = useState([])
-  const [filterStakeholderType, setFilterStakeholderType] = useState([])
-  const [filterDateFrom, setFilterDateFrom] = useState('')
-  const [filterDateTo, setFilterDateTo] = useState('')
 
   const safeFetch = useCallback(async (url, fallback) => {
     try {
@@ -366,36 +330,22 @@ function Analytics() {
     } catch { return fallback }
   }, [])
 
-  const buildFilterQS = useCallback(() => {
-    const p = new URLSearchParams()
-    if (filterSector.length) p.set('sector', filterSector.join(','))
-    if (filterCountry.length) p.set('country', filterCountry.join(','))
-    if (filterStatus.length) p.set('status', filterStatus.join(','))
-    if (filterTech.length) p.set('technology', filterTech.join(','))
-    if (filterSdg.length) p.set('sdg', filterSdg[0])
-    if (filterRegion.length) p.set('region', filterRegion.join(','))
-    if (filterDateFrom) p.set('date_from', filterDateFrom)
-    if (filterDateTo) p.set('date_to', filterDateTo)
-    const qs = p.toString()
-    return qs ? `?${qs}` : ''
-  }, [filterSector, filterCountry, filterStatus, filterTech, filterSdg, filterRegion, filterDateFrom, filterDateTo])
-
-  const fetchAllData = useCallback(async (qs = '') => {
+  const fetchAllData = useCallback(async () => {
     setLoading(true)
     try {
       const endpoints = {
-        overview:              safeFetch(`${API_BASE}/api/analytics/overview${qs}`, null),
-        projectsByCountry:     safeFetch(`${API_BASE}/api/analytics/projects-by-country${qs}`, []),
-        projectsBySector:      safeFetch(`${API_BASE}/api/analytics/projects-by-sector${qs}`, []),
-        aiTech:                safeFetch(`${API_BASE}/api/analytics/ai-technologies${qs}`, []),
-        projectsTimeline:      safeFetch(`${API_BASE}/api/analytics/projects-timeline${qs}`, []),
-        sdgCoverage:           safeFetch(`${API_BASE}/api/analytics/sdg-coverage${qs}`, []),
+        overview:              safeFetch(`${API_BASE}/api/analytics/overview`, null),
+        projectsByCountry:     safeFetch(`${API_BASE}/api/analytics/projects-by-country`, []),
+        projectsBySector:      safeFetch(`${API_BASE}/api/analytics/projects-by-sector`, []),
+        aiTech:                safeFetch(`${API_BASE}/api/analytics/ai-technologies`, []),
+        projectsTimeline:      safeFetch(`${API_BASE}/api/analytics/projects-timeline`, []),
+        sdgCoverage:           safeFetch(`${API_BASE}/api/analytics/sdg-coverage`, []),
         stakeholdersByType:    safeFetch(`${API_BASE}/api/analytics/stakeholders-by-type`, []),
-        statusDistribution:    safeFetch(`${API_BASE}/api/analytics/status-distribution${qs}`, []),
+        statusDistribution:    safeFetch(`${API_BASE}/api/analytics/status-distribution`, []),
         userSignups:           safeFetch(`${API_BASE}/api/analytics/user-signups`, []),
         usersByOrgType:        safeFetch(`${API_BASE}/api/analytics/users-by-organization-type`, []),
         stakeholdersByCategory: safeFetch(`${API_BASE}/api/analytics/stakeholders-by-category`, []),
-        projectsByRegion:      safeFetch(`${API_BASE}/api/analytics/projects-by-region${qs}`, []),
+        projectsByRegion:      safeFetch(`${API_BASE}/api/analytics/projects-by-region`, []),
         resourcesByType:       safeFetch(`${API_BASE}/api/analytics/resources-by-type`, []),
         mapData:               safeFetch(`${API_BASE}/api/analytics/map-data`, []),
         recentUsers:           safeFetch(`${API_BASE}/api/analytics/recent-users`, []),
@@ -413,144 +363,67 @@ function Analytics() {
   }, [safeFetch])
 
   const hasFetched = useRef(false)
+  const [tab, setTab] = useState('projects')
 
   useEffect(() => {
     if (!hasFetched.current) {
       hasFetched.current = true
       fetchAllData()
-    } else {
-      const t = setTimeout(() => fetchAllData(buildFilterQS()), 400)
-      return () => clearTimeout(t)
     }
-  }, [buildFilterQS, fetchAllData])
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => setFullscreen(true)).catch(() => {})
-    } else {
-      document.exitFullscreen().then(() => setFullscreen(false)).catch(() => {})
-    }
-  }
-
-  const clearFilters = () => {
-    setFilterSector([]); setFilterCountry([]); setFilterStatus([])
-    setFilterTech([]); setFilterSdg([]); setFilterRegion([])
-    setFilterStakeholderType([]); setFilterDateFrom(''); setFilterDateTo('')
-  }
-
-  const activeFilterCount = useMemo(() =>
-    [filterSector, filterCountry, filterStatus, filterTech, filterSdg, filterRegion, filterStakeholderType]
-      .reduce((a, f) => a + f.length, 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0),
-    [filterSector, filterCountry, filterStatus, filterTech, filterSdg, filterRegion, filterStakeholderType, filterDateFrom, filterDateTo]
-  )
-
-  const filterOptions = useMemo(() => ({
-    sectors:          [...new Set((data.projectsBySector || []).map(s => s.sector).filter(Boolean))],
-    countries:        [...new Set((data.projectsByCountry || []).map(c => c.country).filter(Boolean))],
-    statuses:         ['approved', 'pending', 'rejected', 'draft'],
-    technologies:     [...new Set((data.aiTech || []).map(t => t.technology).filter(Boolean))],
-    sdgs:             [...new Set((data.sdgCoverage || []).map(s => s.goal_number).filter(Boolean))].sort((a, b) => a - b),
-    regions:          [...new Set((data.projectsByRegion || []).map(r => r.region).filter(Boolean))],
-    stakeholderTypes: [...new Set((data.stakeholdersByType || []).map(s => s.type).filter(Boolean))],
-  }), [data])
+  }, [fetchAllData])
 
   if (loading) return <Loader t={t} />
 
-  const tabs = [
-    { label: t('analytics.tabOverview'), icon: FaChartBar },
-    { label: t('analytics.tabUsersStakeholders'), icon: FaUsers },
-  ]
-
   return (
-    <div style={{ fontFamily: 'Inter, -apple-system, sans-serif', background: '#f8fafc', minHeight: '100vh', color: '#0f172a' }}>
-      <div style={{
-        background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '14px 28px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        position: 'sticky', top: 0, zIndex: 100
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 40, height: 40,
-            background: `linear-gradient(135deg, ${C.primary}, ${C.secondary})`,
-            borderRadius: 12, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', color: '#fff', fontSize: 18,
-            boxShadow: `0 4px 16px ${C.primary}30`
-          }}>
-            <FaChartBar />
-          </div>
+    <div style={{ fontFamily: 'Inter, -apple-system, sans-serif', background: '#F1F5F9', minHeight: '100vh', color: '#0f172a' }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '16px 0' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', background: `linear-gradient(135deg, ${C.primary}, ${C.secondary})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              {t('analytics.pageTitle')}
-            </div>
-            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{t('analytics.pageSubtitle')}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.03em', color: '#0f172a' }}>Analytics Dashboard</div>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>Arab ICT Observatory — Key metrics &amp; insights</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.success }} />
+              {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'}
+            </span>
+            <button onClick={fetchAllData} style={{
+              padding: '6px 16px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)',
+              background: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 500,
+              color: '#64748b', cursor: 'pointer', transition: 'all 0.15s',
+              display: 'flex', alignItems: 'center', gap: 6
+            }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.primary; e.currentTarget.style.color = C.primary }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.color = '#64748b' }}
+            >
+              <FaSyncAlt style={{ fontSize: 11 }} /> Refresh
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#94a3b8', padding: '5px 14px', background: '#f8fafc', borderRadius: 24, display: 'flex', alignItems: 'center', gap: 6, border: '1px solid rgba(0,0,0,0.04)' }}>
-            <FaClock style={{ fontSize: 10, opacity: 0.6 }} />
-            {lastUpdated ? lastUpdated.toLocaleTimeString() : '--:--'}
-          </span>
-          <HeaderBtn icon={FaExpand} onClick={toggleFullscreen} title={t('analytics.fullscreen')} />
-          <HeaderBtn icon={FaFileExport} title={t('analytics.exportPdf')} />
-          <HeaderBtn icon={FaDownload} onClick={() => exportCSV(`${API_BASE}/api/projects?page_size=5000`)} title={t('analytics.exportCsv')} />
-          <HeaderBtn icon={FaSyncAlt} onClick={() => fetchAllData(buildFilterQS())} title={t('analytics.refresh')} primary />
-        </div>
-      </div>
-
-      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '10px 28px', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', position: 'sticky', top: 68, zIndex: 90, backdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.85)' }}>
-        <FaFilter style={{ fontSize: 11, color: '#94a3b8', marginRight: 4 }} />
-        <MultiSelect label={t('analytics.filterSector')} options={filterOptions.sectors} selected={filterSector} onChange={setFilterSector} icon={FaLayerGroup} t={t} />
-        <MultiSelect label={t('analytics.filterCountry')} options={filterOptions.countries} selected={filterCountry} onChange={setFilterCountry} icon={FaGlobeAmericas} t={t} />
-        <MultiSelect label={t('analytics.filterStatus')} options={filterOptions.statuses} selected={filterStatus} onChange={setFilterStatus} icon={FaCheckCircle} t={t} />
-        <MultiSelect label={t('analytics.filterTechnology')} options={filterOptions.technologies} selected={filterTech} onChange={setFilterTech} icon={FaMicrochip} t={t} />
-        <MultiSelect label={t('analytics.filterSdg')} options={filterOptions.sdgs} selected={filterSdg} onChange={setFilterSdg} icon={FaFlag} t={t} />
-        <MultiSelect label={t('analytics.filterRegion')} options={filterOptions.regions} selected={filterRegion} onChange={setFilterRegion} icon={FaGlobeAmericas} t={t} />
-        <MultiSelect label={t('analytics.filterStakeholder')} options={filterOptions.stakeholderTypes} selected={filterStakeholderType} onChange={setFilterStakeholderType} icon={FaUsers} t={t} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 24, fontSize: 12, color: '#64748b', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-          <FaCalendarAlt style={{ fontSize: 11, color: C.primary }} />
-          <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontFamily: 'inherit', fontSize: 11, width: 100, color: '#64748b', padding: '2px 0' }} />
-          <span style={{ opacity: 0.3 }}>—</span>
-          <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontFamily: 'inherit', fontSize: 11, width: 100, color: '#64748b', padding: '2px 0' }} />
-        </div>
-        {activeFilterCount > 0 && (
-          <button onClick={clearFilters} style={{
-            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 14px',
-            background: `${C.danger}08`, border: `1px solid ${C.danger}25`, borderRadius: 24,
-            cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 500,
-            color: C.danger, transition: 'all 0.15s'
-          }}
-            onMouseEnter={e => e.currentTarget.style.background = `${C.danger}15`}
-            onMouseLeave={e => e.currentTarget.style.background = `${C.danger}08`}
-          >
-            <FaTimes style={{ fontSize: 10 }} /> {t('analytics.clearFilters', { count: activeFilterCount })}
-          </button>
-        )}
-      </div>
-
-      <div style={{ background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.06)', padding: '0 28px', display: 'flex', gap: 0 }}>
-        {tabs.map((tab, i) => (
-          <button key={i} onClick={() => setActiveTab(i)} style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px',
-            border: 'none', background: 'transparent', cursor: 'pointer',
-            fontFamily: 'inherit', fontSize: 12, fontWeight: activeTab === i ? 600 : 500,
-            color: activeTab === i ? C.primary : '#94a3b8',
-            borderBottom: activeTab === i ? `2px solid ${C.primary}` : '2px solid transparent',
-            transition: 'all 0.2s', position: 'relative'
-          }}>
-            <tab.icon style={{ fontSize: 13 }} />
-            {tab.label}
-          </button>
-        ))}
       </div>
 
       <div style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 28px 48px' }}>
-        {activeTab === 0 && <OverviewDashboard data={data} t={t} />}
-        {activeTab === 1 && <UserDashboard data={data} t={t} />}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
+          {[
+            { key: 'projects', label: 'Projects', icon: FaProjectDiagram },
+            ...(isAdmin ? [{ key: 'users', label: 'Users & Stakeholders', icon: FaUsers }] : [])
+          ].map(tabDef => (
+            <button key={tabDef.key} onClick={() => setTab(tabDef.key)} style={{
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              background: tab === tabDef.key ? C.primary : '#fff',
+              color: tab === tabDef.key ? '#fff' : '#64748b',
+              boxShadow: tab === tabDef.key ? `0 4px 14px ${C.primary}35` : '0 1px 3px rgba(0,0,0,0.06)',
+              transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8,
+              letterSpacing: '-0.01em'
+            }}>
+              <tabDef.icon style={{ fontSize: 14 }} />
+              {tabDef.label}
+            </button>
+          ))}
+        </div>
+        {(!isAdmin || tab === 'projects') ? <ProjectsDashboard data={data} t={t} /> : <UsersDashboard data={data} t={t} />}
       </div>
-
       <style>{GLOBAL_CSS}</style>
     </div>
   )
@@ -558,7 +431,7 @@ function Analytics() {
 
 function Loader({ t }) {
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', gap: 20 }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9', gap: 20 }}>
       <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid rgba(0,0,0,0.06)', borderTopColor: C.primary, animation: 'at-spin .8s linear infinite' }} />
       <p style={{ color: '#94a3b8', fontSize: 14, fontWeight: 500, letterSpacing: '0.3px' }}>{t('analytics.loadingAnalytics')}</p>
       <style>{`@keyframes at-spin { to { transform: rotate(360deg); } }`}</style>
@@ -566,364 +439,292 @@ function Loader({ t }) {
   )
 }
 
-function HeaderBtn({ icon: Icon, onClick, title, primary }) {
-  const [hover, setHover] = useState(false)
-  return (
-    <button onClick={onClick} title={title}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        width: 36, height: 36,
-        border: `1px solid ${primary ? C.primary : hover ? C.primary : 'rgba(0,0,0,0.08)'}`,
-        background: primary ? C.primary : hover ? `${C.primary}06` : 'transparent',
-        borderRadius: 10, cursor: 'pointer',
-        color: primary ? '#fff' : hover ? C.primary : '#94a3b8',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 14, transition: 'all 0.2s'
-      }}>
-      <Icon />
-    </button>
-  )
-}
-
-function OverviewDashboard({ data, t }) {
+function ProjectsDashboard({ data, t }) {
   const {
-    overview, projectsByCountry, projectsBySector, aiTech,
-    projectsTimeline, sdgCoverage, statusDistribution
+    overview,
+    projectsByCountry,
+    projectsBySector,
+    aiTech,
+    projectsTimeline,
+    sdgCoverage,
+    statusDistribution,
   } = data
 
   const totalProjects = overview?.total_projects ?? 0
-  const totalResources = overview?.total_resources ?? 0
-  const activeCountries = (projectsByCountry || []).length
-
-  const sectorData = useMemo(() => (projectsBySector || []).slice(0, 5).map((s, i) => ({ ...s, fill: SECTOR_COLORS[s.sector] || C.chart[i % C.chart.length] })), [projectsBySector])
-  const topCountries = (projectsByCountry || []).slice(0, 10)
-  const topSdgs = useMemo(() => (sdgCoverage || []).filter(s => s.count > 0).sort((a, b) => b.count - a.count).slice(0, 10), [sdgCoverage])
-
-  const timelineData = useMemo(() =>
-    (projectsTimeline || []).map(p => ({ year: p.year, count: p.projects ?? p.count ?? 0 })), [projectsTimeline])
-
-  const treemapData = useMemo(() => [{
-    name: t('analytics.aiTechnologies'),
-    children: (aiTech || []).map(t => ({ name: t.technology, size: t.count }))
-  }], [aiTech, t])
-
-  const kpis = [
-    { label: t('analytics.totalProjects'), value: totalProjects, icon: FaProjectDiagram, color: C.primary, delta: '+5%', deltaUp: true, sparkData: projectsTimeline, subtitle: t('analytics.allTrackedInitiatives') },
-    { label: t('analytics.activeCountries'), value: activeCountries, icon: FaGlobeAmericas, color: C.secondary, delta: '+2', deltaUp: true, subtitle: t('analytics.countriesWithProjects') },
-    { label: t('analytics.totalResources'), value: totalResources, icon: FaDownload, color: C.success, delta: '+7%', deltaUp: true, subtitle: t('analytics.availableAssets') },
-  ]
-
-  const insightOpts = { interpolation: { escapeValue: false } }
-  const insights = [
-    { Icon: FaBrain, bg: `${C.primary}10`, color: C.primary, text: t('analytics.insightProjectsTracked', { count: totalProjects, countries: activeCountries }, insightOpts) },
-    { Icon: FaRegLightbulb, bg: `${C.success}10`, color: C.success, text: sectorData.length > 0 ? t('analytics.insightSectorLeads', { sector: sectorData[0].sector, count: sectorData[0].count }, insightOpts) : t('analytics.insightSectorDataPopulating') },
-    { Icon: FaChartLine, bg: `${C.secondary}10`, color: C.secondary, text: topSdgs.length > 0 ? t('analytics.insightSdgLeads', { goal: topSdgs[0].goal_number, count: topSdgs[0].count }, insightOpts) : t('analytics.insightSdgDataCollecting') },
-  ]
+  const approvedProjects = overview?.approved_count ?? 0
+  const rejectedProjects = overview?.rejected_count ?? 0
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}>
-        {kpis.map((k, i) => <KpiCard key={i} {...k} />)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+        <KpiCardModern label="Total Projects" value={totalProjects.toLocaleString()} icon={FaProjectDiagram} color={C.primary} percentage={0} sparkData={projectsTimeline} />
+        <KpiCardModern label="Approved" value={approvedProjects.toLocaleString()} icon={FaCheckCircle} color={C.success} percentage={0} sparkData={null} />
+        <KpiCardModern label="Rejected" value={rejectedProjects.toLocaleString()} icon={FaTimesCircle} color={C.danger} percentage={0} sparkData={null} />
       </div>
 
-      <InsightBar insights={insights} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaGlobeAmericas} title={t('analytics.top10Countries')} sub={t('analytics.byProjectCount')} iconBg={`${C.secondary}10`} iconColor={C.secondary} />
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={topCountries} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis type="category" dataKey="country" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }} width={100} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-              <Bar dataKey="projects" name={t('analytics.projects')} radius={[0, 6, 6, 0]} barSize={16}>
-                {topCountries.map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaChartPie} title={t('analytics.sectorDistribution')} sub={t('analytics.projectsBySector')} iconBg={`${C.warning}10`} iconColor={C.warning} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <ResponsiveContainer width={160} height={160}>
-              <PieChart>
-                <Pie data={sectorData} cx="50%" cy="50%" innerRadius={45} outerRadius={72} paddingAngle={2} dataKey="count" nameKey="sector" stroke="none">
-                  {sectorData.map((e, i) => <Cell key={i} fill={e.fill} />)}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ flex: 1 }}>
-              <HBarList entries={sectorData.map(s => [s.sector, s.count])} colorFn={k => SECTOR_COLORS[k] || '#888'} t={t} />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaMicrochip} title={t('analytics.aiTechnologiesTreemap')} sub={t('analytics.techAdoptionDist')} iconBg={`${C.primary}10`} iconColor={C.primary} badge={`${(aiTech || []).length} ${t('analytics.technologies')}`} />
-          <ResponsiveContainer width="100%" height={240}>
-            <Treemap data={treemapData} dataKey="size" nameKey="name" ratio={4 / 3} stroke="#fff" fill={C.primary}>
-              <Tooltip content={<CustomTooltip />} />
-            </Treemap>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaChartLine} title={t('analytics.evolutionByYear')} sub={t('analytics.projectTimeline')} iconBg={`${C.primary}10`} iconColor={C.primary} badge={`${timelineData.reduce((a, b) => a + b.count, 0)} ${t('analytics.total')}`} />
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={timelineData} margin={{ top: 6, right: 8, left: 0, bottom: 6 }}>
-              <defs>
-                <linearGradient id="grad-evol" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={C.primary} stopOpacity={0.2} />
-                  <stop offset="95%" stopColor={C.primary} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="count" name={t('analytics.projects')} stroke={C.primary} strokeWidth={2} fill="url(#grad-evol)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaFlag} title={t('analytics.sdgCoverage')} sub={t('analytics.sustainableDevGoals')} iconBg={`${C.success}10`} iconColor={C.success} />
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={topSdgs} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-              <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis type="category" dataKey="goal_number" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 500 }} tickFormatter={v => `${t('analytics.sdgAbbr')} ${v}`} width={60} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name={t('analytics.projects')} radius={[0, 6, 6, 0]} barSize={16}>
-                {topSdgs.map((e, i) => <Cell key={i} fill={e.color || SDG_COLORS[(e.goal_number - 1) % SDG_COLORS.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaCheckCircle} title={t('analytics.statusDistribution')} sub={t('analytics.approvedPendingRejected')} iconBg={`${C.success}10`} iconColor={C.success} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <ResponsiveContainer width={140} height={140}>
-              <PieChart>
-                <Pie data={(statusDistribution || []).filter(s => ['approved', 'pending', 'rejected'].includes(s.status))} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={2} dataKey="count" nameKey="status" stroke="none">
-                  {(statusDistribution || []).filter(s => ['approved', 'pending', 'rejected'].includes(s.status)).map((e, i) => <Cell key={i} fill={C.status[e.status] || '#888'} />)}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ flex: 1 }}>
-              <HBarList entries={(statusDistribution || []).filter(s => ['approved', 'pending', 'rejected'].includes(s.status)).map(s => [s.status.charAt(0).toUpperCase() + s.status.slice(1), s.count])} colorFn={(k) => C.status[k.toLowerCase()] || '#888'} t={t} />
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </>
-  )
-}
-
-function UserDashboard({ data, t }) {
-  const { userSignups, usersByOrgType, stakeholdersByCategory, statusDistribution, recentUsers, activeUsers } = data
-
-  const signupChart = useMemo(() =>
-    (userSignups || []).map(s => ({ label: `${s.year}-${String(s.month).padStart(2, '0')}`, count: s.count, cumulative: s.cumulative })), [userSignups])
-
-  const insightOpts = { interpolation: { escapeValue: false } }
-  const topCategory = (stakeholdersByCategory || []).length > 0 ? stakeholdersByCategory.reduce((a, b) => a.count > b.count ? a : b) : null
-  const topOrgType = (usersByOrgType || []).length > 0 ? usersByOrgType.reduce((a, b) => a.count > b.count ? a : b) : null
-
-  const kpis = [
-    { label: t('analytics.totalSignups'), value: (userSignups || []).reduce((a, b) => a + b.count, 0), icon: FaUsers, color: C.primary, delta: '+10%', deltaUp: true, sparkData: userSignups, subtitle: t('analytics.newUsersKpi') },
-    { label: t('analytics.orgTypes'), value: (usersByOrgType || []).length, icon: FaBuilding, color: C.warning, delta: null, subtitle: t('analytics.diversity') },
-  ]
-
-  const insights = [
-    { Icon: FaRegLightbulb, bg: `${C.success}10`, color: C.success, text: topCategory ? t('analytics.insightCategoryLeads', { category: topCategory.category, count: topCategory.count }, insightOpts) : t('analytics.insightStakeholderDataCollecting') },
-    { Icon: FaChartLine, bg: `${C.secondary}10`, color: C.secondary, text: topOrgType ? t('analytics.insightOrgTypeDominant', { type: topOrgType.type }, insightOpts) : t('analytics.insightOrgDataCollecting') },
-  ]
-
-  return (
-    <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 20 }}>
-        {kpis.map((k, i) => <KpiCard key={i} {...k} />)}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Geographic &amp; Sector</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
       </div>
 
-      <InsightBar insights={insights} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaChartLine} title={t('analytics.signupGrowth')} sub={t('analytics.monthlyNewUsers')} iconBg={`${C.primary}10`} iconColor={C.primary} />
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={signupChart} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-              <defs>
-                <linearGradient id="grad-signup" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={C.primary} stopOpacity={0.2} />
-                  <stop offset="95%" stopColor={C.primary} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9 }} interval={1} angle={-20} textAnchor="end" />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaGlobeAmericas} title="Top 10 Countries" sub="By project count" iconBg={`${C.success}10`} iconColor={C.success} />
+          {projectsByCountry && projectsByCountry.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={projectsByCountry.slice(0, 10)} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="country" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="projects" name="Projects" radius={[4, 4, 0, 0]} barSize={20}>
+                  {projectsByCountry.slice(0, 10).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+          )}
+        </Card>
+        <Card>
+          <CardHeader icon={FaChartPie} title="Sector Distribution" sub="Projects by Sector" iconBg={`${C.warning}10`} iconColor={C.warning} />
+          <ResponsiveContainer width="100%" height={260}>
+            <PieChart>
+              <Pie data={(projectsBySector || []).slice(0, 5)} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="sector" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                {(projectsBySector || []).slice(0, 5).map((e, i) => <Cell key={i} fill={SECTOR_COLORS[e.sector] || C.chart[i % C.chart.length]} />)}
+              </Pie>
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="count" name={t('analytics.signups')} stroke={C.primary} strokeWidth={2} fill="url(#grad-signup)" />
-            </AreaChart>
+            </PieChart>
           </ResponsiveContainer>
-        </div>
+        </Card>
+      </div>
 
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaBuilding} title={t('analytics.orgTypes')} sub={t('analytics.userDistribution')} iconBg={`${C.warning}10`} iconColor={C.warning} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <ResponsiveContainer width={140} height={140}>
-              <PieChart>
-                <Pie data={usersByOrgType || []} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={2} dataKey="count" nameKey="type" stroke="none">
-                  {(usersByOrgType || []).map((e, i) => <Cell key={i} fill={ORG_TYPE_COLORS[e.type] || C.chart[i % C.chart.length]} />)}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ flex: 1 }}>
-              <HBarList entries={(usersByOrgType || []).map(o => [o.type, o.count])} colorFn={k => ORG_TYPE_COLORS[k] || '#888'} t={t} />
-            </div>
-          </div>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trends &amp; Technologies</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
 
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaUserGraduate} title="Active vs Total Users" sub="User activation breakdown" iconBg={`${C.success}10`} iconColor={C.success} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <ResponsiveContainer width={140} height={140}>
-              <PieChart>
-                <Pie data={[
-                  { name: 'Active', value: activeUsers?.active_users ?? 0 },
-                  { name: 'Inactive', value: (activeUsers?.total_users ?? 0) - (activeUsers?.active_users ?? 0) }
-                ]} cx="50%" cy="50%" innerRadius={38} outerRadius={60} paddingAngle={2} dataKey="value" nameKey="name" stroke="none">
-                  <Cell fill={C.success} />
-                  <Cell fill="#e2e8f0" />
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: `${C.success}08`, borderRadius: 8, border: `1px solid ${C.success}15` }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: C.success, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#64748b', flex: 1 }}>Active Users</span>
-                <strong style={{ fontSize: 16, color: C.success }}>{activeUsers?.active_users ?? 0}</strong>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid rgba(0,0,0,0.04)' }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#e2e8f0', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#64748b', flex: 1 }}>Inactive Users</span>
-                <strong style={{ fontSize: 16, color: '#64748b' }}>{(activeUsers?.total_users ?? 0) - (activeUsers?.active_users ?? 0)}</strong>
-              </div>
-              <div style={{ marginTop: 4, fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
-                {(activeUsers?.activation_rate ?? 0) > 0 ? `${activeUsers.activation_rate}% activation rate` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ ...cardStyle, gridColumn: 'span 2' }}>
-          <CardHeader icon={FaHandshake} title={t('analytics.stakeholdersByCategory')} sub={t('analytics.categoryDistribution')} iconBg={`${C.secondary}10`} iconColor={C.secondary} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaChartArea} title="Evolution by Year" sub="Project timeline" iconBg={`${C.info}10`} iconColor={C.info} />
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={stakeholdersByCategory || []} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+            <BarChart data={projectsTimeline || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="projects" name="Projects" fill={C.primary} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <CardHeader icon={FaMicrochip} title="AI Technologies" sub="Technology adoption distribution" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={(aiTech || []).slice(0, 5)} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
               <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis type="category" dataKey="category" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500 }} width={130} />
+              <YAxis type="category" dataKey="technology" axisLine={false} tickLine={false} tick={{ fill: '#0f172a', fontSize: 11, fontWeight: 500 }} width={100} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name={t('analytics.stakeholders')} radius={[0, 6, 6, 0]} barSize={16}>
-                {(stakeholdersByCategory || []).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+              <Bar dataKey="count" name="Projects" radius={[0, 4, 4, 0]} barSize={18}>
+                {(aiTech || []).slice(0, 5).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
-        </div>
-
+        </Card>
       </div>
 
-      <div style={{ ...cardStyle, marginTop: 16 }}>
-        <CardHeader icon={FaUsers} title="Top 3 Users" sub="Most recent logins" iconBg={`${C.primary}10`} iconColor={C.primary} />
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>User</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>Email</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>Role</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>Status</th>
-                <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 600, color: '#64748b' }}>Projects</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>Last Login</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(recentUsers || []).slice(0,).map((user, i) => (
-                <tr key={user.id} style={{ borderBottom: i < 2 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                  <td style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <img
-                      src={user.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.organization_name)}&background=6366F1&color=fff&size=32`}
-                      alt=""
-                      style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: '#f1f5f9', flexShrink: 0 }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 500, color: '#0f172a' }}>{user.organization_name}</div>
-                      <div style={{ fontSize: 10, color: '#94a3b8' }}>{user.organization_type || ''}</div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 11, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {user.email || '\u2014'}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 12px', borderRadius: 20,
-                      fontSize: 11, fontWeight: 500,
-                      background: user.role === 'admin' ? `${C.warning}12` : `${C.primary}10`,
-                      color: user.role === 'admin' ? C.warning : C.primary,
-                      border: `1px solid ${user.role === 'admin' ? `${C.warning}20` : `${C.primary}20`}`
-                    }}>
-                      {user.role || 'organization'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 12px', borderRadius: 20,
-                      fontSize: 11, fontWeight: 600,
-                      background: user.is_active ? `${C.success}12` : '#f1f5f9',
-                      color: user.is_active ? C.success : '#94a3b8',
-                      border: `1px solid ${user.is_active ? `${C.success}20` : 'rgba(0,0,0,0.04)'}`
-                    }}>
-                      <span style={{
-                        width: 5, height: 5, borderRadius: '50%',
-                        background: user.is_active ? C.success : '#94a3b8'
-                      }} />
-                      {user.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 600, color: '#0f172a' }}>{user.project_count ?? 0}</td>
-                  <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 11 }}>
-                    {user.last_login ? new Date(user.last_login).toLocaleDateString() : '\u2014'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Impact &amp; Quality</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <Card>
+          <CardHeader icon={FaFlag} title="SDG Coverage" sub="Sustainable Development Goals" iconBg={`${C.success}10`} iconColor={C.success} />
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={(sdgCoverage || []).slice(0, 10)} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="goal_number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name={t('analytics.projects')} radius={[4, 4, 0, 0]} barSize={20}>
+                {(sdgCoverage || []).slice(0, 10).map((e, i) => <Cell key={i} fill={SDG_COLORS[(e.goal_number - 1) % SDG_COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <CardHeader icon={FaChartPie} title="Status Distribution" sub="Approved / Pending / Rejected" iconBg={`${C.danger}10`} iconColor={C.danger} />
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={(statusDistribution || []).filter(s => s.status !== 'draft')} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="status" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                {(statusDistribution || []).filter(s => s.status !== 'draft').map((e, i) => {
+                  const colors = { approved: C.success, pending: C.warning, rejected: C.danger }
+                  return <Cell key={i} fill={colors[e.status] || C.chart[i]} />
+                })}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
       </div>
     </>
   )
 }
 
-function LegItem({ color, label, dash }) {
+function UsersDashboard({ data, t }) {
+  const {
+    userSignups,
+    usersByOrgType,
+    stakeholdersByCategory,
+    activeUsers,
+    recentUsers,
+  } = data
+
+  const totalSignups = (userSignups || []).reduce((a, b) => a + (b.count || 0), 0)
+  const activationRate = activeUsers?.activation_rate ?? 0
+  const activeUserCount = activeUsers?.active_users ?? 0
+  const totalUserCount = activeUsers?.total_users ?? 0
+  const top3 = (recentUsers || []).slice(0, 3)
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#64748b' }}>
-      {dash
-        ? <svg width={16} height={8}><line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth={2} strokeDasharray="4 2" /></svg>
-        : <span style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0, display: 'inline-block' }} />
-      }
-      {label}
-    </div>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}>
+        <KpiCardModern label="Total Signups" value={totalSignups.toLocaleString()} icon={FaUsers} color={C.primary} percentage={0} sparkData={userSignups} />
+        <KpiCardModern label="Organization Types" value={(usersByOrgType || []).length.toLocaleString()} icon={FaBuilding} color={C.secondary} percentage={0} sparkData={null} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Growth &amp; Distribution</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaChartArea} title="Signup Growth" sub="Monthly new users" iconBg={`${C.info}10`} iconColor={C.info} />
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={userSignups || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={m => String(m).padStart(2,'0')} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="count" name="Signups" stroke={C.primary} fill={`${C.primary}20`} strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <CardHeader icon={FaBuilding} title="Organization Types" sub="User Distribution" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
+          {usersByOrgType && usersByOrgType.length > 0 ? (
+            <HBarList entries={usersByOrgType.map(u => [u.type, u.count])} colorFn={(k) => ORG_TYPE_COLORS[k] || C.chart[0]} t={t} />
+          ) : (
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+          )}
+        </Card>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Engagement &amp; Activity</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaUsers} title="Active vs Total Users" sub="User activation breakdown" iconBg={`${C.success}10`} iconColor={C.success} />
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={[
+                { name: 'Active', value: activeUserCount },
+                { name: 'Inactive', value: Math.max(0, totalUserCount - activeUserCount) },
+              ]} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" nameKey="name" stroke="none">
+                <Cell fill={C.success} />
+                <Cell fill="#e2e8f0" />
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <CardHeader icon={FaHandshake} title="Stakeholders by Category" sub="Category Distribution" iconBg={`${C.warning}10`} iconColor={C.warning} />
+          {stakeholdersByCategory && stakeholdersByCategory.length > 0 ? (
+            <HBarList entries={stakeholdersByCategory.map(s => [s.category, s.count])} t={t} />
+          ) : (
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+          )}
+        </Card>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Top Contributors</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <Card style={{ padding: 0 }}>
+        <div style={{ padding: '16px 20px 0' }}>
+          <CardHeader icon={FaUserGraduate} title="Top 3 Users" sub="Most recent logins" iconBg={`${C.primary}10`} iconColor={C.primary} />
+        </div>
+        {top3.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Organization</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Email</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Country</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Role</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Status</th>
+                  <th style={{ textAlign: 'right', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Projects</th>
+                </tr>
+              </thead>
+              <tbody>
+                {top3.map((u, i) => (
+                  <tr key={u.id || i} style={{ borderBottom: i < top3.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
+                    <td style={{ padding: '12px 20px', fontWeight: 500, color: '#0f172a' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                        {u.logo ? (
+                          <img src={u.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ width: 28, height: 28, borderRadius: '50%', background: `${C.primary}15`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: C.primary }}>
+                            {(u.organization_name || '?')[0]}
+                          </span>
+                        )}
+                        {u.organization_name || '\u2014'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 20px', color: '#64748b' }}>{u.email || '\u2014'}</td>
+                    <td style={{ padding: '12px 20px', color: '#64748b' }}>{u.country || '\u2014'}</td>
+                    <td style={{ padding: '12px 20px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                        background: u.role === 'admin' ? `${C.secondary}15` : `${C.primary}15`,
+                        color: u.role === 'admin' ? C.secondary : C.primary
+                      }}>
+                        {u.role || 'user'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 20px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                        background: u.is_active ? '#05966915' : '#DC262615',
+                        color: u.is_active ? '#059669' : '#DC2626'
+                      }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: u.is_active ? '#059669' : '#DC2626' }} />
+                        {u.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{u.project_count ?? 0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+        )}
+      </Card>
+    </>
   )
 }
 
@@ -931,7 +732,7 @@ const GLOBAL_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
   :root {
-    --at-bg: #f8fafc;
+    --at-bg: #F1F5F9;
     --at-card: #ffffff;
     --at-surface: #f8fafc;
     --at-border: rgba(0,0,0,0.06);
