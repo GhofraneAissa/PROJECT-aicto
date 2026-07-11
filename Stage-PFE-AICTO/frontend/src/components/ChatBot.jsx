@@ -40,7 +40,7 @@ function ChatBot() {
   const { t } = useTranslation()
 
   const scrollDown = () => endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  useEffect(scrollDown, [messages])
+  useEffect(() => { scrollDown() }, [messages])
 
   const loadSessions = useCallback(async () => {
     try {
@@ -127,7 +127,11 @@ function ChatBot() {
   }, [loadSessions, switchSession, createSession])
 
   useEffect(() => {
-    if (open) loadChat()
+    if (!open) return
+    const init = async () => {
+      try { await loadChat() } catch (e) { console.error(e) }
+    }
+    init()
   }, [open])
 
   const sendMessage = async () => {

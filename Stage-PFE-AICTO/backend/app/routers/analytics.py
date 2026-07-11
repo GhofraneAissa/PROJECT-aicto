@@ -569,16 +569,34 @@ def get_projects_per_user(db: Session = Depends(get_db)):
 
 @router.get("/recent-users")
 def get_recent_users(db: Session = Depends(get_db)):
-    users = db.query(User).order_by(User.last_login.desc().nullslast()).limit(20).all()
+    users = db.query(
+        User.id,
+        User.organization_name,
+        User.organization_type,
+        User.country,
+        User.role,
+        User.is_active,
+        User.last_login,
+        User.created_at,
+        User.logo,
+        User.email,
+        func.count(Project.id).label("project_count")
+    ).outerjoin(Project, Project.user_id == User.id
+    ).group_by(User.id
+    ).order_by(User.last_login.desc().nullslast()
+    ).limit(20).all()
     return [{
-        "id": u.id,
-        "organization_name": u.organization_name,
-        "organization_type": u.organization_type,
-        "country": u.country,
-        "role": u.role,
-        "is_active": u.is_active,
-        "last_login": u.last_login.isoformat() if u.last_login else None,
-        "created_at": u.created_at.isoformat() if u.created_at else None,
+        "id": u[0],
+        "organization_name": u[1],
+        "organization_type": u[2],
+        "country": u[3],
+        "role": u[4],
+        "is_active": u[5],
+        "last_login": u[6].isoformat() if u[6] else None,
+        "created_at": u[7].isoformat() if u[7] else None,
+        "logo": u[8],
+        "email": u[9],
+        "project_count": u[10],
     } for u in users]
 
 
@@ -735,10 +753,31 @@ def get_admin_user_management(admin: User = Depends(get_admin_user), db: Session
 
     most_active = db.query(
         User.id, User.organization_name, User.email, User.country,
+        User.logo, User.organization_type, User.last_login,
         func.count(Project.id).label("project_count")
     ).join(Project, Project.user_id == User.id).filter(
         ~func.lower(Project.status).in_(["pending", "rejected"])
     ).group_by(User.id).order_by(func.count(Project.id).desc()).limit(20).all()
+
+    user_ids = [r[0] for r in most_active]
+    user_projects = db.query(
+        Project.user_id, Project.sector, Project.technology
+    ).filter(
+        Project.user_id.in_(user_ids),
+        ~func.lower(Project.status).in_(["pending", "rejected"])
+    ).all()
+
+    user_sectors = {}
+    user_technologies = {}
+    for up in user_projects:
+        uid = up[0]
+        if uid not in user_sectors:
+            user_sectors[uid] = Counter()
+            user_technologies[uid] = Counter()
+        if up[1]:
+            user_sectors[uid][up[1]] += 1
+        if up[2]:
+            user_technologies[uid][up[2]] += 1
 
     inactive = db.query(User).filter(
         User.last_login.is_(None),
@@ -759,7 +798,9 @@ def get_admin_user_management(admin: User = Depends(get_admin_user), db: Session
         } for u in latest_registrations],
         "mostActiveUsers": [{
             "id": r[0], "organization_name": r[1], "email": r[2], "country": r[3],
-            "project_count": r[4],
+            "logo": r[4], "organization_type": r[5], "last_login": r[6].isoformat() if r[6] else None, "project_count": r[7],
+            "sectors": [s for s, c in user_sectors.get(r[0], Counter()).most_common()],
+            "technologies": [t for t, c in user_technologies.get(r[0], Counter()).most_common()],
         } for r in most_active],
         "inactiveUsers": [{
             "id": u.id, "organization_name": u.organization_name, "email": u.email,
