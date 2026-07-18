@@ -11,14 +11,15 @@ import {
   FaHandshake, FaCheckCircle, FaTimesCircle,
   FaPercentage, FaDownload,
   FaMapMarkerAlt, FaLightbulb, FaMicrochip, FaChartPie,
+  FaClock, FaExclamationTriangle, FaFilter, FaLink,
   FaUserGraduate, FaChartArea, FaFlag, FaSyncAlt,
   FaRegLightbulb, FaBrain, FaUserShield,
   FaTable, FaStar, FaFileCsv, FaGripLines,
-  FaThLarge, FaList, FaCircle, FaDotCircle
+  FaThLarge, FaList, FaCircle, FaDotCircle,
+  FaChartBar
 } from 'react-icons/fa'
 
 import { MapContainer, TileLayer, CircleMarker, Tooltip as LTooltip } from 'react-leaflet'
-import 'leaflet/dist/leaflet.css'
 
 import { API_BASE } from '../config'
 import { useAuth } from '../context/AuthContext'
@@ -324,15 +325,18 @@ function Analytics() {
 
   const safeFetch = useCallback(async (url, fallback) => {
     try {
-      const res = await fetch(url)
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(url, { headers })
       if (!res.ok) return fallback
       return await res.json()
     } catch { return fallback }
-  }, [])
+  }, [token])
 
   const fetchAllData = useCallback(async () => {
     setLoading(true)
     try {
+      const adminFetch = safeFetch
       const endpoints = {
         overview:              safeFetch(`${API_BASE}/api/analytics/overview`, null),
         projectsByCountry:     safeFetch(`${API_BASE}/api/analytics/projects-by-country`, []),
@@ -350,6 +354,24 @@ function Analytics() {
         mapData:               safeFetch(`${API_BASE}/api/analytics/map-data`, []),
         recentUsers:           safeFetch(`${API_BASE}/api/analytics/recent-users`, []),
         activeUsers:           safeFetch(`${API_BASE}/api/analytics/activation-rate`, {}),
+        usersByCountry:        safeFetch(`${API_BASE}/api/analytics/users-by-country`, []),
+        userKpis:              adminFetch(`${API_BASE}/api/analytics/admin/user-kpis`, {}),
+        approvalTimeline:      adminFetch(`${API_BASE}/api/analytics/admin/approval-timeline`, []),
+        usersBySector:         adminFetch(`${API_BASE}/api/analytics/admin/users-by-sector`, []),
+        userEngagement:        adminFetch(`${API_BASE}/api/analytics/admin/user-engagement`, []),
+        stakeholderRoles:      adminFetch(`${API_BASE}/api/analytics/admin/stakeholder-roles`, []),
+        orphanStakeholders:    adminFetch(`${API_BASE}/api/analytics/admin/orphan-stakeholders`, []),
+        accountsToWatch:       adminFetch(`${API_BASE}/api/analytics/admin/accounts-to-watch`, []),
+        projectKpis:           adminFetch(`${API_BASE}/api/analytics/admin/project-kpis`, {}),
+        projectFunnel:         adminFetch(`${API_BASE}/api/analytics/admin/project-funnel`, {}),
+        moderationVelocity:    adminFetch(`${API_BASE}/api/analytics/admin/moderation-velocity`, []),
+        resourceKpis:          adminFetch(`${API_BASE}/api/analytics/admin/resource-kpis`, {}),
+        resourcesByCategory:   adminFetch(`${API_BASE}/api/analytics/admin/resources-by-category`, []),
+        resourcesByLanguage:   adminFetch(`${API_BASE}/api/analytics/admin/resources-by-language`, []),
+        topResources:          adminFetch(`${API_BASE}/api/analytics/admin/top-resources`, []),
+        sdgSectorHeatmap:      adminFetch(`${API_BASE}/api/analytics/admin/sdg-sector-heatmap`, []),
+        projectDurationStats:  adminFetch(`${API_BASE}/api/analytics/admin/project-duration-stats`, {}),
+        projectConnectivity:   adminFetch(`${API_BASE}/api/analytics/admin/project-connectivity`, {}),
       }
       const resolved = {}
       for (const [key, promise] of Object.entries(endpoints)) { resolved[key] = await promise }
@@ -360,18 +382,21 @@ function Analytics() {
     } finally {
       setLoading(false)
     }
-  }, [safeFetch])
+  }, [safeFetch, isAdmin])
 
   const hasFetched = useRef(false)
+  const prevToken = useRef(null)
   const [tab, setTab] = useState('projects')
 
   useEffect(() => {
-    if (!hasFetched.current) {
+    if (!hasFetched.current || (token && !prevToken.current)) {
       hasFetched.current = true
       fetchAllData()
     }
-  }, [fetchAllData])
+    prevToken.current = token
+  }, [fetchAllData, token])
 
+  console.log('Analytics render: loading=', loading, 'data keys=', Object.keys(data))
   if (loading) return <Loader t={t} />
 
   return (
@@ -422,7 +447,7 @@ function Analytics() {
             </button>
           ))}
         </div>
-        {(!isAdmin || tab === 'projects') ? <ProjectsDashboard data={data} t={t} /> : <UsersDashboard data={data} t={t} />}
+        {(tab === 'users' && isAdmin) ? <UsersDashboard data={data} t={t} /> : <ProjectsDashboard data={data} t={t} />}
       </div>
       <style>{GLOBAL_CSS}</style>
     </div>
@@ -441,84 +466,183 @@ function Loader({ t }) {
 
 function ProjectsDashboard({ data, t }) {
   const {
-    overview,
-    projectsByCountry,
-    projectsBySector,
-    aiTech,
-    projectsTimeline,
-    sdgCoverage,
-    statusDistribution,
+    overview, projectsByCountry, projectsBySector, aiTech,
+    projectsTimeline, sdgCoverage, statusDistribution, mapData,
+    projectKpis, projectFunnel, moderationVelocity,
+    resourceKpis, resourcesByCategory, resourcesByLanguage, topResources,
+    sdgSectorHeatmap, projectDurationStats, projectConnectivity,
   } = data
 
-  const totalProjects = overview?.total_projects ?? 0
-  const approvedProjects = overview?.approved_count ?? 0
-  const rejectedProjects = overview?.rejected_count ?? 0
+  const pk = projectKpis || {}
+  const pf = projectFunnel || {}
+  const rk = resourceKpis || {}
+  const pd = projectDurationStats || {}
+  const pc = projectConnectivity || {}
+  const pds = pd
+  const pieData = [
+    { name: 'Actifs', value: pds.active_count ?? 0 },
+    { name: 'Clôturés', value: pds.closed_count ?? 0 },
+  ].filter(d => d.value > 0)
+
+  const kpis = [
+    { label: 'Total projets', value: (overview?.total_projects ?? 0).toLocaleString(), icon: FaProjectDiagram, color: C.primary, insight: "Volume de l'activité" },
+    { label: "Taux d'approbation", value: `${pk.approval_rate ?? 0}%`, icon: FaCheckCircle, color: C.success, insight: 'Qualité des soumissions' },
+    { label: 'Délai modération', value: `${pk.avg_moderation_delay_days ?? 0}j`, icon: FaClock, color: C.warning, insight: 'Efficacité du processus' },
+    { label: 'Backlog en attente', value: (pk.pending_backlog ?? 0).toLocaleString(), icon: FaClipboardList, color: C.info, insight: 'Charge de travail' },
+    { label: 'Backlog critique >30j', value: (pk.critical_backlog_count ?? 0).toLocaleString(), icon: FaExclamationTriangle, color: C.danger, insight: 'Alerte modération' },
+    { label: 'Couverture ODD', value: `${pk.sdg_coverage_rate ?? 0}%`, icon: FaFlag, color: C.secondary, insight: "Alignement aux objectifs ONU" },
+  ]
+
+  const funnelData = pf.submitted ? [
+    { stage: 'Soumis', value: pf.submitted, fill: '#94a3b8' },
+    { stage: 'En attente', value: pf.pending, fill: C.warning },
+    { stage: 'Approuvé', value: pf.approved, fill: C.success },
+    { stage: 'Rejeté', value: pf.rejected, fill: C.danger },
+  ] : []
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-        <KpiCardModern label="Total Projects" value={totalProjects.toLocaleString()} icon={FaProjectDiagram} color={C.primary} percentage={0} sparkData={projectsTimeline} />
-        <KpiCardModern label="Approved" value={approvedProjects.toLocaleString()} icon={FaCheckCircle} color={C.success} percentage={0} sparkData={null} />
-        <KpiCardModern label="Rejected" value={rejectedProjects.toLocaleString()} icon={FaTimesCircle} color={C.danger} percentage={0} sparkData={null} />
-      </div>
-
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Geographic &amp; Sector</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section A — KPIs Projets &amp; Ressources</div>
         <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        {kpis.map((k, i) => (
+          <div key={i} style={{ ...cardStyle, borderLeft: `4px solid ${k.color}`, padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 2 }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#0f172a' }}>{k.value}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' }}>{k.insight}</div>
+              </div>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: `${k.color}15`, color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><k.icon /></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section B — Pipeline &amp; Qualité</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
         <Card>
-          <CardHeader icon={FaGlobeAmericas} title="Top 10 Countries" sub="By project count" iconBg={`${C.success}10`} iconColor={C.success} />
-          {projectsByCountry && projectsByCountry.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={projectsByCountry.slice(0, 10)} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <CardHeader icon={FaFilter} title="Funnel de conversion" sub="Soumis → Approuvé/Rejeté" iconBg={`${C.info}10`} iconColor={C.info} />
+          {funnelData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={funnelData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="country" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                <XAxis dataKey="stage" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="projects" name="Projects" radius={[4, 4, 0, 0]} barSize={20}>
-                  {projectsByCountry.slice(0, 10).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+                <Bar dataKey="value" name="Projets" radius={[4, 4, 0, 0]} barSize={36}>
+                  {funnelData.map((e, i) => <Cell key={i} fill={e.fill} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
           )}
+          <div style={{ marginTop: 8, fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+            Taux de conversion: <strong>{pf.conversion_rate ?? 0}%</strong>
+          </div>
         </Card>
         <Card>
-          <CardHeader icon={FaChartPie} title="Sector Distribution" sub="Projects by Sector" iconBg={`${C.warning}10`} iconColor={C.warning} />
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie data={(projectsBySector || []).slice(0, 5)} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="sector" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                {(projectsBySector || []).slice(0, 5).map((e, i) => <Cell key={i} fill={SECTOR_COLORS[e.sector] || C.chart[i % C.chart.length]} />)}
-              </Pie>
+          <CardHeader icon={FaClock} title="Vélocité de modération" sub="Délai moyen (jours)" iconBg={`${C.warning}10`} iconColor={C.warning} />
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={moderationVelocity || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={m => String(m).padStart(2,'0')} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} unit="j" />
               <Tooltip content={<CustomTooltip />} />
-            </PieChart>
+              <Line type="monotone" dataKey="avg_delay_days" name="Délai moyen" stroke={C.warning} strokeWidth={2} dot={{ r: 3, fill: C.warning }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <CardHeader icon={FaChartLine} title="Volume vs Qualité" sub="Soumissions mensuelles + taux approbation" iconBg={`${C.primary}10`} iconColor={C.primary} />
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={moderationVelocity || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={m => String(m).padStart(2,'0')} />
+              <YAxis yAxisId="l" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <YAxis yAxisId="r" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} unit="%" domain={[0, 100]} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar yAxisId="l" dataKey="count" name="Modérés" fill={C.primary} radius={[4, 4, 0, 0]} barSize={16} />
+              <Line yAxisId="r" type="monotone" dataKey="avg_delay_days" name="Délai (j)" stroke={C.warning} strokeWidth={2} dot={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         </Card>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Trends &amp; Technologies</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section C — Répartition géographique &amp; thématique</div>
         <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px 0' }}>
+            <CardHeader icon={FaGlobeAmericas} title="Carte des projets" sub="Répartition par pays" iconBg={`${C.primary}10`} iconColor={C.primary} />
+          </div>
+          <div style={{ height: 320, margin: '0 8px 8px' }}>
+            {mapData && mapData.length > 0 ? (
+              <MapContainer center={[26, 42]} zoom={3.2} scrollWheelZoom={false} zoomControl={false} style={{ height: '100%', borderRadius: 12 }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                {mapData.filter(c => c.latitude && c.longitude).map((c, i) => (
+                  <CircleMarker key={i} center={[c.latitude, c.longitude]} radius={Math.max(4, Math.sqrt(c.project_count || 1) * 3)} pathOptions={{ color: C.primary, fillColor: `${C.primary}60`, fillOpacity: 0.5, weight: 1.5 }}>
+                    <LTooltip permanent={false} direction="top" offset={[0, -8]}>
+                      <span style={{ fontSize: 11, fontWeight: 600 }}>{c.country}: {c.project_count} projets</span>
+                    </LTooltip>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
+            ) : (
+              <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+            )}
+          </div>
+        </Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card>
+            <CardHeader icon={FaChartPie} title="Top 10 pays" sub="Projets par pays" iconBg={`${C.success}10`} iconColor={C.success} />
+            {projectsByCountry && projectsByCountry.length > 0 ? (
+              <HBarList entries={projectsByCountry.slice(0, 10).map(p => [p.country, p.projects])} t={t} />
+            ) : (
+              <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+            )}
+          </Card>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+              HHI — Indice de concentration: {(() => {
+                const total = (projectsByCountry || []).reduce((s, p) => s + p.projects, 0)
+                if (!total) return '\u2014'
+                const hhi = (projectsByCountry || []).reduce((s, p) => s + (p.projects / total * 100) ** 2, 0)
+                return hhi.toFixed(0)
+              })()}
+            </span>
+            <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+              {projectsByCountry?.length ?? 0} pays actifs
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
         <Card>
-          <CardHeader icon={FaChartArea} title="Evolution by Year" sub="Project timeline" iconBg={`${C.info}10`} iconColor={C.info} />
+          <CardHeader icon={FaChartPie} title="Secteurs" sub="Distribution" iconBg={`${C.warning}10`} iconColor={C.warning} />
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={projectsTimeline || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+            <PieChart>
+              <Pie data={(projectsBySector || []).slice(0, 6)} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="sector" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                {(projectsBySector || []).slice(0, 6).map((e, i) => <Cell key={i} fill={SECTOR_COLORS[e.sector] || C.chart[i % C.chart.length]} />)}
+              </Pie>
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="projects" name="Projects" fill={C.primary} radius={[4, 4, 0, 0]} />
-            </BarChart>
+            </PieChart>
           </ResponsiveContainer>
         </Card>
         <Card>
-          <CardHeader icon={FaMicrochip} title="AI Technologies" sub="Technology adoption distribution" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
+          <CardHeader icon={FaMicrochip} title="AI Technologies" sub="Top 5" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={(aiTech || []).slice(0, 5)} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
@@ -533,28 +657,23 @@ function ProjectsDashboard({ data, t }) {
         </Card>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Impact &amp; Quality</div>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
         <Card>
-          <CardHeader icon={FaFlag} title="SDG Coverage" sub="Sustainable Development Goals" iconBg={`${C.success}10`} iconColor={C.success} />
+          <CardHeader icon={FaFlag} title="Top 10 ODD" sub="ODD les plus présents dans les projets" iconBg={`${C.success}10`} iconColor={C.success} />
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={(sdgCoverage || []).slice(0, 10)} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
+            <BarChart data={[...(sdgCoverage || [])].sort((a, b) => b.count - a.count).slice(0, 10)} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="goal_number" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="count" name={t('analytics.projects')} radius={[4, 4, 0, 0]} barSize={20}>
-                {(sdgCoverage || []).slice(0, 10).map((e, i) => <Cell key={i} fill={SDG_COLORS[(e.goal_number - 1) % SDG_COLORS.length]} />)}
+              <Bar dataKey="count" name="Projets" radius={[4, 4, 0, 0]} barSize={20}>
+                {[...(sdgCoverage || [])].sort((a, b) => b.count - a.count).slice(0, 10).map((e, i) => <Cell key={i} fill={SDG_COLORS[(e.goal_number - 1) % SDG_COLORS.length]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </Card>
         <Card>
-          <CardHeader icon={FaChartPie} title="Status Distribution" sub="Approved / Pending / Rejected" iconBg={`${C.danger}10`} iconColor={C.danger} />
+          <CardHeader icon={FaChartPie} title="Statut des projets" sub="Approuvé / En attente / Rejeté" iconBg={`${C.danger}10`} iconColor={C.danger} />
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={(statusDistribution || []).filter(s => s.status !== 'draft')} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="status" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
@@ -568,86 +687,238 @@ function ProjectsDashboard({ data, t }) {
           </ResponsiveContainer>
         </Card>
       </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section D — Cycle de vie &amp; Durée</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaClock} title="Durée d'exécution" sub="Statut actif vs clôturé" iconBg={`${C.info}10`} iconColor={C.info} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '8px 0' }}>
+            <div style={{ flex: 1 }}>
+              {pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={2} dataKey="value" nameKey="name" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                      {pieData.map((e, i) => <Cell key={i} fill={i === 0 ? C.success : C.info} />)}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+              )}
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ ...cardStyle, padding: 14 }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Durée moyenne</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{pds.avg_duration_days ?? 0}j</div>
+              </div>
+              <div style={{ ...cardStyle, padding: 14 }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Avec dates</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{pds.with_dates_count ?? 0}</div>
+              </div>
+              <div style={{ ...cardStyle, padding: 14 }}>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Taux d'activité</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#0f172a' }}>{pds.active_rate ?? 0}%</div>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <CardHeader icon={FaChartArea} title="Évolution par année" sub="Projets soumis par an" iconBg={`${C.primary}10`} iconColor={C.primary} />
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={projectsTimeline || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="projects" name="Projets" fill={C.primary} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section E — Ressources documentaires</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 24 }}>
+        <div style={{ ...cardStyle, borderLeft: `4px solid ${C.primary}`, padding: 18 }}>
+          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 2 }}>Total ressources</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: '#0f172a' }}>{(rk.total_resources ?? 0).toLocaleString()}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' }}>Volume documentaire</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaChartBar} title="Ressources par catégorie" sub="Répartition par catégorie" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={resourcesByCategory || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" name="Nb ressources" fill={C.primary} radius={[4, 4, 0, 0]} barSize={20} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaChartPie} title="Répartition par langue" sub="Langues des ressources" iconBg={`${C.success}10`} iconColor={C.success} />
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie data={(resourcesByLanguage || []).slice(0, 6)} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="language" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                {(resourcesByLanguage || []).slice(0, 6).map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card>
+          <CardHeader icon={FaLink} title="Lien Projets ↔ Ressources ↔ Stakeholders" sub="Connectivité de l'écosystème" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: '8px 0' }}>
+            <div style={{ ...cardStyle, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Projets documentés</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a' }}>{pc.documented_rate ?? 0}%</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>{pc.with_documents ?? 0} / {overview?.total_projects ?? 0}</div>
+            </div>
+            <div style={{ ...cardStyle, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Densité de partenariat</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#0f172a' }}>{pc.avg_stakeholders_per_project ?? 0}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>stakeholders / projet</div>
+            </div>
+          </div>
+          {sdgSectorHeatmap && sdgSectorHeatmap.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, marginBottom: 6 }}>Heatmap ODD × Secteur (top combinaisons)</div>
+              <HBarList entries={(() => {
+                const grouped = {}
+                sdgSectorHeatmap.forEach(d => {
+                  const key = `ODD${d.sdg_id} × ${d.sector}`
+                  grouped[key] = (grouped[key] || 0) + d.count
+                })
+                return Object.entries(grouped).sort((a, b) => b[1] - a[1]).slice(0, 8)
+              })()} t={t} />
+            </div>
+          )}
+        </Card>
+      </div>
     </>
   )
 }
 
 function UsersDashboard({ data, t }) {
   const {
-    userSignups,
-    usersByOrgType,
-    stakeholdersByCategory,
-    activeUsers,
-    recentUsers,
+    userSignups, usersByOrgType, stakeholdersByCategory,
+    usersByCountry, activeUsers, recentUsers,
+    userKpis, approvalTimeline, usersBySector,
+    userEngagement, stakeholderRoles, orphanStakeholders, accountsToWatch,
   } = data
 
-  const totalSignups = (userSignups || []).reduce((a, b) => a + (b.count || 0), 0)
-  const activationRate = activeUsers?.activation_rate ?? 0
-  const activeUserCount = activeUsers?.active_users ?? 0
-  const totalUserCount = activeUsers?.total_users ?? 0
-  const top3 = (recentUsers || []).slice(0, 3)
+  const kpis = [
+    { label: 'Total organisations', value: (userKpis?.total_users ?? 0).toLocaleString(), icon: FaUsers, color: C.primary, insight: 'Taille de la base' },
+    { label: "Taux d'approbation", value: `${userKpis?.approval_rate ?? 0}%`, icon: FaCheckCircle, color: C.success, insight: 'Charge de modération' },
+    { label: "Taux d'activation", value: `${userKpis?.activation_rate ?? 0}%`, icon: FaRocket, color: C.secondary, insight: 'Santé de la base' },
+    { label: 'Conversion stakeholder', value: `${userKpis?.stakeholder_conversion_rate ?? 0}%`, icon: FaHandshake, color: C.warning, insight: "% d'orgs reliées à l'écosystème" },
+    { label: 'Taux de dormance', value: `${userKpis?.dormancy_rate ?? 0}%`, icon: FaTimesCircle, color: C.danger, insight: 'Risque de churn' },
+    { label: 'Croissance MoM', value: `${userKpis?.mom_growth ?? 0}%`, icon: FaChartLine, color: C.info, insight: "Tendance d'acquisition" },
+  ]
+
+  const activeContributors = userEngagement?.filter(u => u.total_engagement > 0).length ?? 0
+  const totalUsers = userKpis?.total_users ?? 1
+  const activeContributorRate = Math.round(activeContributors / totalUsers * 100)
+  const owners = userEngagement?.filter(u => u.projects_owned > 0).length ?? 0
+  const partners = userEngagement?.filter(u => u.projects_owned === 0 && u.projects_as_stakeholder > 0).length ?? 0
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}>
-        <KpiCardModern label="Total Signups" value={totalSignups.toLocaleString()} icon={FaUsers} color={C.primary} percentage={0} sparkData={userSignups} />
-        <KpiCardModern label="Organization Types" value={(usersByOrgType || []).length.toLocaleString()} icon={FaBuilding} color={C.secondary} percentage={0} sparkData={null} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section A — KPIs</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        {kpis.map((k, i) => (
+          <div key={i} style={{ ...cardStyle, borderLeft: `4px solid ${k.color}`, padding: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500, marginBottom: 2 }}>{k.label}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#0f172a' }}>{k.value}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' }}>{k.insight}</div>
+              </div>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: `${k.color}15`, color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><k.icon /></div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Growth &amp; Distribution</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section B — Croissance &amp; Acquisition</div>
         <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
         <Card>
-          <CardHeader icon={FaChartArea} title="Signup Growth" sub="Monthly new users" iconBg={`${C.info}10`} iconColor={C.info} />
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={userSignups || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+          <CardHeader icon={FaChartArea} title="Signup Growth" sub="Inscriptions mensuelles + Cumul" iconBg={`${C.info}10`} iconColor={C.info} />
+          <ResponsiveContainer width="100%" height={250}>
+            <ComposedChart data={userSignups || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={m => String(m).padStart(2,'0')} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={m => String(m).padStart(2,'0')} />
+              <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="count" name="Signups" stroke={C.primary} fill={`${C.primary}20`} strokeWidth={2} />
-            </AreaChart>
+              <Area yAxisId="left" type="monotone" dataKey="count" name="Signups" stroke={C.primary} fill={`${C.primary}20`} strokeWidth={2} />
+              <Line yAxisId="right" type="monotone" dataKey="cumulative" name="Cumul" stroke={C.success} strokeWidth={2} dot={false} />
+            </ComposedChart>
           </ResponsiveContainer>
         </Card>
         <Card>
-          <CardHeader icon={FaBuilding} title="Organization Types" sub="User Distribution" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
+          <CardHeader icon={FaCheckCircle} title="Approbation dans le temps" sub="Taux d'approbation mensuel" iconBg={`${C.success}10`} iconColor={C.success} />
+          <ResponsiveContainer width="100%" height={250}>
+            <LineChart data={approvalTimeline || []} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={m => String(m).padStart(2,'0')} />
+              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} unit="%" />
+              <Tooltip content={<CustomTooltip />} />
+              <Line type="monotone" dataKey="approval_rate" name="Taux d'approbation" stroke={C.success} strokeWidth={2} dot={{ r: 3, fill: C.success }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section C — Répartition organisationnelle</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaBuilding} title="Par type d'organisation" sub="" iconBg={`${C.secondary}10`} iconColor={C.secondary} />
           {usersByOrgType && usersByOrgType.length > 0 ? (
             <HBarList entries={usersByOrgType.map(u => [u.type, u.count])} colorFn={(k) => ORG_TYPE_COLORS[k] || C.chart[0]} t={t} />
           ) : (
             <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
           )}
         </Card>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Engagement &amp; Activity</div>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
         <Card>
-          <CardHeader icon={FaUsers} title="Active vs Total Users" sub="User activation breakdown" iconBg={`${C.success}10`} iconColor={C.success} />
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={[
-                { name: 'Active', value: activeUserCount },
-                { name: 'Inactive', value: Math.max(0, totalUserCount - activeUserCount) },
-              ]} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" nameKey="name" stroke="none">
-                <Cell fill={C.success} />
-                <Cell fill="#e2e8f0" />
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <CardHeader icon={FaChartPie} title="Par secteur" sub="Secteur d'activité" iconBg={`${C.warning}10`} iconColor={C.warning} />
+          {usersBySector && usersBySector.length > 0 ? (
+            <HBarList entries={usersBySector.map(s => [s.sector, s.count])} t={t} />
+          ) : (
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+          )}
         </Card>
         <Card>
-          <CardHeader icon={FaHandshake} title="Stakeholders by Category" sub="Category Distribution" iconBg={`${C.warning}10`} iconColor={C.warning} />
-          {stakeholdersByCategory && stakeholdersByCategory.length > 0 ? (
-            <HBarList entries={stakeholdersByCategory.map(s => [s.category, s.count])} t={t} />
+          <CardHeader icon={FaGlobeAmericas} title="Par pays" sub="Pays des organisations" iconBg={`${C.success}10`} iconColor={C.success} />
+          {usersByCountry && usersByCountry.length > 0 ? (
+            <HBarList entries={usersByCountry.map(c => [c.country, c.count])} t={t} />
           ) : (
             <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
           )}
@@ -655,68 +926,161 @@ function UsersDashboard({ data, t }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Top Contributors</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section D — Engagement réel</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <div style={{ ...cardStyle, padding: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: `${C.success}15`, color: C.success, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}><FaUsers /></div>
+          <div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Taux d'organisations actives contributrices</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{activeContributorRate}%</div>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>{activeContributors} / {totalUsers} organisations</div>
+          </div>
+        </div>
+        <div style={{ ...cardStyle, padding: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: `${C.warning}15`, color: C.warning, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}><FaHandshake /></div>
+          <div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>Ratio porteur vs partenaire</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: '#0f172a' }}>{owners > 0 ? (owners / Math.max(partners, 1)).toFixed(1) : 0}x</div>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>{owners} porteurs · {partners} partenaires passifs</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section E — Stakeholders</div>
+        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <Card>
+          <CardHeader icon={FaBuilding} title="Top Stakeholders" sub="Par implication projets" iconBg={`${C.warning}10`} iconColor={C.warning} />
+          {stakeholdersByCategory && stakeholdersByCategory.length > 0 ? (
+            <HBarList entries={stakeholdersByCategory.slice(0, 10).map(s => [s.category, s.count])} t={t} />
+          ) : (
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+          )}
+        </Card>
+        <Card>
+          <CardHeader icon={FaCheckCircle} title="Rôles dans les projets" sub="Répartition" iconBg={`${C.info}10`} iconColor={C.info} />
+          {stakeholderRoles && stakeholderRoles.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={stakeholderRoles} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="count" nameKey="role" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  {stakeholderRoles.map((e, i) => <Cell key={i} fill={C.chart[i % C.chart.length]} />)}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+          )}
+        </Card>
+        <Card>
+          <CardHeader icon={FaUsers} title="Stakeholders orphelins" sub="Sans compte plateforme" iconBg={`${C.danger}10`} iconColor={C.danger} />
+          {orphanStakeholders?.total_stakeholders > 0 ? (
+            <div style={{ padding: '0 4px' }}>
+              <div style={{ fontSize: 32, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{orphanStakeholders.orphan_rate ?? 0}%</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>{orphanStakeholders.orphan_count ?? 0} / {orphanStakeholders.total_stakeholders ?? 0} stakeholders</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>Partenaires référencés mais pas encore onboardés → liste d'acquisition</div>
+              {orphanStakeholders.orphans?.length > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  {orphanStakeholders.orphans.slice(0, 5).map(s => (
+                    <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #F1F5F9', fontSize: 12 }}>
+                      <span style={{ fontWeight: 500, color: '#0f172a' }}>{s.name}</span>
+                      <span style={{ color: '#94a3b8' }}>{s.type}{s.country ? ` · ${s.country}` : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, padding: 20 }}>{t('analytics.noData')}</p>
+          )}
+        </Card>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Section F — Dernières connexions</div>
         <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
       </div>
 
       <Card style={{ padding: 0 }}>
         <div style={{ padding: '16px 20px 0' }}>
-          <CardHeader icon={FaUserGraduate} title="Top 3 Users" sub="Most recent logins" iconBg={`${C.primary}10`} iconColor={C.primary} />
+          <CardHeader icon={FaRocket} title="Top 3 utilisateurs actifs" sub="Les plus engagés (projets portés + stakeholder)" iconBg={`${C.success}10`} iconColor={C.success} />
         </div>
-        {top3.length > 0 ? (
+        {userEngagement && userEngagement.length > 0 ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Organization</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Email</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Country</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Role</th>
-                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Status</th>
-                  <th style={{ textAlign: 'right', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Projects</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}></th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Stakeholders</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Type</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Pays</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Dernière connexion</th>
+                  <th style={{ textAlign: 'right', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Portés</th>
+                  <th style={{ textAlign: 'left', padding: '10px 20px', color: '#64748b', fontWeight: 600 }}>Statut</th>
                 </tr>
               </thead>
               <tbody>
-                {top3.map((u, i) => (
-                  <tr key={u.id || i} style={{ borderBottom: i < top3.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
-                    <td style={{ padding: '12px 20px', fontWeight: 500, color: '#0f172a' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                        {u.logo ? (
-                          <img src={u.logo} alt="" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                          <span style={{ width: 28, height: 28, borderRadius: '50%', background: `${C.primary}15`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: C.primary }}>
-                            {(u.organization_name || '?')[0]}
-                          </span>
-                        )}
-                        {u.organization_name || '\u2014'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 20px', color: '#64748b' }}>{u.email || '\u2014'}</td>
-                    <td style={{ padding: '12px 20px', color: '#64748b' }}>{u.country || '\u2014'}</td>
-                    <td style={{ padding: '12px 20px' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                        background: u.role === 'admin' ? `${C.secondary}15` : `${C.primary}15`,
-                        color: u.role === 'admin' ? C.secondary : C.primary
-                      }}>
-                        {u.role || 'user'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 20px' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                        background: u.is_active ? '#05966915' : '#DC262615',
-                        color: u.is_active ? '#059669' : '#DC2626'
-                      }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: u.is_active ? '#059669' : '#DC2626' }} />
-                        {u.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{u.project_count ?? 0}</td>
-                  </tr>
-                ))}
+                {[...userEngagement]
+                  .sort((a, b) => new Date(b.last_login || 0) - new Date(a.last_login || 0))
+                  .slice(0, 3).map((u, i) => {
+                  const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32']
+                  const initials = (u.organization_name || '?').charAt(0).toUpperCase()
+                  return (
+                    <tr key={u.id || i} style={{ borderBottom: i < 2 ? '1px solid #F1F5F9' : 'none' }}>
+                      <td style={{ padding: '10px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {u.logo ? (
+                            <img src={u.logo} alt="" style={{
+                              width: 36, height: 36, borderRadius: '50%', objectFit: 'cover',
+                              border: `2px solid ${rankColors[i]}`, flexShrink: 0,
+                            }} />
+                          ) : (
+                            <div style={{
+                              width: 36, height: 36, borderRadius: '50%',
+                              background: `linear-gradient(135deg, ${rankColors[i]}44, ${rankColors[i]}22)`,
+                              border: `2px solid ${rankColors[i]}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontWeight: 700, fontSize: 13, color: '#0f172a', flexShrink: 0,
+                            }}>{initials}</div>
+                          )}
+                          <span style={{
+                            width: 18, height: 18, borderRadius: '50%',
+                            background: rankColors[i],
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 10, fontWeight: 700, color: '#fff',
+                            position: 'relative', left: -8,
+                          }}>{i + 1}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 20px', fontWeight: 500, color: '#0f172a', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.organization_name || '\u2014'}</td>
+                      <td style={{ padding: '10px 20px', color: '#64748b' }}>{u.organization_type || '\u2014'}</td>
+                      <td style={{ padding: '10px 20px', color: '#64748b' }}>{u.country || '\u2014'}</td>
+                      <td style={{ padding: '10px 20px' }}>
+                        <span style={{ color: '#64748b' }}>
+                          {u.last_login ? new Date(u.last_login).toLocaleDateString() : '\u2014'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 600, color: u.projects_owned > 0 ? C.success : '#94a3b8' }}>{u.projects_owned || 0}</td>
+                      <td style={{ padding: '10px 20px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                          background: u.is_active ? '#05966915' : '#D9770615',
+                          color: u.is_active ? '#059669' : '#D97706'
+                        }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: u.is_active ? '#059669' : '#D97706' }} />
+                          {u.is_active ? 'Actif' : 'Inactif'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -729,8 +1093,6 @@ function UsersDashboard({ data, t }) {
 }
 
 const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
   :root {
     --at-bg: #F1F5F9;
     --at-card: #ffffff;
@@ -767,4 +1129,4 @@ const GLOBAL_CSS = `
   }
 `
 
-export default memo(Analytics)
+export default Analytics

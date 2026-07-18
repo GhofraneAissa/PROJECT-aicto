@@ -62,8 +62,8 @@ function Footer() {
             <div className="footer-column">
               <h4>{t('footer.contact')}</h4>
               <ul className="contact-list">
-                <li><FaEnvelope /> info@sarai.ai</li>
-                <li><FaMapMarkerAlt /> Arab League, Cairo, Egypt</li>
+                <li><FaEnvelope /> info@sarai.org</li>
+                <li><FaMapMarkerAlt /> Arab League, Tunis , Tunisia</li>
               </ul>
             </div>
           </div>

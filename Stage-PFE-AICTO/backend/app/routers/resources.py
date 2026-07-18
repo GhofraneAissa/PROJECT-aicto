@@ -180,10 +180,16 @@ def view_resource(filename: str):
     return FileResponse(path, filename=filename, content_disposition_type="inline")
 
 @router.get("/download/{filename}")
-def download_resource(filename: str):
+def download_resource(filename: str, db: Session = Depends(get_db)):
     path = os.path.join(RESOURCE_UPLOAD_DIR, filename)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
+    resource = db.query(Resource).filter(
+        Resource.file_url == f"/api/resources/view/{filename}"
+    ).first()
+    if resource:
+        resource.downloads = (resource.downloads or 0) + 1
+        db.commit()
     return FileResponse(path, filename=filename, media_type="application/octet-stream")
 
 @router.get("/stats/count")

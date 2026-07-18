@@ -120,6 +120,7 @@ Build and maintain the SARAI platform — a web app for cataloguing AI projects 
 - `GET /api/analytics/admin/last-logins` — last 20 user logins
 - `GET /api/analytics/admin/downloads-timeline` — monthly downloads/uploads
 
+
 ## Critical Notes
 - Backend runs at `backend/main.py` (not `backend/app/main.py`) — uvicorn: `main:app`
 - LinkedIn redirect URI must match **exactly**: `http://localhost:8000/api/auth/linkedin/callback`

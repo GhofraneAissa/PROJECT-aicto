@@ -2,10 +2,10 @@ import re
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, extract
+from sqlalchemy import func, case, extract, or_
 from app.database import get_db
 from app.models.stakeholder import Stakeholder
-from app.models.project import Project
+from app.models.project import Project, ProjectStakeholderAssociation
 from app.models.resource import Resource
 from app.models.country import Country
 from app.models.user import User
@@ -671,11 +671,11 @@ def get_map_data(db: Session = Depends(get_db)):
 
 # ───────────────── Admin Dashboard ─────────────────
 
-from app.core.auth import get_admin_user
+from app.core.auth import get_current_user
 
 
 @router.get("/admin/overview")
-def get_admin_overview(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_overview(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     total_users = db.query(User).count()
     active_users = db.query(User).filter(User.is_active == True).count()
     approved_orgs = db.query(User).filter(User.is_approved == True).count()
@@ -737,7 +737,7 @@ def get_admin_overview(admin: User = Depends(get_admin_user), db: Session = Depe
 
 
 @router.get("/admin/user-management")
-def get_admin_user_management(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_user_management(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     users_by_country = db.query(User.country, func.count(User.id)).filter(
         User.country.isnot(None)
     ).group_by(User.country).order_by(func.count(User.id).desc()).all()
@@ -810,7 +810,7 @@ def get_admin_user_management(admin: User = Depends(get_admin_user), db: Session
 
 
 @router.get("/admin/moderation")
-def get_admin_moderation(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_moderation(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     pending = db.query(Project).filter(func.lower(Project.status) == "pending").order_by(Project.submitted_at.asc()).all()
     approved_recent = db.query(Project).filter(
         func.lower(Project.status) == "approved"
@@ -856,7 +856,7 @@ def get_admin_moderation(admin: User = Depends(get_admin_user), db: Session = De
 
 
 @router.get("/admin/user-signups")
-def get_admin_user_signups(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_user_signups(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     results = db.query(
         extract("year", User.created_at).label("year"),
         extract("month", User.created_at).label("month"),
@@ -871,7 +871,7 @@ def get_admin_user_signups(admin: User = Depends(get_admin_user), db: Session = 
 
 
 @router.get("/admin/latest-registrations")
-def get_admin_latest_registrations(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_latest_registrations(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     users = db.query(User).order_by(User.created_at.desc()).limit(50).all()
     return [{
         "id": u.id, "organization_name": u.organization_name, "email": u.email,
@@ -881,7 +881,7 @@ def get_admin_latest_registrations(admin: User = Depends(get_admin_user), db: Se
 
 
 @router.get("/admin/platform-stats")
-def get_admin_platform_stats(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_platform_stats(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     total_resources = db.query(Resource).count()
     total_downloads = db.query(func.coalesce(func.sum(Resource.downloads), 0)).scalar()
     total_chat_sessions = db.query(ChatSession).count()
@@ -903,7 +903,7 @@ def get_admin_platform_stats(admin: User = Depends(get_admin_user), db: Session 
 
 
 @router.get("/admin/org-status")
-def get_admin_org_status(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_org_status(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     approved = db.query(User).filter(User.is_approved == True).count()
     pending_org = db.query(User).filter(User.is_approved == False, User.is_active == True).count()
     rejected = db.query(User).filter(User.is_approved == False, User.is_active == False).count()
@@ -915,7 +915,7 @@ def get_admin_org_status(admin: User = Depends(get_admin_user), db: Session = De
 
 
 @router.get("/admin/notifications")
-def get_admin_notifications(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_notifications(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     unread = db.query(Notification).filter(Notification.is_read == 0).count()
     recent = db.query(Notification).order_by(Notification.created_at.desc()).limit(20).all()
     return {
@@ -931,7 +931,7 @@ def get_admin_notifications(admin: User = Depends(get_admin_user), db: Session =
 
 
 @router.get("/admin/last-logins")
-def get_admin_last_logins(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_last_logins(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     users = db.query(User).filter(User.last_login.isnot(None)).order_by(User.last_login.desc()).limit(20).all()
     return [{
         "id": u.id,
@@ -942,7 +942,7 @@ def get_admin_last_logins(admin: User = Depends(get_admin_user), db: Session = D
 
 
 @router.get("/admin/downloads-timeline")
-def get_admin_downloads_timeline(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def get_admin_downloads_timeline(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     from sqlalchemy import extract as sql_extract
     results = db.query(
         sql_extract("year", Resource.created_at).label("year"),
@@ -951,3 +951,341 @@ def get_admin_downloads_timeline(admin: User = Depends(get_admin_user), db: Sess
         func.count(Resource.id).label("uploads")
     ).filter(Resource.created_at.isnot(None)).group_by("year", "month").order_by("year", "month").all()
     return [{"year": int(r[0]), "month": int(r[1]), "downloads": int(r[2]), "uploads": r[3]} for r in results]
+
+
+@router.get("/admin/user-kpis")
+def get_admin_user_kpis(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    total = db.query(User).count()
+    approved = db.query(User).filter(User.is_approved == True).count()
+    active = db.query(User).filter(User.is_active == True).count()
+    with_stakeholder = db.query(User).filter(User.stakeholder_id.isnot(None)).count()
+    ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
+    dormant = db.query(User).filter(
+        or_(User.last_login.is_(None), User.last_login < ninety_days_ago)
+    ).count()
+    signups = db.query(
+        extract("year", User.created_at).label("year"),
+        extract("month", User.created_at).label("month"),
+        func.count(User.id).label("count")
+    ).filter(User.created_at.isnot(None)).group_by("year", "month").order_by("year", "month").all()
+    mom_growth = 0
+    if len(signups) >= 2:
+        prev = signups[-2].count if signups[-2].count else 0
+        curr = signups[-1].count if signups[-1].count else 0
+        mom_growth = round((curr - prev) / prev * 100, 1) if prev > 0 else 0
+    return {
+        "total_users": total,
+        "approved_count": approved,
+        "active_count": active,
+        "with_stakeholder_count": with_stakeholder,
+        "dormant_count": dormant,
+        "mom_growth": mom_growth,
+        "approval_rate": round(approved / total * 100, 1) if total > 0 else 0,
+        "activation_rate": round(active / total * 100, 1) if total > 0 else 0,
+        "stakeholder_conversion_rate": round(with_stakeholder / total * 100, 1) if total > 0 else 0,
+        "dormancy_rate": round(dormant / total * 100, 1) if total > 0 else 0,
+    }
+
+
+@router.get("/admin/approval-timeline")
+def get_admin_approval_timeline(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        extract("year", User.created_at).label("year"),
+        extract("month", User.created_at).label("month"),
+        func.count(User.id).label("total"),
+        func.sum(case((User.is_approved == True, 1), else_=0)).label("approved")
+    ).filter(User.created_at.isnot(None)).group_by("year", "month").order_by("year", "month").all()
+    return [{
+        "year": int(r.year), "month": int(r.month),
+        "total": r.total, "approved": int(r.approved),
+        "approval_rate": round(int(r.approved) / r.total * 100, 1) if r.total > 0 else 0
+    } for r in results]
+
+
+@router.get("/admin/users-by-sector")
+def get_admin_users_by_sector(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        User.sector, func.count(User.id).label("count")
+    ).filter(User.sector.isnot(None), User.sector != "").group_by(User.sector).order_by(func.count(User.id).desc()).all()
+    return [{"sector": r[0], "count": r[1]} for r in results]
+
+
+@router.get("/admin/user-engagement")
+def get_admin_user_engagement(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.created_at.desc()).limit(200).all()
+    result = []
+    for u in users:
+        projects_owned = len([p for p in u.projects])
+        projects_as_stakeholder = 0
+        if u.stakeholder_id:
+            projects_as_stakeholder = db.query(ProjectStakeholderAssociation).filter(
+                ProjectStakeholderAssociation.stakeholder_id == u.stakeholder_id
+            ).count()
+        result.append({
+            "id": u.id,
+            "organization_name": u.organization_name or "",
+            "organization_type": u.organization_type or "",
+            "country": u.country or "",
+            "logo": u.logo or "",
+            "projects_owned": projects_owned,
+            "projects_as_stakeholder": projects_as_stakeholder,
+            "total_engagement": projects_owned + projects_as_stakeholder,
+            "last_login": u.last_login.isoformat() if u.last_login else None,
+            "is_active": u.is_active,
+        })
+    return sorted(result, key=lambda x: x["total_engagement"], reverse=True)
+
+
+@router.get("/admin/stakeholder-roles")
+def get_admin_stakeholder_roles(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        ProjectStakeholderAssociation.role,
+        func.count(ProjectStakeholderAssociation.id)
+    ).group_by(ProjectStakeholderAssociation.role).order_by(func.count(ProjectStakeholderAssociation.id).desc()).all()
+    return [{"role": r[0] or "partner", "count": r[1]} for r in results]
+
+
+@router.get("/admin/orphan-stakeholders")
+def get_admin_orphan_stakeholders(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    total_stakeholders = db.query(Stakeholder).count()
+    linked = db.query(User.stakeholder_id).filter(User.stakeholder_id.isnot(None)).distinct().count()
+    orphan_count = total_stakeholders - linked
+    orphans = db.query(Stakeholder).filter(
+        Stakeholder.id.notin_(
+            db.query(User.stakeholder_id).filter(User.stakeholder_id.isnot(None))
+        )
+    ).order_by(Stakeholder.created_at.desc()).limit(20).all()
+    return {
+        "total_stakeholders": total_stakeholders,
+        "orphan_count": max(orphan_count, 0),
+        "orphan_rate": round(max(orphan_count, 0) / total_stakeholders * 100, 1) if total_stakeholders > 0 else 0,
+        "orphans": [{"id": s.id, "name": s.name, "type": s.type, "country": s.country, "contact_email": s.contact_email} for s in orphans]
+    }
+
+
+@router.get("/admin/accounts-to-watch")
+def get_admin_accounts_to_watch(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.last_login.asc().nullsfirst()).limit(50).all()
+    now = datetime.now(timezone.utc)
+    result = []
+    for u in users:
+        projects_owned = len([p for p in u.projects])
+        projects_as_stakeholder = 0
+        if u.stakeholder_id:
+            projects_as_stakeholder = db.query(ProjectStakeholderAssociation).filter(
+                ProjectStakeholderAssociation.stakeholder_id == u.stakeholder_id
+            ).count()
+        last_login_days = (now - u.last_login).days if u.last_login else -1
+        result.append({
+            "id": u.id,
+            "organization_name": u.organization_name,
+            "role": u.role,
+            "country": u.country,
+            "last_login": u.last_login.isoformat() if u.last_login else None,
+            "last_login_days": last_login_days,
+            "projects_owned": projects_owned,
+            "projects_as_stakeholder": projects_as_stakeholder,
+            "is_active": u.is_active,
+            "is_approved": u.is_approved,
+            "email": u.email,
+        })
+    return result
+
+
+@router.get("/admin/project-kpis")
+def get_admin_project_kpis(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    total = db.query(Project).count()
+    approved = db.query(Project).filter(func.lower(Project.status) == "approved").count()
+    pending = db.query(Project).filter(func.lower(Project.status) == "pending").count()
+    decided = approved + db.query(Project).filter(func.lower(Project.status) == "rejected").count()
+    approval_rate = round(approved / decided * 100, 1) if decided > 0 else 0
+
+    moderated = db.query(Project).filter(
+        Project.moderated_at.isnot(None), Project.submitted_at.isnot(None)
+    ).all()
+    total_delay_hours = 0
+    for p in moderated:
+        delta = (p.moderated_at - p.submitted_at).total_seconds() / 3600
+        total_delay_hours += delta
+    avg_delay_days = round(total_delay_hours / len(moderated) / 24, 1) if moderated else 0
+
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    critical_backlog = db.query(Project).filter(
+        func.lower(Project.status) == "pending",
+        Project.submitted_at.isnot(None),
+        Project.submitted_at < thirty_days_ago
+    ).count()
+
+    total_sdg = db.query(func.count(SDG.id)).scalar() or 17
+    used_sdg = db.query(Project.sdg_id).filter(
+        Project.sdg_id.isnot(None)
+    ).distinct().count()
+    sdg_coverage_rate = round(used_sdg / total_sdg * 100, 1) if total_sdg > 0 else 0
+
+    return {
+        "total_projects": total,
+        "approval_rate": approval_rate,
+        "avg_moderation_delay_days": avg_delay_days,
+        "pending_backlog": pending,
+        "critical_backlog_count": critical_backlog,
+        "sdg_coverage_rate": sdg_coverage_rate,
+    }
+
+
+@router.get("/admin/project-funnel")
+def get_admin_project_funnel(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    submitted = db.query(Project).count()
+    pending = db.query(Project).filter(func.lower(Project.status) == "pending").count()
+    approved = db.query(Project).filter(func.lower(Project.status) == "approved").count()
+    rejected = db.query(Project).filter(func.lower(Project.status) == "rejected").count()
+    return {
+        "submitted": submitted,
+        "pending": pending,
+        "approved": approved,
+        "rejected": rejected,
+        "conversion_rate": round(approved / submitted * 100, 1) if submitted > 0 else 0,
+    }
+
+
+@router.get("/admin/moderation-velocity")
+def get_admin_moderation_velocity(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        extract("year", Project.moderated_at).label("year"),
+        extract("month", Project.moderated_at).label("month"),
+        func.avg(
+            func.extract("epoch", Project.moderated_at - Project.submitted_at) / 86400
+        ).label("avg_delay_days"),
+        func.count(Project.id).label("count")
+    ).filter(
+        Project.moderated_at.isnot(None),
+        Project.submitted_at.isnot(None)
+    ).group_by("year", "month").order_by("year", "month").all()
+    return [{
+        "year": int(r.year), "month": int(r.month),
+        "avg_delay_days": round(float(r.avg_delay_days), 1) if r.avg_delay_days else 0,
+        "count": r.count
+    } for r in results]
+
+
+@router.get("/admin/resource-kpis")
+def get_admin_resource_kpis(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    total = db.query(Resource).count()
+    total_downloads = db.query(func.coalesce(func.sum(Resource.downloads), 0)).scalar()
+    avg_downloads = round(total_downloads / total, 1) if total > 0 else 0
+    zero_engagement = db.query(Resource).filter(
+        Resource.downloads == 0
+    ).count()
+    zero_engagement_rate = round(zero_engagement / total * 100, 1) if total > 0 else 0
+    sizes = db.query(Resource.file_size).filter(
+        Resource.file_size.isnot(None), Resource.file_size != ""
+    ).all()
+    size_sum = 0
+    size_count = 0
+    for (s,) in sizes:
+        try:
+            size_sum += float(s)
+            size_count += 1
+        except (ValueError, TypeError):
+            pass
+    avg_file_size = round(size_sum / size_count, 1) if size_count > 0 else 0
+    return {
+        "total_resources": total,
+        "total_downloads": int(total_downloads),
+        "avg_downloads_per_resource": avg_downloads,
+        "zero_engagement_count": zero_engagement,
+        "zero_engagement_rate": zero_engagement_rate,
+        "avg_file_size_kb": avg_file_size,
+    }
+
+
+@router.get("/admin/resources-by-category")
+def get_admin_resources_by_category(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        Resource.category,
+        func.count(Resource.id).label("count"),
+        func.coalesce(func.avg(Resource.downloads), 0).label("avg_downloads"),
+        func.coalesce(func.sum(Resource.downloads), 0).label("total_downloads"),
+    ).group_by(Resource.category).order_by(func.count(Resource.id).desc()).all()
+    return [{
+        "category": r.category,
+        "count": r.count,
+        "avg_downloads": round(float(r.avg_downloads), 1),
+        "total_downloads": int(r.total_downloads),
+    } for r in results]
+
+
+@router.get("/admin/resources-by-language")
+def get_admin_resources_by_language(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        Resource.language,
+        func.count(Resource.id).label("count")
+    ).filter(Resource.language.isnot(None), Resource.language != "").group_by(Resource.language).order_by(func.count(Resource.id).desc()).all()
+    return [{"language": r.language, "count": r.count} for r in results]
+
+
+@router.get("/admin/top-resources")
+def get_admin_top_resources(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        Resource.id, Resource.title, Resource.type, Resource.category,
+        Resource.downloads, Resource.language, Resource.file_size
+    ).order_by(Resource.downloads.desc().nullslast()).limit(10).all()
+    return [{
+        "id": r.id, "title": r.title, "type": r.type,
+        "category": r.category, "downloads": r.downloads or 0,
+        "language": r.language, "file_size": r.file_size,
+    } for r in results]
+
+
+@router.get("/admin/sdg-sector-heatmap")
+def get_admin_sdg_sector_heatmap(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    results = db.query(
+        Project.sdg_id, Project.sector, func.count(Project.id).label("count")
+    ).filter(
+        Project.sdg_id.isnot(None), Project.sector.isnot(None), Project.sector != ""
+    ).group_by(Project.sdg_id, Project.sector).order_by(Project.sdg_id, Project.sector).all()
+    return [{"sdg_id": r.sdg_id, "sector": r.sector, "count": r.count} for r in results]
+
+
+@router.get("/admin/project-duration-stats")
+def get_admin_project_duration_stats(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    total = db.query(Project).count()
+    active = db.query(Project).filter(func.lower(Project.status) == "active").count()
+    closed = db.query(Project).filter(func.lower(Project.status).in_(["completed", "closed"])).count()
+    with_dates = db.query(Project).filter(Project.start_date.isnot(None), Project.end_date.isnot(None)).all()
+    durations = []
+    for p in with_dates:
+        d = (p.end_date - p.start_date).days
+        if d >= 0:
+            durations.append(d)
+    avg_duration_days = round(sum(durations) / len(durations), 1) if durations else 0
+    return {
+        "total_projects": total,
+        "active_count": active,
+        "closed_count": closed,
+        "active_rate": round(active / total * 100, 1) if total > 0 else 0,
+        "avg_duration_days": avg_duration_days,
+        "with_dates_count": len(with_dates),
+    }
+
+
+@router.get("/admin/project-connectivity")
+def get_admin_project_connectivity(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    total = db.query(Project).count()
+    with_docs = db.query(Project).filter(
+        Project.uploaded_documents.isnot(None), Project.uploaded_documents != ""
+    ).count()
+    documented_rate = round(with_docs / total * 100, 1) if total > 0 else 0
+    asso_counts = db.query(
+        ProjectStakeholderAssociation.project_id,
+        func.count(ProjectStakeholderAssociation.id)
+    ).group_by(ProjectStakeholderAssociation.project_id).all()
+    avg_partners = round(sum(c for _, c in asso_counts) / total, 1) if total > 0 else 0
+    return {
+        "documented_rate": documented_rate,
+        "with_documents": with_docs,
+        "avg_stakeholders_per_project": avg_partners,
+        "projects_with_stakeholders": len(asso_counts),
+    }
+
+
+
