@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FaBrain, FaEnvelope, FaMapMarkerAlt, FaTwitter, FaLinkedin, FaGithub } from 'react-icons/fa'
+import { FaEnvelope, FaMapMarkerAlt, FaTwitter, FaLinkedin, FaGithub } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 
 function Footer() {
@@ -20,7 +20,7 @@ function Footer() {
           <div className="footer-brand tour-target--footer-brand">
             <div className="footer-logo">
               <div className="logo-icon">
-                <FaBrain />
+                <img src="/images/SARAIlogo.png" alt="SARAI" style={{width:28, height:28, objectFit:'contain'}} />
               </div>
               <div className="logo-text">
                 <span className="logo-main">SARAI</span>
