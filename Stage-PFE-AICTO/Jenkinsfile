@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo '✅ Code récupéré depuis GitHub'
+            }
+        }
+
+        stage('Build Frontend') {
+            steps {
+                dir('frontend') {
+                    sh 'npm install'
+                    sh 'npm run build --prod'
+                }
+            }
+        }
+
+        stage('Build Backend') {
+            steps {
+                dir('backend') {
+                    sh 'pip install -r requirements.txt'
+                }
+            }
+        }
+
+        stage('Tests Frontend') {
+            steps {
+                dir('frontend') {
+                    // Option: --watch=false --browsers=ChromeHeadless pour CI
+                    sh 'npm test -- --watch=false --no-progress --browsers=ChromeHeadless'
+                }
+            }
+        }
+
+        stage('Tests Backend') {
+            steps {
+                dir('backend') {
+                    // Ajouter --maxfail=1 pour arrêter au premier échec
+                    sh 'pytest tests/ --maxfail=1 -v'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo '🚀 Déploiement terminé avec succès !'
+                // Plus tard: docker build, docker push, kubectl apply, etc.
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Build réussi !'
+        }
+        failure {
+            echo '❌ Build échoué - Vérifiez les logs'
+        }
+    }
+}
