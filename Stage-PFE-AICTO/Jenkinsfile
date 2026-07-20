@@ -12,9 +12,9 @@ pipeline {
         stage('Build Frontend') {
             steps {
                 dir('frontend') {
-                    // Utiliser le chemin absolu de npm
-                    sh '/home/user/.nvm/versions/node/v22.23.1/bin/npm install'
-                    sh '/home/user/.nvm/versions/node/v22.23.1/bin/npm run build --prod'
+                    // Utiliser /usr/bin/npm (liens symboliques)
+                    sh 'npm install'
+                    sh 'npm run build --prod'
                 }
             }
         }
@@ -30,7 +30,7 @@ pipeline {
         stage('Tests Frontend') {
             steps {
                 dir('frontend') {
-                    sh '/home/user/.nvm/versions/node/v22.23.1/bin/npm test -- --watch=false --no-progress'
+                    sh 'npm test -- --watch=false --no-progress'
                 }
             }
         }
