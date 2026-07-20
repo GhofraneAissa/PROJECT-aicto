@@ -24,7 +24,11 @@ pipeline {
         stage('Build Backend') {
             steps {
                 dir('Stage-PFE-AICTO/backend') {
-                    sh 'pip install -r requirements.txt'
+                    sh '''
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        pip install -r requirements.txt
+                    '''
                 }
             }
         }
@@ -40,7 +44,10 @@ pipeline {
         stage('Tests Backend') {
             steps {
                 dir('Stage-PFE-AICTO/backend') {
-                    sh 'pytest tests/ --maxfail=1 -v'
+                    sh '''
+                        . venv/bin/activate
+                        pytest tests/ --maxfail=1 -v
+                    '''
                 }
             }
         }
