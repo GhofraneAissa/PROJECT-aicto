@@ -11,8 +11,8 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                dir('frontend') {
-                    // Utiliser /usr/bin/npm (liens symboliques)
+                // Aller dans le dossier correct
+                dir('Stage-PFE-AICTO/frontend') {
                     sh 'npm install'
                     sh 'npm run build --prod'
                 }
@@ -21,7 +21,7 @@ pipeline {
 
         stage('Build Backend') {
             steps {
-                dir('backend') {
+                dir('Stage-PFE-AICTO/backend') {
                     sh 'pip install -r requirements.txt'
                 }
             }
@@ -29,7 +29,7 @@ pipeline {
 
         stage('Tests Frontend') {
             steps {
-                dir('frontend') {
+                dir('Stage-PFE-AICTO/frontend') {
                     sh 'npm test -- --watch=false --no-progress'
                 }
             }
@@ -37,7 +37,7 @@ pipeline {
 
         stage('Tests Backend') {
             steps {
-                dir('backend') {
+                dir('Stage-PFE-AICTO/backend') {
                     sh 'pytest tests/ --maxfail=1 -v'
                 }
             }
