@@ -11,10 +11,11 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                // Aller dans le dossier correct
                 dir('Stage-PFE-AICTO/frontend') {
-                    sh 'npm install'
-                    sh 'npm run build --prod'
+                    sh '''
+                        npm install
+                        npm run build
+                    '''
                 }
             }
         }
