@@ -14,6 +14,7 @@ pipeline {
                 dir('Stage-PFE-AICTO/frontend') {
                     sh '''
                         npm install
+                        chmod -R 755 node_modules/.bin/
                         npm run build
                     '''
                 }
