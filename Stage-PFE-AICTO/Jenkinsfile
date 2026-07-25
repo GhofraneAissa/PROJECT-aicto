@@ -35,7 +35,12 @@ pipeline {
 
        stage('Tests Frontend') {
             steps {
-                echo 'Aucun test frontend à exécuter'
+                dir('Stage-PFE-AICTO/frontend') {
+                    sh '''
+                        npm ci
+                        npm run test
+                    '''
+                }
             }
        }
 
@@ -50,13 +55,13 @@ pipeline {
                     '''
                 }
             }
-        }
+       }
 
-        stage('Deploy') {
+       stage('Deploy') {
             steps {
                 echo '🚀 Déploiement terminé avec succès !'
             }
-        }
+       }
     }
 
     post {
