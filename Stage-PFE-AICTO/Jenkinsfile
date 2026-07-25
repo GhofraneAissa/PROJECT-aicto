@@ -36,7 +36,7 @@ pipeline {
         stage('Tests Frontend') {
             steps {
                 dir('Stage-PFE-AICTO/frontend') {
-                    sh 'npm test -- --watch=false --no-progress'
+                    sh 'npm run test'
                 }
             }
         }
