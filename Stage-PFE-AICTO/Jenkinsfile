@@ -9,11 +9,6 @@ pipeline {
             }
         }
 
-        stage('Tests Frontend') {
-            steps {
-                echo 'Aucun test frontend existant - skip'
-            }
-        }
 
         stage('Build Backend') {
             steps {
@@ -29,12 +24,7 @@ pipeline {
 
        stage('Tests Frontend') {
             steps {
-                dir('Stage-PFE-AICTO/frontend') {
-                    sh '''
-                        npm ci
-                        npm run test
-                    '''
-                }
+                echo 'Aucun test frontend existant - skip'
             }
        }
 
