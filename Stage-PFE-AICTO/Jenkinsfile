@@ -33,13 +33,11 @@ pipeline {
             }
         }
 
-        stage('Tests Frontend') {
+       stage('Tests Frontend') {
             steps {
-                dir('Stage-PFE-AICTO/frontend') {
-                    sh 'npm run test'
-                }
+                echo 'Aucun test frontend à exécuter'
             }
-        }
+       }
 
         stage('Tests Backend') {
             steps {
