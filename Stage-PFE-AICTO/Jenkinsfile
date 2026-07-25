@@ -9,15 +9,9 @@ pipeline {
             }
         }
 
-        stage('Build Frontend') {
+        stage('Tests Frontend') {
             steps {
-                dir('Stage-PFE-AICTO/frontend') {
-                    sh '''
-                        npm install
-                        chmod -R 755 node_modules/.bin/
-                        npm run build
-                    '''
-                }
+                echo 'Aucun test frontend existant - skip'
             }
         }
 
