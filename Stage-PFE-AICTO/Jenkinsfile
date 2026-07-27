@@ -61,11 +61,7 @@ pipeline {
         }
        
 
-        stage('Deploy') {
-            steps {
-                echo '🚀 Déploiement terminé avec succès !'
-            }
-        }
+      
     }
 
     post {
