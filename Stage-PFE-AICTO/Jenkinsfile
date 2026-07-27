@@ -22,13 +22,13 @@ pipeline {
             }
         }
 
-       stage('Tests Frontend') {
+        stage('Tests Frontend') {
             steps {
                 echo 'Aucun test frontend existant - skip'
             }
-       }
+        }
 
-       stage('Tests Backend') {
+        stage('Tests Backend') {
             steps {
                 dir('Stage-PFE-AICTO/backend') {
                     sh '''
@@ -39,13 +39,33 @@ pipeline {
                     '''
                 }
             }
-       }
+        }
+        stage('Build Docker Images') {
+            steps {
+                dir('Stage-PFE-AICTO') {
+                    sh '''
+                        docker-compose build
+                    '''
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                dir('Stage-PFE-AICTO') {
+                    sh '''
+                        docker-compose up -d
+                    '''
+                    echo '🚀 Déploiement Docker terminé !'
+                }
+            }
+        }
+       
 
-       stage('Deploy') {
+        stage('Deploy') {
             steps {
                 echo '🚀 Déploiement terminé avec succès !'
             }
-       }
+        }
     }
 
     post {
