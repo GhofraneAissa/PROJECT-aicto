@@ -9,7 +9,6 @@ pipeline {
             }
         }
 
-
         stage('Build Backend') {
             steps {
                 dir('Stage-PFE-AICTO/backend') {
@@ -40,36 +39,31 @@ pipeline {
                 }
             }
         }
+
         stage('Build Docker Images') {
             steps {
                 dir('Stage-PFE-AICTO') {
-                    sh '''
-                        docker-compose build
-                    '''
+                    sh 'docker-compose build'
                 }
             }
         }
-        stage('Deploy') {
+
+        stage('Run Docker Containers') {
             steps {
                 dir('Stage-PFE-AICTO') {
-                    sh '''
-                        docker-compose up -d
-                    '''
-                    echo '🚀 Déploiement Docker terminé !'
+                    sh 'docker-compose up -d'
                 }
             }
         }
-       
-
-      
     }
 
     post {
         success {
-            echo '✅ Build réussi !'
+            echo '✅ Pipeline terminé - Containers Docker lancés'
         }
         failure {
-            echo '❌ Build échoué - Vérifiez les logs'
+            echo '❌ Build échoué'
+            sh 'docker-compose logs --tail=20 2>/dev/null || true'
         }
     }
 }
