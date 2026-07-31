@@ -55,6 +55,24 @@ pipeline {
                 }
             }
         }
+
+        stage('Verify Containers') {
+            steps {
+                dir('Stage-PFE-AICTO') {
+                    sh '''
+                        echo '⏳ Attente du démarrage des containers...'
+                        sleep 15
+                        echo '--- docker-compose ps ---'
+                        docker-compose ps
+                        echo '--- Vérification backend (port 8000) ---'
+                        curl -s -o /dev/null -w "HTTP %{http_code}\\n" http://localhost:8000/docs || { echo '❌ Backend injoignable'; exit 1; }
+                        echo '--- Vérification frontend (port 3001) ---'
+                        curl -s -o /dev/null -w "HTTP %{http_code}\\n" http://localhost:3001 || { echo '❌ Frontend injoignable'; exit 1; }
+                        echo '✅ Containers opérationnels'
+                    '''
+                }
+            }
+        }
     }
 
     post {
